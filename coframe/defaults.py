@@ -21,6 +21,7 @@ add_query_behavior).
 """
 from datetime import date, datetime
 from typing import Callable, Optional, Set
+from uuid import uuid4
 
 from coframe import apptime
 from coframe.db import BaseApp
@@ -55,11 +56,24 @@ def now() -> datetime:
     return apptime.now()
 
 
+def uuid() -> str:
+    """A new random key, in the canonical 36-character form (uuid4).
+
+    A key minted on the server is what lets a record be inserted where no
+    client coins one, as the terminals do: a column that must hold a unique
+    key and is not editable would otherwise make the table non-insertable
+    from a form. Lower case, as `str()` writes it and as the terminals send
+    it, so the same key never arrives in two spellings.
+    """
+    return str(uuid4())
+
+
 # Registry: token name (without the leading '$') -> callable used as a
 # SQLAlchemy column default.
 _DEFAULTS: dict = {
     'op_date': op_date,
     'now': now,
+    'uuid': uuid,
 }
 
 

@@ -353,11 +353,27 @@ def db_check(app: Any) -> Tuple[str, bool]:
     return format_diff(diff), diff.is_aligned
 
 
-def db_sync(app: Any, dry_run: bool = False) -> Tuple[str, bool]:
+def _confirm_forced(changes: List[Any]) -> bool:
+    """List what --force is about to lose and ask. Anything but yes is no."""
+    print('--force will also apply, losing data:')
+    for change in changes:
+        print(f'  ! {change.target:<40} {change.description}')
+        print(f'      {change.reason}')
+    try:
+        answer = input('Proceed? [y/N] ')
+    except EOFError:
+        return False
+    return answer.strip().lower() in ('y', 'yes')
+
+
+def db_sync(app: Any, dry_run: bool = False, force: bool = False,
+            confirm: Optional[Any] = None) -> Tuple[str, bool]:
     """
-    Apply the changes the database can take safely: new tables and columns,
-    new indexes, widened types, relaxed NOT NULLs.  Everything else is
-    reported and left alone — see coframe.schema_sync for why.
+    Apply the changes that lose no data: new tables and columns, new indexes,
+    widened types, relaxed NOT NULLs, strings shortened where every value fits.
+    With `force`, also the forceable refusals (drops, truncating strings),
+    after `confirm(changes)` returns True when given. The rest is reported and
+    left alone — see coframe.schema_sync for why.
 
     Returns:
         (report, aligned_after) — with dry_run, the DDL that would run.
@@ -373,17 +389,23 @@ def db_sync(app: Any, dry_run: bool = False) -> Tuple[str, bool]:
     lines = [format_diff(diff, sync_command=None)]
 
     if dry_run:
-        sql = plan_sql(app.engine, diff)
+        sql = plan_sql(app.engine, diff, force=force)
         if sql:
             lines += ['', '--- SQL that would run ---', sql.rstrip()]
         return '\n'.join(lines), False
 
-    if diff.safe:
-        executed = apply_diff(app.engine, diff, logger=app.pm.logger)
-        lines += ['', f'Applied {len(diff.safe)} change(s):']
+    forced = diff.forceable if force else []
+    if forced and confirm is not None and not confirm(forced):
+        lines += ['', 'Forced changes not confirmed: nothing applied.']
+        return '\n'.join(lines), False
+
+    count = len(diff.safe) + len(forced)
+    if count:
+        executed = apply_diff(app.engine, diff, logger=app.pm.logger, force=bool(forced))
+        lines += ['', f'Applied {count} change(s):']
         lines += [f'  {statement}' for statement in executed]
 
-    return '\n'.join(lines), not diff.refused
+    return '\n'.join(lines), len(diff.refused) == len(forced)
 
 
 def db_backup(app: Any, dest: Optional[str] = None) -> Tuple[str, str]:
@@ -458,7 +480,8 @@ examples:
   check --dump                          also write full JSON dump to <output_dir>/appdump.json
   db-check                              compare the database with the schema (exit 1 if it differs)
   db-sync --dry-run                     show the DDL an alignment would run
-  db-sync                               apply it (adds only — never drops, never narrows)
+  db-sync                               apply what loses no data
+  db-sync --force                       also drop and truncate, after a confirmation
   db-backup                             consistent SQLite snapshot next to the database, stamped
   db-backup /mnt/backup/                a directory, or a file path
   dev                                   run this app and its client, together
@@ -521,10 +544,14 @@ examples:
     # ── db-sync ────────────────────────────────────────────────────────────────
     p = sub.add_parser(
         'db-sync',
-        help='Align the database: add tables/columns/indexes, widen types. Never drops.',
+        help='Align the database with what loses no data; --force also drops and truncates',
     )
     p.add_argument('--dry-run', action='store_true',
                    help='Print the DDL that would run, without touching the database')
+    p.add_argument('--force', action='store_true',
+                   help='Also apply the changes marked --force: drops, truncated strings')
+    p.add_argument('--yes', action='store_true',
+                   help='With --force, do not ask for confirmation')
 
     # ── db-backup ──────────────────────────────────────────────────────────────
     p = sub.add_parser(
@@ -687,7 +714,9 @@ def run_cli(app: Any, args: argparse.Namespace, output_dir: Path = Path('.')) ->
             sys.exit(1)
 
     elif args.command == 'db-sync':
-        report, aligned = db_sync(app, dry_run=args.dry_run)
+        confirm = None if args.yes else _confirm_forced
+        report, aligned = db_sync(app, dry_run=args.dry_run, force=args.force,
+                                  confirm=confirm)
         print(report)
         if not aligned:
             sys.exit(1)

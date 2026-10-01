@@ -264,7 +264,7 @@ tables:
 
 ```bash
 uv run app.py db-check      # what differs, read-only
-uv run app.py db-sync       # apply it: additions only, never a drop
+uv run app.py db-sync       # apply it: whatever loses no data, never a drop
 ```
 
 **What you should see.** `db-sync` names the change before making it:

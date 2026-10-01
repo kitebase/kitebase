@@ -12,13 +12,22 @@ difference is either applied or reported.  Two consequences worth knowing:
     plus an add, so renames, splits and merges stay manual.
 
 What may be applied automatically is a closed list (see `_classify`): create a
-table, add a column, add an index, widen a type, relax a NOT NULL.  Everything
-else — every drop, every narrowing, every constraint change — is reported with
-the SQL it would take, and left to a human.  The guard is structural rather
-than a flag: no code path here removes anything.  That is what makes the
-command safe to run against a database that is only partly ours — a subset of
-plugins loaded, or tables owned by a host application, which the diff ignores
-entirely.
+table, add a column, add an index, widen a type, relax a NOT NULL, and shorten
+a string or an integer when every stored value already fits.  The bar is "no data is lost".
+Below it, two kinds of refusal:
+
+  * forceable: dropping a column or an index, shortening a string some values
+    do not fit.  Reported with what would be lost; `force=True` applies them,
+    truncating explicitly, so the outcome is the same on every dialect;
+  * not forceable: tightening a NOT NULL, an integer some values do not fit
+    (a clamped number is a wrong one), decimals, changing a type family,
+    constraint and key changes.  Each needs a value or a conversion
+    that only a human can choose, and stays manual.
+
+Forcing is the caller's decision, never a default: `force` applies *every*
+forceable change in the diff, including the ones that only look like drops
+because a plugin adding columns to a shared table is not loaded.  That is why
+the command line lists them and asks before running.
 
 Alembic supplies the comparison engine and the operations (including the
 move-and-copy that SQLite needs to alter a column); its versioning half is
@@ -78,6 +87,7 @@ class Change:
     target: str                   # 'book' or 'book.isbn'
     description: str              # what it is, in one line
     reason: str = ''              # why it was refused
+    forceable: bool = False       # refused, but applied under force=True
     sql_hint: str = ''            # the statement a human would run instead
     payload: Dict[str, Any] = field(default_factory=dict)  # what apply_diff needs
 
@@ -97,6 +107,11 @@ class SchemaDiff:
     @property
     def refused(self) -> List[Change]:
         return [c for c in self.changes if c.verdict == REFUSED]
+
+    @property
+    def forceable(self) -> List[Change]:
+        """Refused changes that force=True would apply: each one loses data."""
+        return [c for c in self.changes if c.verdict == REFUSED and c.forceable]
 
     @property
     def ignored(self) -> List[Change]:
@@ -266,6 +281,89 @@ def _classify_add_column(conn: Any, table_name: str, column: Any) -> Change:
     )
 
 
+def _is_string_narrowing(old: Any, new: Any) -> bool:
+    """A bounded string replacing a longer or unbounded one, Enum excluded."""
+    old, new = _storage_type(old), _storage_type(new)
+    if isinstance(old, sa.Enum) or isinstance(new, sa.Enum):
+        return False
+    return (isinstance(old, sa.String) and isinstance(new, sa.String)
+            and new.length is not None
+            and (old.length is None or old.length > new.length))
+
+
+# The range each integer rank can hold, signed as every dialect stores them.
+_INT_RANGE = {1: (-2**15, 2**15 - 1), 2: (-2**31, 2**31 - 1), 3: (-2**63, 2**63 - 1)}
+
+
+def _is_int_narrowing(old: Any, new: Any) -> bool:
+    old, new = _storage_type(old), _storage_type(new)
+    return (isinstance(old, sa.Integer) and isinstance(new, sa.Integer)
+            and _int_rank(new) < _int_rank(old))
+
+
+def _classify_narrow_int(conn: Any, table_name: str, col_name: str, existing: Any,
+                         old_type: Any, new_type: Any) -> Change:
+    """
+    A smaller integer is decided by the data, like a shorter string, with one
+    difference: a value out of range has no forced answer. A truncated string
+    is still part of what was there; a number clamped to the limit is a wrong
+    number. So it is safe when everything fits, and manual otherwise.
+    """
+    target = f'{table_name}.{col_name}'
+    low, high = _INT_RANGE[_int_rank(_storage_type(new_type))]
+    col = sa.column(col_name)
+    outside = _count(conn, table_name, sa.or_(col < low, col > high))
+    if outside == 0:
+        return Change(kind='narrow_int', verdict=SAFE, target=target,
+                      description=f'type {old_type} -> {new_type}, every value fits',
+                      payload={'table': table_name, 'column': col_name, 'old_type': old_type,
+                               'new_type': new_type, 'existing': existing})
+    return Change(
+        kind='narrow_int', verdict=REFUSED, target=target,
+        description=f'type {old_type} -> {new_type}',
+        reason=f'{outside} value(s) outside {low}..{high}: '
+               f'a clamped number would be a wrong one',
+        sql_hint=f'ALTER TABLE {table_name} ALTER COLUMN {col_name} TYPE {new_type};',
+    )
+
+
+def _count(conn: Any, table_name: str, condition: Any) -> int:
+    return conn.execute(
+        sa.select(sa.func.count()).select_from(sa.table(table_name)).where(condition)
+    ).scalar_one()
+
+
+def _classify_narrow_string(conn: Any, table_name: str, col_name: str, existing: Any,
+                            old_type: Any, new_type: Any) -> Change:
+    """
+    A shorter string is decided by the data, not by the types.
+
+    If every stored value fits, nothing is lost and it is as safe as a
+    widening. If some do not, forcing truncates them on purpose: Postgres
+    would refuse the ALTER, SQLite would keep the long values under a length
+    that no longer holds, and neither is the outcome anyone asked for.
+    """
+    target = f'{table_name}.{col_name}'
+    length = _storage_type(new_type).length
+    longer = _count(conn, table_name, sa.func.length(sa.column(col_name)) > length)
+    payload = {'table': table_name, 'column': col_name, 'old_type': old_type,
+               'new_type': new_type, 'existing': existing}
+    if longer == 0:
+        return Change(kind='narrow_string', verdict=SAFE, target=target,
+                      description=f'type {old_type} -> {new_type}, every value fits',
+                      payload=payload)
+    return Change(
+        kind='narrow_string', verdict=REFUSED, target=target,
+        description=f'type {old_type} -> {new_type}',
+        reason=f'{longer} value(s) longer than {length}: forcing truncates them',
+        sql_hint=f'UPDATE {table_name} SET {col_name} = substr({col_name}, 1, {length}) '
+                 f'WHERE length({col_name}) > {length};\n'
+                 f'ALTER TABLE {table_name} ALTER COLUMN {col_name} TYPE {new_type};',
+        forceable=True,
+        payload={**payload, 'truncate': length},
+    )
+
+
 def _classify(conn: Any, diff: Any) -> Optional[Change]:
     """Turn one Alembic diff tuple into a Change, or None to drop it silently."""
     kind = diff[0]
@@ -295,6 +393,12 @@ def _classify(conn: Any, diff: Any) -> Optional[Change]:
                           payload={'table': table_name, 'column': col_name,
                                    'old_type': old_type, 'new_type': new_type,
                                    'existing': existing})
+        if _is_string_narrowing(old_type, new_type):
+            return _classify_narrow_string(conn, table_name, col_name, existing,
+                                           old_type, new_type)
+        if _is_int_narrowing(old_type, new_type):
+            return _classify_narrow_int(conn, table_name, col_name, existing,
+                                        old_type, new_type)
         return Change(
             kind='modify_type', verdict=REFUSED, target=target,
             description=f'type {old_type} -> {new_type}',
@@ -328,11 +432,14 @@ def _classify(conn: Any, diff: Any) -> Optional[Change]:
 
     if kind == 'remove_column':
         _, _, table_name, column = diff
+        filled = _count(conn, table_name, sa.column(column.name).isnot(None))
         return Change(
             kind='remove_column', verdict=REFUSED, target=f'{table_name}.{column.name}',
             description='column exists in the database but not in the schema',
-            reason='dropping a column destroys data and usually needs UI changes too',
+            reason=f'dropping it loses {filled} non-empty value(s)',
             sql_hint=f'ALTER TABLE {table_name} DROP COLUMN {column.name};',
+            forceable=True,
+            payload={'table': table_name, 'column': column.name},
         )
 
     if kind == 'remove_index':
@@ -342,6 +449,8 @@ def _classify(conn: Any, diff: Any) -> Optional[Change]:
             description=f'index {index.name} exists in the database but not in the schema',
             reason='an index may have been added on purpose outside the schema',
             sql_hint=f'DROP INDEX {index.name};',
+            forceable=True,
+            payload={'table': index.table.name, 'index': index.name},
         )
 
     # Constraints, foreign keys, anything a future Alembic reports: refuse by
@@ -439,7 +548,8 @@ def diff_schema(engine: Engine, metadata: sa.MetaData) -> SchemaDiff:
 
 def _ordered(changes: List[Change]) -> List[Change]:
     """Report them in the order a sync carries them out (see `_run`)."""
-    rank = {'add_table': 0, 'add_column': 1, 'widen_type': 2,
+    rank = {'add_table': 0, 'add_column': 1, 'widen_type': 2, 'narrow_string': 2,
+            'narrow_int': 2,
             'relax_nullable': 2, 'add_index': 3}
     return sorted(changes, key=lambda c: rank.get(c.kind, 4))
 
@@ -464,7 +574,8 @@ def format_diff(diff: SchemaDiff, sync_command: Optional[str] = 'db-sync') -> st
             lines.append('')
         lines.append(f'Needs a decision ({len(diff.refused)}) — not applied:')
         for change in diff.refused:
-            lines.append(f'  ! {change.target:<40} {change.description}')
+            mark = '  (--force)' if change.forceable else ''
+            lines.append(f'  ! {change.target:<40} {change.description}{mark}')
             lines.append(f'      {change.reason}')
             for statement in change.sql_hint.splitlines():
                 lines.append(f'      {statement}')
@@ -472,6 +583,9 @@ def format_diff(diff: SchemaDiff, sync_command: Optional[str] = 'db-sync') -> st
     if diff.safe and sync_command:
         lines.append('')
         lines.append(f'Run `{sync_command}` to apply the {len(diff.safe)} change(s) above.')
+    if diff.forceable and sync_command:
+        lines.append(f'`{sync_command} --force` also applies the {len(diff.forceable)} '
+                     f'marked --force, losing the data they name: take a backup first.')
 
     return '\n'.join(lines)
 
@@ -511,6 +625,9 @@ class _Shape:
 
     def column_added(self, table: str, column: Any) -> None:
         self.of(table).append_column(column)
+
+    def column_dropped(self, table: str, column: str) -> None:
+        self.of(table)._columns.remove(self.of(table).c[column])
 
     def column_altered(self, table: str, column: str, type_: Any,
                        nullable: Optional[bool]) -> None:
@@ -586,10 +703,26 @@ def _run(op: Any, conn: Any, engine: Engine, changes: List[Change],
                 if shape:
                     shape.column_added(table, _copy_of(column))
 
-        elif kind == 'widen_type':
+        elif kind in ('widen_type', 'narrow_string', 'narrow_int'):
+            if 'truncate' in payload:
+                # Explicit, before the alteration: the same outcome on every
+                # dialect, where the ALTER alone would fail or keep the excess.
+                table, column, length = payload['table'], payload['column'], payload['truncate']
+                col = sa.column(column)
+                update = (sa.table(table, col).update()
+                          .where(sa.func.length(col) > length)
+                          .values(**{column: sa.func.substr(col, 1, length)}))
+                op.execute(_literal(update, engine) if shape else update)
             alter(payload['table'], column=payload['column'],
                   existing_type=payload['old_type'], type_=payload['new_type'],
                   nullable=payload['existing'].get('existing_nullable'))
+
+        elif kind == 'remove_column':
+            alter(payload['table'], column=payload['column'], drop=True)
+
+        elif kind == 'remove_index':
+            # First, so that a rebuild of the same table does not bring it back.
+            op.drop_index(payload['index'], table_name=payload['table'])
 
         elif kind == 'relax_nullable':
             alter(payload['table'], column=payload['column'], nullable=True)
@@ -618,7 +751,10 @@ def _alter_table(op: Any, shape: Optional['_Shape'], engine: Engine, table: str,
     """
     if not _batch_needed(engine):
         for spec in columns:
-            op.alter_column(table, spec.pop('column'), **spec)
+            if spec.get('drop'):
+                op.drop_column(table, spec['column'])
+            else:
+                op.alter_column(table, spec.pop('column'), **spec)
         return
 
     # Rebuilding copies the table as it stands, so columns the schema does not
@@ -628,15 +764,26 @@ def _alter_table(op: Any, shape: Optional['_Shape'], engine: Engine, table: str,
         batch_kwargs['copy_from'] = shape.of(table)
     with op.batch_alter_table(table, **batch_kwargs) as batch:
         for spec in columns:
-            batch.alter_column(spec['column'],
-                               **{k: v for k, v in spec.items() if k != 'column'})
+            if spec.get('drop'):
+                batch.drop_column(spec['column'])
+            else:
+                batch.alter_column(spec['column'],
+                                   **{k: v for k, v in spec.items() if k != 'column'})
     if shape is not None:
         for spec in columns:
-            shape.column_altered(table, spec['column'],
-                                 spec.get('type_'), spec.get('nullable'))
+            if spec.get('drop'):
+                shape.column_dropped(table, spec['column'])
+            else:
+                shape.column_altered(table, spec['column'],
+                                     spec.get('type_'), spec.get('nullable'))
 
 
-def plan_sql(engine: Engine, diff: SchemaDiff) -> str:
+def _to_apply(diff: SchemaDiff, force: bool) -> List[Change]:
+    """The safe changes, plus the forceable ones when forcing, in run order."""
+    return _ordered(diff.safe + (diff.forceable if force else []))
+
+
+def plan_sql(engine: Engine, diff: SchemaDiff, force: bool = False) -> str:
     """
     The DDL a sync would run, rendered without touching the database.
 
@@ -648,7 +795,8 @@ def plan_sql(engine: Engine, diff: SchemaDiff) -> str:
 
     _, MigrationContext, Operations = _alembic()
 
-    if not diff.safe:
+    changes = _to_apply(diff, force)
+    if not changes:
         return ''
 
     buffer = io.StringIO()
@@ -656,22 +804,25 @@ def plan_sql(engine: Engine, diff: SchemaDiff) -> str:
         context = MigrationContext.configure(
             conn, opts={'as_sql': True, 'output_buffer': buffer})
         op = Operations(context)
-        _run(op, conn, engine, diff.safe, reflect=False)
+        _run(op, conn, engine, changes, reflect=False)
     return buffer.getvalue()
 
 
 def apply_diff(engine: Engine, diff: SchemaDiff,
-               logger: Optional[logging.Logger] = None) -> List[str]:
+               logger: Optional[logging.Logger] = None,
+               force: bool = False) -> List[str]:
     """
-    Run the safe subset of `diff`.  Returns the SQL statements executed.
+    Run the safe subset of `diff`, plus the forceable one with `force`.
+    Returns the SQL statements executed.
 
-    Refused changes are not touched — they are not even represented here as
-    operations.  What ran is logged, since a state-based sync keeps no history
-    of its own.
+    Other refused changes are not touched — they are not even represented here
+    as operations.  What ran is logged, since a state-based sync keeps no
+    history of its own.
     """
     _, MigrationContext, Operations = _alembic()
 
-    if not diff.safe:
+    changes = _to_apply(diff, force)
+    if not changes:
         return []
 
     executed: List[str] = []
@@ -684,14 +835,14 @@ def apply_diff(engine: Engine, diff: SchemaDiff,
         with engine.begin() as conn:
             context = MigrationContext.configure(conn)
             op = Operations(context)
-            _run(op, conn, engine, diff.safe, reflect=True)
+            _run(op, conn, engine, changes, reflect=True)
     finally:
         sa.event.remove(engine, 'before_cursor_execute', _capture)
 
     ddl = [s for s in executed
            if s.upper().startswith(('CREATE', 'ALTER', 'DROP', 'UPDATE', 'INSERT INTO'))]
     if logger:
-        for change in diff.safe:
+        for change in changes:
             logger.info('schema sync: %s — %s', change.target, change.description)
         for statement in ddl:
             logger.info('schema sync SQL: %s', statement)

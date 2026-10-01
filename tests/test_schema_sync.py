@@ -268,18 +268,136 @@ def test_narrowing_a_decorated_string_is_still_refused(engine):
     diff = diff_schema(engine, md)
 
     assert diff.safe == []
-    assert 'not a widening' in diff.refused[0].reason
+    assert 'longer than 10' in diff.refused[0].reason
 
 
-def test_narrowing_a_type_is_refused(engine):
+def test_narrowing_a_string_that_does_not_fit_is_refused(engine):
     md = base_metadata()
     md.tables['book'].c.title.type = sa.String(10)
 
     diff = diff_schema(engine, md)
 
     assert diff.safe == []
-    assert 'not a widening' in diff.refused[0].reason
+    change = diff.refused[0]
+    assert change.kind == 'narrow_string' and change.forceable
+    assert '1 value(s) longer than 10' in change.reason
     apply_diff(engine, diff)
+    assert str(column_info(engine, 'book')['title']['type']) == 'VARCHAR(50)'
+
+
+# ── Decided by the data ────────────────────────────────────────────────────────
+
+def test_narrowing_a_string_every_value_fits_is_applied(engine):
+    """'Le città invisibili' is 19 characters: 20 loses nothing, so no decision."""
+    md = base_metadata()
+    md.tables['book'].c.title.type = sa.String(20)
+
+    diff = diff_schema(engine, md)
+
+    assert [c.kind for c in diff.safe] == ['narrow_string']
+    assert diff.refused == []
+    apply_diff(engine, diff)
+    assert str(column_info(engine, 'book')['title']['type']) == 'VARCHAR(20)'
+    with engine.connect() as conn:
+        assert conn.execute(sa.text('SELECT title FROM book')).scalar() == 'Le città invisibili'
+    assert diff_schema(engine, md).is_aligned
+
+
+def test_narrowing_an_integer_every_value_fits_is_applied(engine):
+    md = base_metadata()
+    md.tables['book'].c.author_id.type = sa.SmallInteger()
+
+    diff = diff_schema(engine, md)
+
+    assert [c.kind for c in diff.safe] == ['narrow_int']
+    apply_diff(engine, diff)
+    assert diff_schema(engine, md).is_aligned
+
+
+def test_an_integer_out_of_range_is_refused_even_forcing(engine):
+    with engine.begin() as conn:
+        conn.execute(sa.text("INSERT INTO author (id, name) VALUES (40000, 'Rodari')"))
+        conn.execute(sa.text("INSERT INTO book (id, title, author_id) VALUES (2, 'Favole', 40000)"))
+    md = base_metadata()
+    md.tables['book'].c.author_id.type = sa.SmallInteger()
+
+    diff = diff_schema(engine, md)
+
+    change = by_target(diff)['book.author_id']
+    assert change.verdict == REFUSED and not change.forceable
+    assert '1 value(s) outside -32768..32767' in change.reason
+    apply_diff(engine, diff, force=True)
+    assert by_target(diff_schema(engine, md))['book.author_id'].kind == 'narrow_int'
+
+
+# ── Forcing ────────────────────────────────────────────────────────────────────
+
+def test_force_truncates_explicitly(engine):
+    md = base_metadata()
+    md.tables['book'].c.title.type = sa.String(10)
+
+    apply_diff(engine, diff_schema(engine, md), force=True)
+
+    assert str(column_info(engine, 'book')['title']['type']) == 'VARCHAR(10)'
+    with engine.connect() as conn:
+        assert conn.execute(sa.text('SELECT title FROM book')).scalar() == 'Le città i'
+    assert diff_schema(engine, md).is_aligned
+
+
+def test_force_drops_a_column_and_counts_what_it_loses(engine):
+    md = base_metadata()
+    md.tables['book']._columns.remove(md.tables['book'].c.note)
+
+    diff = diff_schema(engine, md)
+    change = by_target(diff)['book.note']
+    assert change.forceable
+    assert change.reason == 'dropping it loses 1 non-empty value(s)'
+
+    apply_diff(engine, diff, force=True)
+
+    assert 'note' not in column_info(engine, 'book')
+    with engine.connect() as conn:
+        assert conn.execute(sa.text('SELECT title FROM book')).scalar() == 'Le città invisibili'
+    assert diff_schema(engine, md).is_aligned
+
+
+def test_force_drops_an_index(engine):
+    md = base_metadata()
+    md.tables['book'].indexes.clear()
+
+    apply_diff(engine, diff_schema(engine, md), force=True)
+
+    assert sa.inspect(engine).get_indexes('book') == []
+    assert diff_schema(engine, md).is_aligned
+
+
+def test_force_leaves_what_is_not_forceable(engine):
+    """Tightening a NOT NULL needs a value nobody has chosen: forcing is no answer."""
+    md = base_metadata()
+    md.tables['author'].c.name.nullable = False
+    md.tables['book']._columns.remove(md.tables['book'].c.note)
+
+    diff = diff_schema(engine, md)
+    apply_diff(engine, diff, force=True)
+
+    after = diff_schema(engine, md)
+    assert [c.kind for c in after.refused] == ['modify_nullable']
+    assert 'note' not in column_info(engine, 'book')
+
+
+def test_dry_run_with_force_shows_the_truncation_and_the_drop(engine):
+    md = base_metadata()
+    md.tables['book'].c.title.type = sa.String(10)
+    md.tables['book']._columns.remove(md.tables['book'].c.note)
+
+    diff = diff_schema(engine, md)
+    assert plan_sql(engine, diff) == ''
+    sql = plan_sql(engine, diff, force=True)
+
+    assert 'substr(book.title, 1, 10) WHERE length(book.title) > 10' in sql
+    assert 'VARCHAR(10)' in sql
+    copy = next(line for line in sql.splitlines() if line.startswith('INSERT INTO _alembic_tmp_book'))
+    assert 'note' not in copy
     assert str(column_info(engine, 'book')['title']['type']) == 'VARCHAR(50)'
 
 
@@ -446,3 +564,46 @@ def test_startup_check_rejects_an_unknown_policy(engine):
 
 def test_startup_check_passes_when_aligned(engine):
     assert check_on_startup(engine, base_metadata(), 'error').is_aligned
+
+
+# ── The command: forcing asks first ───────────────────────────────────────────
+
+class _AppStub:
+    def __init__(self, engine):
+        import logging
+        from types import SimpleNamespace
+        self.engine = engine
+        self.pm = SimpleNamespace(logger=logging.getLogger('test'))
+
+
+def _forced_schema(monkeypatch):
+    import coframe.db
+    from types import SimpleNamespace
+    md = base_metadata()
+    md.tables['book']._columns.remove(md.tables['book'].c.note)
+    monkeypatch.setattr(coframe.db, 'Base', SimpleNamespace(metadata=md))
+    return md
+
+
+def test_db_sync_force_declined_applies_nothing(engine, monkeypatch):
+    from coframe.cli import db_sync
+    _forced_schema(monkeypatch)
+    asked = []
+
+    report, aligned = db_sync(_AppStub(engine), force=True,
+                              confirm=lambda changes: asked.append(changes) or False)
+
+    assert [c.target for c in asked[0]] == ['book.note']
+    assert 'not confirmed' in report and not aligned
+    assert 'note' in column_info(engine, 'book')
+
+
+def test_db_sync_force_confirmed_applies(engine, monkeypatch):
+    from coframe.cli import db_sync
+    md = _forced_schema(monkeypatch)
+
+    report, aligned = db_sync(_AppStub(engine), force=True, confirm=lambda changes: True)
+
+    assert aligned
+    assert 'note' not in column_info(engine, 'book')
+    assert diff_schema(engine, md).is_aligned
