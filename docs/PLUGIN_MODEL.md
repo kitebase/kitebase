@@ -1948,6 +1948,78 @@ Common form actions:
 A derived plugin can add a field to a group, change a widget, or make a
 field read-only — without redefining the form.
 
+### 8.6 Collections
+
+A collection node edits a set of child rows inside the parent's form. Rows are
+held in the form's buffer and written with the parent, in one transaction
+(`save_tree`): adding a line to a new invoice is one save, not two.
+
+```yaml
+layout:
+  - type: tabs
+    pages:
+      - id: lines_tab
+        label: Lines
+        count: lines              # the row count beside the label
+        layout:
+          - type: collection
+            id: lines             # key in the buffer and in the payload
+            model: InvoiceLine    # the table written
+            fk: invoice_id        # the child's column that points at the parent
+            form: invoice_line_form   # the page that opens one row
+            domain: []            # filter of the node
+            defaults: {}          # stamped on rows created here
+            prefill:              # initial values of a new row, from the parent
+              currency: $record.currency
+            view:
+              type: table
+              columns: [...]
+```
+
+| Property | Description |
+|----------|-------------|
+| `id` | Identity key, in the buffer and in the save payload |
+| `model` | The child table. A fact of persistence: the view's `source.model` is filled from it |
+| `fk` | The child's column that points at the parent. Always declared, never deduced |
+| `form` | The row form; defaults to `{model}_form` |
+| `domain` | Rows of the child table shown here, beyond the foreign key |
+| `defaults` | Values stamped on rows created here — client and server |
+| `prefill` | Initial values of a new row, `$record.x` read from the parent; client only |
+| `view` | How the rows look: a table view, or a `$ref` to one |
+
+**What `fk` holds.** By default the parent's primary key. When the child's
+foreign key targets another column of the parent — a uuid the child cited before
+any id existed, a code — that column is the link: rows are loaded by it, and a
+row created here receives it. The parent's value exists after its flush, so a
+new parent and its children are still one save.
+
+```yaml
+  Report:
+    columns:
+      - name: visit_code
+        type: String
+        length: 36
+        foreign_key:
+          target: Visit.code      # a unique column minted by `$uuid`
+```
+
+**`defaults` and `prefill` are different statements.**
+
+- `defaults` is the other half of `domain`: what a node filters for, it stamps
+  on creation, or the new row would vanish from the grid that made it. The
+  stamped fields are hidden in the row form and written by the server as well.
+- `prefill` is a suggestion: when a row is added, `$record.x` is read from the
+  parent's **draft** — what is on screen, saved or not — and the fields stay
+  visible and editable. A value the parent does not have yet is left out. The
+  server receives plain values and does nothing with `prefill`.
+
+When both name a field, `defaults` wins: a constraint is not overridden by a
+suggestion. Other `$` tokens in `prefill` (`$op_date`) are resolved as in any
+form default.
+
+Whether the rows are **parts** of the parent — deleted with it — is a separate
+question, answered by `owned` on the foreign key (§ 4.5).
+
 ---
 
 ## 9. Menu
