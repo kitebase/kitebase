@@ -74,7 +74,7 @@ def test_what_the_page_declares_wins():
 
     page = shown(app, 'author_list')
     assert page['title'] == 'Authors'
-    assert page['content']['columns'] == [{'field': 'name'}]
+    assert [c['field'] for c in page['content']['columns']] == ['name']
     assert page['content']['navigator'] is True
 
 

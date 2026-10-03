@@ -227,6 +227,34 @@ def auto_list_page(table_name: str, table: Any) -> Dict[str, Any]:
     }
 
 
+def field_from_column(col: Any) -> Dict[str, Any]:
+    """A form field as the column describes it: what a form knows before it says anything.
+
+    Every attribute passes through, so the client applies what it knows (label,
+    type, widget, foreign key...); only the DbTable object inside `foreign_key`
+    is replaced by its name. The generated form is a list of these, and a
+    written form gets them underneath what it declares.
+    """
+    attrs = col.attributes
+    entry: Dict[str, Any] = {'name': col.name}
+    for k, v in attrs.items():
+        if k == 'foreign_key':
+            fk_table = v.get('table')
+            if fk_table:
+                entry[k] = {'target': fk_table.name, 'field': v.get('id', 'id')}
+            else:
+                entry[k] = {fk_k: fk_v for fk_k, fk_v in v.items() if fk_k != 'table'}
+        elif isinstance(v, _JSON_SCALARS) or isinstance(v, (list, dict)):
+            entry[k] = v
+
+    # Derived client hints not present in raw attributes
+    if attrs.get('primary_key'):
+        entry['readonly'] = True
+    if attrs.get('nullable') is False and attrs.get('default') is None:
+        entry['required'] = True
+    return entry
+
+
 def auto_form_page(table_name: str, table: Any) -> Dict[str, Any]:
     """
     Auto-generate a form page descriptor for a table.
@@ -241,35 +269,8 @@ def auto_form_page(table_name: str, table: Any) -> Dict[str, Any]:
     FK to this one — and `Book` would pull in `BookAuthor`, `Loan` and `Review`
     with equal right, while only the first belongs inside the book.
     """
-    fields = []
-    for col in table.effective_columns:
-        attrs = col.attributes
-
-        if attrs.get('secret'):
-            continue
-        if attrs.get('virtual'):
-            continue
-
-        entry: Dict[str, Any] = {'name': col.name}
-
-        # Pass all attributes through; strip non-serializable objects
-        for k, v in attrs.items():
-            if k == 'foreign_key':
-                fk_table = v.get('table')
-                if fk_table:
-                    entry[k] = {'target': fk_table.name, 'field': v.get('id', 'id')}
-                else:
-                    entry[k] = {fk_k: fk_v for fk_k, fk_v in v.items() if fk_k != 'table'}
-            elif isinstance(v, _JSON_SCALARS) or isinstance(v, (list, dict)):
-                entry[k] = v
-
-        # Derived client hints not present in raw attributes
-        if attrs.get('primary_key'):
-            entry['readonly'] = True
-        if attrs.get('nullable') is False and attrs.get('default') is None:
-            entry['required'] = True
-
-        fields.append(entry)
+    fields = [field_from_column(col) for col in table.effective_columns
+              if not col.attributes.get('secret') and not col.attributes.get('virtual')]
 
     return {
         'title': table_name,
@@ -330,6 +331,89 @@ def _on_auto(app: Any, page_id: str, page: Dict[str, Any]) -> Dict[str, Any]:
     return base
 
 
+def _column_label(app: Any, model: Optional[str], field_expr: Any) -> Optional[str]:
+    """The label a model declares for a list column's field, or None.
+
+    `inizio` is a column of the view's model; `Operatore.nome as operatore` is
+    a column of the joined one, and the alias does not change whose label it is.
+    """
+    if not isinstance(field_expr, str):
+        return None
+    name = field_expr.split(' as ')[0].strip()
+    if '.' in name:
+        model, name = name.split('.', 1)
+    table = app.tables.get(model) if model else None
+    if table is None:
+        return None
+    for col in table.effective_columns:
+        if col.name == name:
+            return col.attributes.get('label')
+    return None
+
+
+def _fill_titles(app: Any, obj: Any, model: Optional[str] = None) -> None:
+    """Give every list column without a `title` the label its model declares.
+
+    The generated list does it already; a written one should not have to repeat
+    in YAML what the model says once. Walks the whole page, collection grids
+    included: their model is the node's `model:`, filled into the view by
+    `resolve_collections`, which runs first.
+    """
+    if isinstance(obj, list):
+        for item in obj:
+            _fill_titles(app, item, model)
+        return
+    if not isinstance(obj, dict):
+        return
+    source = obj.get('source')
+    if isinstance(source, dict) and source.get('model'):
+        model = source['model']
+    is_table = obj.get('type') == 'table' and isinstance(obj.get('columns'), list)
+    if is_table:
+        for col in obj['columns']:
+            if isinstance(col, dict) and 'title' not in col:
+                label = _column_label(app, model, col.get('field'))
+                if label:
+                    col['title'] = label
+    for key, value in obj.items():
+        # A form's `columns` are groups of fields and may hold collections; a
+        # table's are what was just filled.
+        if not (is_table and key == 'columns'):
+            _fill_titles(app, value, model)
+
+
+def _fill_fields(app: Any, obj: Any, model: Optional[str] = None) -> None:
+    """Put under every field of a written form the attributes its column declares.
+
+    Column, then type, then field: the declared field wins, the model fills
+    what it leaves unsaid (`UI_DATAFORM.md`). Without it a written form shows
+    `operatore_id` with a number in a text box where the generated one shows
+    "Operatore" in a lookup. Stops at a collection node: its grid and its row
+    form belong to its own model.
+    """
+    if isinstance(obj, list):
+        for item in obj:
+            _fill_fields(app, item, model)
+        return
+    if not isinstance(obj, dict) or obj.get('type') == COLLECTION:
+        return
+    source = obj.get('source')
+    if isinstance(source, dict) and source.get('model'):
+        model = source['model']
+    name = obj.get('name')
+    table = app.tables.get(model) if model else None
+    if isinstance(name, str) and table is not None and 'filler' not in obj:
+        col = next((c for c in table.effective_columns if c.name == name), None)
+        if col is not None and not col.attributes.get('secret'):
+            declared = dict(obj)
+            obj.clear()
+            obj.update(field_from_column(col))
+            obj.update(declared)
+            return
+    for value in obj.values():
+        _fill_fields(app, value, model)
+
+
 def _resolve(app: Any, page_id: str):
     """Return (page, collection map), or (None, {}) if no page answers to that id."""
     page = app.pm.get(f'pages.{page_id}')
@@ -337,7 +421,12 @@ def _resolve(app: Any, page_id: str):
         resolved = app.pm.resolve_refs(page)
         if resolved.get(AUTO):
             resolved = _on_auto(app, page_id, resolved)
-        return resolved, resolve_collections(resolved, page_id)
+        collections = resolve_collections(resolved, page_id)
+        _fill_titles(app, resolved)
+        content = resolved.get('content')
+        if isinstance(content, dict) and content.get('type', 'form') == 'form':
+            _fill_fields(app, content)
+        return resolved, collections
 
     auto = resolve_auto_page(app, page_id)
     return auto, {}

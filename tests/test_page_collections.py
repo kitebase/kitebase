@@ -343,3 +343,90 @@ def test_get_page_reports_a_broken_node_instead_of_serving_it(monkeypatch):
 
     assert result['code'] == 400
     assert 'fk' in result['message']
+
+
+# ── List column titles from the model's labels ──────────────────────────────
+
+class _Col:
+    def __init__(self, name, label=None):
+        self.name = name
+        self.attributes = {'label': label} if label else {}
+
+
+class _Table:
+    def __init__(self, *cols):
+        self.effective_columns = list(cols)
+
+
+def titled_app(pages):
+    app = make_app(pages)
+    app.tables = {
+        'Book': _Table(_Col('title', 'Title'), _Col('price')),
+        'Publisher': _Table(_Col('name', 'Publisher name')),
+        'BookAuthor': _Table(_Col('author_id', 'Author')),
+    }
+    return app
+
+
+def test_a_written_list_takes_titles_from_the_model():
+    from coframe.pages import load_page
+    app = titled_app({'book_list': {'content': {
+        'type': 'table',
+        'source': {'model': 'Book'},
+        'columns': [
+            {'field': 'title'},
+            {'field': 'price'},
+            {'field': 'Publisher.name as publisher'},
+            {'field': 'title', 'title': 'Mine'},
+        ],
+    }}})
+
+    columns = load_page(app, 'book_list')['content']['columns']
+
+    assert [c.get('title') for c in columns] == ['Title', None, 'Publisher name', 'Mine']
+
+
+def test_a_collection_grid_takes_titles_from_its_model():
+    from coframe.pages import load_page
+    app = titled_app({'book_form': form_page(
+        {'type': 'section', 'columns': [{'id': 'left', 'fields': [authors_node()]}]})})
+
+    page = load_page(app, 'book_form')
+    node = page['content']['layout'][0]['columns'][0]['fields'][0]
+
+    assert node['view']['columns'] == [{'field': 'author_id', 'title': 'Author'}]
+
+
+# ── Written form fields inherit what their column declares ──────────────────
+
+class _FkTable:
+    name = 'Publisher'
+
+
+def test_a_written_form_field_inherits_its_column_and_keeps_what_it_says():
+    from coframe.pages import load_page
+    app = titled_app({'book_form': form_page(
+        {'type': 'section', 'columns': [{'id': 'left', 'fields': [
+            {'name': 'title', 'width': '50%'},
+            {'name': 'publisher_id', 'label': 'Mine'},
+            {'filler': None},
+            {'name': 'not_a_column'},
+        ]}]},
+        authors_node(),
+    )})
+    pub = _Col('publisher_id', 'Publisher')
+    pub.attributes.update({'type': 'FK', 'nullable': False,
+                           'foreign_key': {'table': _FkTable(), 'id': 'id'}})
+    app.tables['Book'].effective_columns.append(pub)
+
+    layout = load_page(app, 'book_form')['content']['layout']
+    title, publisher, filler, other = layout[0]['columns'][0]['fields']
+
+    assert title == {'name': 'title', 'label': 'Title', 'width': '50%'}
+    assert publisher['label'] == 'Mine'
+    assert publisher['foreign_key'] == {'target': 'Publisher', 'field': 'id'}
+    assert publisher['required'] is True
+    assert filler == {'filler': None}
+    assert other == {'name': 'not_a_column'}
+    # A collection is its own model's business: its grid gets its own titles.
+    assert layout[1]['view']['columns'] == [{'field': 'author_id', 'title': 'Author'}]
