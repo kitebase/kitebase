@@ -1903,6 +1903,7 @@ views:
 | `label` | Label override (overrides type-level label) |
 | `help` | Tooltip shown next to the field |
 | `readonly` | Makes this field read-only regardless of form policy |
+| `lookup` | Foreign keys: `page` to pick from ("Search more…", default `{table}_list`) and `filters`, the search's initial filter (`$record.x` from the draft) — applied in the drop-down, removable rules in the list |
 
 #### Field groups
 
