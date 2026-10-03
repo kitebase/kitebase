@@ -76,6 +76,25 @@ def _table_of(app: Any, model_name: str):
     return model_class, db_table, pk_field(db_table)
 
 
+def _link_of(app: Any, parent_model: str, coll: Collection) -> str:
+    """The column of the parent that a collection's `fk` holds.
+
+    The one its foreign key targets on the parent's table — a unique code or a
+    uuid the child already cited before the parent was written — and otherwise
+    the parent's primary key. Either way the value exists after the parent's
+    flush, so creating parent and children together is one gesture.
+    """
+    _, parent_table, pk = _table_of(app, parent_model)
+    child_table = app.tables.get(coll.model)
+    for col in (child_table.effective_columns if child_table else []):
+        if col.name != coll.fk:
+            continue
+        target = col.attributes.get('foreign_key') or {}
+        if target.get('table') is parent_table and target.get('id'):
+            return target['id']
+    return pk
+
+
 # ── Load ────────────────────────────────────────────────────────────────────
 
 def _select(app, session, model_name: str, conditions: List[Any],
@@ -104,16 +123,18 @@ def _select(app, session, model_name: str, conditions: List[Any],
     return builder.execute_query(query_def, result_format='records')
 
 
-def _load_level(app, session, collections: Dict[str, Collection],
+def _load_level(app, session, parent_model: str, collections: Dict[str, Collection],
                 parents: Dict[Any, Dict[str, Any]]) -> None:
     """Attach one level of children to `parents` ({parent id: node}), then recurse."""
     if not parents or not collections:
         return
 
-    parent_ids = list(parents)
     for cid, coll in collections.items():
         _, db_table, pk = _table_of(app, coll.model)
-        conditions = [{coll.fk: ['in', parent_ids]}] + _conditions_of(coll.domain)
+        link = _link_of(app, parent_model, coll)
+        by_link = {node['values'].get(link): node for node in parents.values()}
+        by_link.pop(None, None)
+        conditions = [{coll.fk: ['in', list(by_link)]}] + _conditions_of(coll.domain)
         rows = _select(app, session, coll.model, conditions,
                        coll.order_by or [f'{coll.model}.{pk}'])
 
@@ -124,14 +145,14 @@ def _load_level(app, session, collections: Dict[str, Collection],
 
         children: Dict[Any, Dict[str, Any]] = {}
         for row in rows:
-            parent = parents.get(row.get(coll.fk))
+            parent = by_link.get(row.get(coll.fk))
             if parent is None:      # a row the domain let through under another parent
                 continue
             child = {'id': row.get(pk), 'values': row, 'children': {}}
             parent['children'][cid].append(child)
             children[child['id']] = child
 
-        _load_level(app, session, coll.collections, children)
+        _load_level(app, session, coll.model, coll.collections, children)
 
 
 def _load_tree(app, session, aggregate: Aggregate, record_id: Any) -> Optional[Dict[str, Any]]:
@@ -149,7 +170,7 @@ def _load_tree(app, session, aggregate: Aggregate, record_id: Any) -> Optional[D
         return None
 
     root = {'id': rows[0].get(pk), 'values': rows[0], 'children': {}}
-    _load_level(app, session, aggregate.collections, {root['id']: root})
+    _load_level(app, session, aggregate.model, aggregate.collections, {root['id']: root})
     return root
 
 
@@ -223,8 +244,8 @@ def _require_saved_id(model_name: str, node_id: Any, op: str) -> None:
             f"A {op} on '{model_name}' needs the id of a saved row, got {node_id!r}")
 
 
-def _passthrough_id(app, session, node_def, node_id: Any,
-                    inherited: Dict[str, Any]) -> Any:
+def _passthrough_row(app, session, node_def, node_id: Any,
+                     inherited: Dict[str, Any]) -> Any:
     """Verify an untouched row and hand its key down to its children.
 
     A node without an `op` writes nothing: it is in the payload only because
@@ -248,7 +269,7 @@ def _passthrough_id(app, session, node_def, node_id: Any,
                 f"the collection it appears in belongs to {value!r} — an unchanged "
                 f"row is verified, never reparented")
 
-    return node_id
+    return obj
 
 
 def _save_node(app, session, node_def, node: Dict[str, Any],
@@ -275,9 +296,9 @@ def _save_node(app, session, node_def, node: Dict[str, Any],
         # a node carries an `op` only where the user acted. That is what lets the
         # buffer and the payload keep one shape — the client prunes what it did
         # not touch, and what it keeps is what it holds.
-        real_id = _passthrough_id(app, session, node_def, node_id, inherited)
-        _save_children(app, session, node_def, node, real_id, id_map, deletes, depth)
-        return real_id
+        obj = _passthrough_row(app, session, node_def, node_id, inherited)
+        _save_children(app, session, node_def, node, obj, id_map, deletes, depth)
+        return node_id
 
     if op == 'delete':
         _require_saved_id(node_def.model, node_id, 'delete')
@@ -350,16 +371,16 @@ def _save_node(app, session, node_def, node: Dict[str, Any],
         session.flush()
         real_id = node_id
 
-    _save_children(app, session, node_def, node, real_id, id_map, deletes, depth)
+    _save_children(app, session, node_def, node, obj, id_map, deletes, depth)
     return real_id
 
 
-def _save_children(app, session, node_def, node: Dict[str, Any], real_id: Optional[Any],
+def _save_children(app, session, node_def, node: Dict[str, Any], parent: Optional[Any],
                    id_map: Dict[int, Any], deletes: List[Tuple[int, str, Any]],
                    depth: int) -> None:
     """Descend into the collections of a node, refusing any the page does not declare.
 
-    `real_id` is None when the parent is being deleted. Below a row that goes away
+    `parent` is the parent's row, None when it is being deleted. Below a row that goes away
     only deletions make sense: a row added under it would be an orphan the caller
     believed it had created.
     """
@@ -372,11 +393,12 @@ def _save_children(app, session, node_def, node: Dict[str, Any], real_id: Option
             raise ValueError(f"Collection '{cid}' must carry a list of rows")
 
         for child in rows:
-            if real_id is None and str(child.get('op') or '').lower() != 'delete':
+            if parent is None and str(child.get('op') or '').lower() != 'delete':
                 raise ValueError(
                     f"A row of '{coll.model}' hangs from a deleted row of "
                     f"'{node_def.model}': below a row that goes away, only deletions")
-            inherited = {} if real_id is None else {coll.fk: real_id}
+            inherited = ({} if parent is None
+                         else {coll.fk: getattr(parent, _link_of(app, node_def.model, coll))})
             _save_node(app, session, coll, child, inherited, coll.defaults,
                        id_map, deletes, depth + 1)
 

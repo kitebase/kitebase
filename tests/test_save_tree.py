@@ -78,6 +78,27 @@ TABLES = {
             {'name': 'book_id', 'type': 'Integer', 'foreign_key': {'target': 'Book.id'}},
         ],
     },
+    # Tied by a key that is not the primary one: a visit mints its code when it
+    # is written, and a report cites the code, not the id — a terminal that wrote
+    # the report knew the code long before any id existed.
+    'Visit': {
+        'name': 'visits',
+        'columns': [
+            {'name': 'id', 'type': 'Integer', 'primary_key': True, 'autoincrement': True},
+            {'name': 'code', 'type': 'String', 'length': 36, 'default': '$uuid',
+             'unique': True, 'nullable': False},
+            {'name': 'place', 'type': 'String', 'length': 60},
+        ],
+    },
+    'Report': {
+        'name': 'reports',
+        'columns': [
+            {'name': 'id', 'type': 'Integer', 'primary_key': True, 'autoincrement': True},
+            {'name': 'text', 'type': 'String', 'length': 200},
+            {'name': 'visit_code', 'type': 'String', 'length': 36,
+             'foreign_key': {'target': 'Visit.code', 'constraint': False}},
+        ],
+    },
 }
 
 
@@ -103,6 +124,8 @@ PAGES = {
     # the recursion stopping at the first step.
     'book_quick_form': _form('Book'),
     # Tabs of one collection are domain + defaults, and nothing else.
+    # The collection is tied to the column its foreign key targets, not to the id.
+    'visit_form': _form('Visit', _collection('reports', 'Report', 'visit_code')),
     'book_appendix_form': _form(
         'Book',
         _collection('appendix', 'Chapter', 'book_id',
@@ -824,3 +847,71 @@ def test_the_save_hands_back_the_tree_as_the_database_holds_it(app):
     row = data['root']['children']['authors'][0]
     assert row['id'] == data['id_map'][-2]
     assert row['values']['book_id'] == data['id']
+
+
+# ── A collection tied by a key that is not the primary one ─────────────────
+
+def test_a_new_parent_hands_its_minted_key_to_the_children(app):
+    """The code exists only after the flush, like an id: insert is one gesture."""
+    data = ok(save_tree({
+        'page': 'visit_form',
+        'root': {'op': 'create', 'id': -1, 'values': {'place': 'Colle'},
+                 'children': {'reports': [
+                     {'op': 'create', 'id': -2, 'values': {'text': 'meal delivered'}}]}},
+    }))
+
+    visit = rows(app, 'Visit')[0]
+    assert len(visit['code']) == 36
+    assert [r['visit_code'] for r in rows(app, 'Report')] == [visit['code']]
+    assert data['root']['children']['reports'][0]['values']['text'] == 'meal delivered'
+
+
+def test_a_child_added_to_a_saved_parent_gets_its_key(app):
+    created = ok(save_tree({'page': 'visit_form',
+                            'root': {'op': 'create', 'id': -1, 'values': {'place': 'Colle'}}}))
+
+    ok(save_tree({
+        'page': 'visit_form',
+        'root': {'op': 'update', 'id': created['id'], 'values': {},
+                 'children': {'reports': [
+                     {'op': 'create', 'id': -2, 'values': {'text': 'late'}}]}},
+    }))
+
+    assert rows(app, 'Report')[0]['visit_code'] == rows(app, 'Visit')[0]['code']
+
+
+def test_load_finds_the_children_by_the_key_they_cite(app):
+    """Rows written elsewhere with the code — by a terminal — show up on their own."""
+    first = ok(save_tree({'page': 'visit_form',
+                          'root': {'op': 'create', 'id': -1, 'values': {'place': 'A'}}}))
+    second = ok(save_tree({'page': 'visit_form',
+                           'root': {'op': 'create', 'id': -1, 'values': {'place': 'B'}}}))
+    code_of = {v['id']: v['code'] for v in rows(app, 'Visit')}
+
+    report = app.find_model_class('Report')
+    with app.get_session() as session:
+        session.add(report(text='for A', visit_code=code_of[first['id']]))
+        session.add(report(text='for B', visit_code=code_of[second['id']]))
+        session.add(report(text='orphan', visit_code='never-arrived'))
+        session.commit()
+
+    root = ok(load_tree({'page': 'visit_form', 'id': first['id']}))
+
+    assert [r['values']['text'] for r in root['children']['reports']] == ['for A']
+
+
+def test_a_child_cannot_cite_another_parent_by_key(app):
+    """The reparenting refusal holds whatever column ties the two."""
+    created = ok(save_tree({'page': 'visit_form',
+                            'root': {'op': 'create', 'id': -1, 'values': {'place': 'A'}}}))
+
+    result = save_tree({
+        'page': 'visit_form',
+        'root': {'op': 'update', 'id': created['id'], 'values': {},
+                 'children': {'reports': [
+                     {'op': 'create', 'id': -2,
+                      'values': {'text': 'x', 'visit_code': 'someone-else'}}]}},
+    })
+
+    assert result['code'] == 400
+    assert rows(app, 'Report') == []
