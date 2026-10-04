@@ -16,11 +16,11 @@ import pytest
 import yaml
 from sqlalchemy import event, text
 
-import coframe.utils
-from coframe.db import DB, Base
-from coframe.endpoint_tree import load_tree, save_tree
-from coframe.plugins import PluginsManager
-from coframe.source import Generator
+import kitebase.utils
+from kitebase.db import DB, Base
+from kitebase.endpoint_tree import load_tree, save_tree
+from kitebase.plugins import PluginsManager
+from kitebase.source import Generator
 
 TABLES = {
     'Author': {
@@ -144,7 +144,7 @@ def fresh_registry():
 
 @pytest.fixture
 def app(tmp_path, monkeypatch):
-    """A one-plugin application on a real sqlite file, wired to coframe.utils."""
+    """A one-plugin application on a real sqlite file, wired to kitebase.utils."""
     plugin = tmp_path / 'plugins' / 'bench'
     plugin.mkdir(parents=True)
     (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'bench', 'version': '0.0.1'}))
@@ -157,7 +157,7 @@ def app(tmp_path, monkeypatch):
 
     pm = PluginsManager()
     pm.load_config(str(cfg))
-    coframe.utils.register_standard_handlers(pm)
+    kitebase.utils.register_standard_handlers(pm)
     pm.load_plugins()
 
     instance = DB()
@@ -170,7 +170,7 @@ def app(tmp_path, monkeypatch):
     spec.loader.exec_module(module)
 
     instance.initialize_db(f'sqlite:///{tmp_path / "bench.sqlite"}', module, check_schema=False)
-    monkeypatch.setattr(coframe.utils, 'get_app', lambda: instance)
+    monkeypatch.setattr(kitebase.utils, 'get_app', lambda: instance)
     return instance
 
 
@@ -178,7 +178,7 @@ def rows(app, model_name):
     """Every row of a table, as dicts, straight from the ORM."""
     model_class = app.find_model_class(model_name)
     with app.get_session() as session:
-        return [coframe.utils.serialize_model(obj, db_table=app.tables.get(model_name))
+        return [kitebase.utils.serialize_model(obj, db_table=app.tables.get(model_name))
                 for obj in session.query(model_class).all()]
 
 

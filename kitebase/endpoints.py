@@ -6,7 +6,7 @@ import traceback as _traceback
 from functools import wraps
 from typing import Dict, List, Any, Optional, Union, Callable
 from pathlib import Path
-import coframe
+import kitebase
 
 # Global dictionary to register endpoints
 _ENDPOINTS: Dict[str, Callable] = {}
@@ -17,7 +17,7 @@ def endpoint(name: str) -> Callable[[Callable], Callable]:
     Decorator to register an endpoint function.
 
     All endpoints require authentication by convention — the @endpoint system
-    is designed for authenticated Coframe clients. For truly public routes
+    is designed for authenticated Kitebase clients. For truly public routes
     (e.g. login, health check) use dedicated server routes instead.
 
     Args:
@@ -152,7 +152,7 @@ class CommandResult:
         return cls.from_dict(data)
 
 
-_log = logging.getLogger('coframe')
+_log = logging.getLogger('kitebase')
 
 
 def _param_names(parameters: Any) -> str:
@@ -389,7 +389,7 @@ class CommandProcessor:
             # Set the context before executing the function. Unconditional, and it
             # replaces the whole value: request threads are reused by the server's
             # pool, so anything left behind would be read by the next user.
-            coframe.db.BaseApp.set_context(command.context)
+            kitebase.db.BaseApp.set_context(command.context)
 
             result_data = self.endpoints[command.operation](command.parameters)
 

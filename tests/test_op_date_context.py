@@ -6,7 +6,7 @@ Absent means today, read per request by defaults.op_date().
 """
 import jwt
 
-from coframe import server_utils
+from kitebase import server_utils
 
 SECRET = 'test-secret'
 

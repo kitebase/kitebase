@@ -1,4 +1,4 @@
-"""`coframe new` — what lands on disk, and whether it is coherent.
+"""`kitebase new` — what lands on disk, and whether it is coherent.
 
 The scaffold's value is that what it writes runs. Most of that is proven by
 running it, which the smoke test of a fresh application does; what is worth
@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from coframe.scaffold import EXTRAS, RUN, SERVERS, create_app
+from kitebase.scaffold import EXTRAS, RUN, SERVERS, create_app
 
 
 @pytest.fixture
@@ -61,13 +61,13 @@ def test_the_application_name_has_to_be_importable(tmp_path):
 def test_the_library_comes_from_its_repository(app):
     """No index to publish to yet: the repository is where it comes from."""
     pyproject = (app() / "pyproject.toml").read_text()
-    assert "coframe[flask,fastapi] @ git+https://github.com/" in pyproject
+    assert "kitebase[flask,fastapi] @ git+https://github.com/" in pyproject
 
 
 @pytest.mark.parametrize("server", ["flask", "fastapi", "both"])
 def test_the_extras_are_the_frameworks_written(app, server):
     pyproject = (app(server) / "pyproject.toml").read_text()
-    assert f"coframe[{EXTRAS[server]}] @" in pyproject
+    assert f"kitebase[{EXTRAS[server]}] @" in pyproject
 
 
 def test_the_wsgi_server_comes_only_with_flask(app):

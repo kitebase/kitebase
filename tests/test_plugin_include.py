@@ -13,7 +13,7 @@ plugins actually selected.
 import pytest
 import yaml
 
-from coframe.plugins import PluginsManager
+from kitebase.plugins import PluginsManager
 
 
 def make_plugin(root, name, depends_on=None, table=None):

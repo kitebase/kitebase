@@ -1,8 +1,8 @@
-"""Registering coframe's routes — on its own application, and inside someone else's.
+"""Registering kitebase's routes — on its own application, and inside someone else's.
 
 `register_flask` and `register_fastapi` take whatever target they are given, so
-the same call serves the two deployments that until now were one: coframe as
-the owner of the process, and coframe as a guest of an application that already
+the same call serves the two deployments that until now were one: kitebase as
+the owner of the process, and kitebase as a guest of an application that already
 exists. The tests below are mostly about the second one, because it is the one
 nothing exercised: what has to be proven is not that the routes answer, but
 that **nothing outside them moved** — the host's routes, its hooks, and its
@@ -10,7 +10,7 @@ JSON contract, which in the deployment that prompted this belongs to an API
 already in production on handheld terminals.
 
 No database and no plugin tree here: the registration layer only ever touches
-`coframe_app.cp` and `plugins.config`, and driving it with stubs is what keeps
+`kitebase_app.cp` and `plugins.config`, and driving it with stubs is what keeps
 these tests about routing instead of about everything else.
 """
 from datetime import date, datetime, timedelta, timezone
@@ -19,22 +19,22 @@ from types import SimpleNamespace
 import jwt
 import pytest
 
-import coframe.server_utils as srv
-from coframe.db import BaseApp
-from coframe.endpoints import CommandProcessor, _ENDPOINTS
+import kitebase.server_utils as srv
+from kitebase.db import BaseApp
+from kitebase.endpoints import CommandProcessor, _ENDPOINTS
 
 SECRET = 'test-secret-key'
 
 CONFIG = {
     'name': 'routes-test',
     'version': '1.0',
-    'api': {'prefix': 'coframe', 'endpoint_prefix': 'endpoint'},
+    'api': {'prefix': 'kitebase', 'endpoint_prefix': 'endpoint'},
     'authentication': {'context_fields': ['id', 'username']},
 }
 
 
 @pytest.fixture
-def coframe_app():
+def kitebase_app():
     """A stub application: a command processor with a few endpoints on it."""
     registered = []
 
@@ -92,17 +92,17 @@ def bearer(**kwargs):
 # ── Flask, owning the process ─────────────────────────────────────────────────
 
 @pytest.fixture
-def flask_client(coframe_app, plugins):
-    """coframe registered straight onto the application, as a server does."""
+def flask_client(kitebase_app, plugins):
+    """kitebase registered straight onto the application, as a server does."""
     from flask import Flask
 
     app = Flask(__name__)
-    srv.register_flask(app, coframe_app, plugins, SECRET)
+    srv.register_flask(app, kitebase_app, plugins, SECRET)
     return app.test_client()
 
 
 def test_the_dispatcher_carries_an_operation(flask_client):
-    res = flask_client.post('/coframe/endpoint/echo', json={'a': 1},
+    res = flask_client.post('/kitebase/endpoint/echo', json={'a': 1},
                             headers=bearer())
 
     assert res.status_code == 200
@@ -112,33 +112,33 @@ def test_the_dispatcher_carries_an_operation(flask_client):
 
 def test_info_lives_under_the_prefix(flask_client):
     """Not at the root: there it would collide with a host that has one."""
-    assert flask_client.get('/coframe/info').status_code == 200
+    assert flask_client.get('/kitebase/info').status_code == 200
     assert flask_client.get('/info').status_code == 404
 
 
 def test_no_token_is_refused(flask_client):
-    res = flask_client.post('/coframe/endpoint/echo', json={})
+    res = flask_client.post('/kitebase/endpoint/echo', json={})
 
     assert res.status_code == 401
     assert res.get_json()['status'] == 'error'
 
 
 def test_an_invalid_token_is_refused(flask_client):
-    res = flask_client.post('/coframe/endpoint/echo', json={},
+    res = flask_client.post('/kitebase/endpoint/echo', json={},
                             headers={'Authorization': 'Bearer not-a-token'})
 
     assert res.status_code == 401
 
 
 def test_a_failing_endpoint_answers_with_its_status(flask_client):
-    res = flask_client.post('/coframe/endpoint/boom', json={}, headers=bearer())
+    res = flask_client.post('/kitebase/endpoint/boom', json={}, headers=bearer())
 
     assert res.status_code >= 400
     assert res.get_json()['status'] == 'error'
 
 
 def test_a_stale_token_comes_back_refreshed(flask_client):
-    res = flask_client.post('/coframe/endpoint/echo', json={},
+    res = flask_client.post('/kitebase/endpoint/echo', json={},
                             headers=bearer(last_refresh=0))
 
     assert res.status_code == 200
@@ -148,7 +148,7 @@ def test_a_stale_token_comes_back_refreshed(flask_client):
 
 
 def test_a_fresh_token_is_left_alone(flask_client):
-    res = flask_client.post('/coframe/endpoint/echo', json={}, headers=bearer())
+    res = flask_client.post('/kitebase/endpoint/echo', json={}, headers=bearer())
 
     assert 'X-New-Token' not in res.headers
 
@@ -156,13 +156,13 @@ def test_a_fresh_token_is_left_alone(flask_client):
 def test_dates_go_out_as_iso(flask_client):
     """ISO 8601, the form the endpoints accept back on write — and without
     replacing the application's JSON provider to get it."""
-    res = flask_client.post('/coframe/endpoint/a_date', json={}, headers=bearer())
+    res = flask_client.post('/kitebase/endpoint/a_date', json={}, headers=bearer())
 
     assert res.get_json()['data'] == {'when': '2026-08-24', 'at': '2026-08-24T10:30:00'}
 
 
 def test_keys_of_mixed_type_do_not_raise(flask_client):
-    res = flask_client.post('/coframe/endpoint/mixed_keys', json={}, headers=bearer())
+    res = flask_client.post('/kitebase/endpoint/mixed_keys', json={}, headers=bearer())
 
     assert res.status_code == 200
     assert res.get_json()['data'] == {'1': 'one', 'two': 2}
@@ -170,7 +170,7 @@ def test_keys_of_mixed_type_do_not_raise(flask_client):
 
 def test_the_context_is_set_for_the_operation(flask_client):
     """The dispatcher runs the command as the user the token names."""
-    res = flask_client.post('/coframe/endpoint/who', json={}, headers=bearer())
+    res = flask_client.post('/kitebase/endpoint/who', json={}, headers=bearer())
 
     assert res.get_json()['data']['username'] == 'tester'
 
@@ -178,12 +178,12 @@ def test_the_context_is_set_for_the_operation(flask_client):
 def test_the_thread_is_left_as_it_was_found(flask_client):
     """A worker goes back to the pool with no identity on it.
 
-    Inside coframe's own surface a leftover context is harmless: every dispatch
+    Inside kitebase's own surface a leftover context is harmless: every dispatch
     sets its own. It is a guest that pays for it — the host's next page on that
     thread would inherit a user nobody chose.
     """
     BaseApp.set_context(None)
-    flask_client.post('/coframe/endpoint/who', json={}, headers=bearer())
+    flask_client.post('/kitebase/endpoint/who', json={}, headers=bearer())
 
     assert not BaseApp.get_context()
 
@@ -191,11 +191,11 @@ def test_the_thread_is_left_as_it_was_found(flask_client):
 # ── Flask, as a guest ─────────────────────────────────────────────────────────
 
 @pytest.fixture
-def host_app(coframe_app, plugins):
-    """An application that already exists, with coframe mounted inside it.
+def host_app(kitebase_app, plugins):
+    """An application that already exists, with kitebase mounted inside it.
 
     The host's route serves a date through *its* JSON provider, which is the
-    contract coframe must not touch.
+    contract kitebase must not touch.
     """
     from flask import Blueprint, Flask, jsonify
 
@@ -209,15 +209,15 @@ def host_app(coframe_app, plugins):
     def home():
         return 'the host'
 
-    bp = Blueprint('coframe', __name__)
-    srv.register_flask(bp, coframe_app, plugins, SECRET)
+    bp = Blueprint('kitebase', __name__)
+    srv.register_flask(bp, kitebase_app, plugins, SECRET)
     app.register_blueprint(bp)
 
     return app
 
 
 def test_the_guest_answers_where_it_was_mounted(host_app):
-    res = host_app.test_client().post('/coframe/endpoint/echo', json={'a': 1},
+    res = host_app.test_client().post('/kitebase/endpoint/echo', json={'a': 1},
                                       headers=bearer())
 
     assert res.status_code == 200
@@ -232,7 +232,7 @@ def test_the_host_keeps_its_own_routes(host_app):
 
 
 def test_the_host_json_contract_is_untouched(host_app):
-    """Flask serializes dates as RFC 1123. coframe wants ISO, and gets it on
+    """Flask serializes dates as RFC 1123. kitebase wants ISO, and gets it on
     its own responses only: a host whose clients parse RFC 1123 keeps it."""
     res = host_app.test_client().get('/api/v1/status')
 
@@ -241,37 +241,37 @@ def test_the_host_json_contract_is_untouched(host_app):
 
 def test_the_refresh_hook_does_not_reach_the_host(host_app):
     """`after_request` registered on the blueprint runs for the blueprint's
-    requests. A stale token on a coframe route refreshes; the host's routes
+    requests. A stale token on a kitebase route refreshes; the host's routes
     never grow a header they did not ask for."""
     client = host_app.test_client()
 
-    assert 'X-New-Token' in client.post('/coframe/endpoint/echo', json={},
+    assert 'X-New-Token' in client.post('/kitebase/endpoint/echo', json={},
                                         headers=bearer(last_refresh=0)).headers
     assert 'X-New-Token' not in client.get('/api/v1/status').headers
 
 
-def test_the_host_decides_where_the_blueprint_hangs(coframe_app, plugins):
+def test_the_host_decides_where_the_blueprint_hangs(kitebase_app, plugins):
     """With `prefix=''` the routes are relative, and the mount point is the
     host's to choose."""
     from flask import Blueprint, Flask
 
     app = Flask(__name__)
-    bp = Blueprint('coframe', __name__, url_prefix='/admin/cf')
-    srv.register_flask(bp, coframe_app, plugins, SECRET, prefix='')
+    bp = Blueprint('kitebase', __name__, url_prefix='/admin/kb')
+    srv.register_flask(bp, kitebase_app, plugins, SECRET, prefix='')
     app.register_blueprint(bp)
 
     client = app.test_client()
 
-    assert client.post('/admin/cf/endpoint/echo', json={}, headers=bearer()).status_code == 200
-    assert client.post('/coframe/endpoint/echo', json={}, headers=bearer()).status_code == 404
+    assert client.post('/admin/kb/endpoint/echo', json={}, headers=bearer()).status_code == 200
+    assert client.post('/kitebase/endpoint/echo', json={}, headers=bearer()).status_code == 404
 
 
-def test_registration_hands_back_the_middleware(coframe_app, plugins):
+def test_registration_hands_back_the_middleware(kitebase_app, plugins):
     """The same identity enters by other doors — a server-rendered page logging
     a person in — and it must not build a second middleware to do it."""
     from flask import Flask
 
-    auth = srv.register_flask(Flask(__name__), coframe_app, plugins, SECRET)
+    auth = srv.register_flask(Flask(__name__), kitebase_app, plugins, SECRET)
 
     assert isinstance(auth, srv.AuthMiddleware)
     assert auth.secret_key == SECRET
@@ -280,17 +280,17 @@ def test_registration_hands_back_the_middleware(coframe_app, plugins):
 # ── FastAPI, both ways ────────────────────────────────────────────────────────
 
 @pytest.fixture
-def fastapi_client(coframe_app, plugins):
+def fastapi_client(kitebase_app, plugins):
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
     app = FastAPI()
-    srv.register_fastapi(app, coframe_app, plugins, SECRET)
+    srv.register_fastapi(app, kitebase_app, plugins, SECRET)
     return TestClient(app)
 
 
 def test_fastapi_dispatches_the_same_way(fastapi_client):
-    res = fastapi_client.post('/coframe/endpoint/echo', json={'a': 1},
+    res = fastapi_client.post('/kitebase/endpoint/echo', json={'a': 1},
                               headers=bearer())
 
     assert res.status_code == 200
@@ -298,25 +298,25 @@ def test_fastapi_dispatches_the_same_way(fastapi_client):
 
 
 def test_fastapi_refuses_without_a_token(fastapi_client):
-    assert fastapi_client.post('/coframe/endpoint/echo', json={}).status_code == 401
+    assert fastapi_client.post('/kitebase/endpoint/echo', json={}).status_code == 401
 
 
 def test_fastapi_refreshes_a_stale_token(fastapi_client):
     """No application middleware carries the header: the dependency writes it
     on the response, which is what lets a router be a valid target."""
-    res = fastapi_client.post('/coframe/endpoint/echo', json={},
+    res = fastapi_client.post('/kitebase/endpoint/echo', json={},
                               headers=bearer(last_refresh=0))
 
     assert 'X-New-Token' in res.headers
 
 
 def test_fastapi_dates_go_out_as_iso(fastapi_client):
-    res = fastapi_client.post('/coframe/endpoint/a_date', json={}, headers=bearer())
+    res = fastapi_client.post('/kitebase/endpoint/a_date', json={}, headers=bearer())
 
     assert res.json()['data'] == {'when': '2026-08-24', 'at': '2026-08-24T10:30:00'}
 
 
-def test_fastapi_as_a_guest_on_a_router(coframe_app, plugins):
+def test_fastapi_as_a_guest_on_a_router(kitebase_app, plugins):
     from fastapi import APIRouter, FastAPI
     from fastapi.testclient import TestClient
 
@@ -327,29 +327,29 @@ def test_fastapi_as_a_guest_on_a_router(coframe_app, plugins):
         return {'ok': True}
 
     router = APIRouter()
-    srv.register_fastapi(router, coframe_app, plugins, SECRET)
+    srv.register_fastapi(router, kitebase_app, plugins, SECRET)
     app.include_router(router)
 
     client = TestClient(app)
 
     assert client.get('/api/v1/status').json() == {'ok': True}
-    assert client.post('/coframe/endpoint/echo', json={'a': 1},
+    assert client.post('/kitebase/endpoint/echo', json={'a': 1},
                        headers=bearer()).json()['data'] == {'seen': {'a': 1}}
 
 
 def test_fastapi_leaves_the_thread_as_it_was_found(fastapi_client):
     BaseApp.set_context(None)
-    fastapi_client.post('/coframe/endpoint/who', json={}, headers=bearer())
+    fastapi_client.post('/kitebase/endpoint/who', json={}, headers=bearer())
 
     assert not BaseApp.get_context()
 
 
-def test_the_host_route_after_a_coframe_one_has_no_identity(host_app):
+def test_the_host_route_after_a_kitebase_one_has_no_identity(host_app):
     """The scenario the cleanup exists for, end to end: an API request, then a
     page of the host on the same worker."""
     client = host_app.test_client()
 
-    client.post('/coframe/endpoint/who', json={}, headers=bearer())
+    client.post('/kitebase/endpoint/who', json={}, headers=bearer())
 
     assert not BaseApp.get_context()
     assert client.get('/api/v1/status').get_json()['ok'] is True
@@ -358,9 +358,9 @@ def test_the_host_route_after_a_coframe_one_has_no_identity(host_app):
 def test_both_frameworks_answer_the_same(flask_client, fastapi_client):
     """The one property the pair exists to hold: what a client sees does not
     depend on which of the two is serving."""
-    flask_res = flask_client.post('/coframe/endpoint/echo', json={'a': 1},
+    flask_res = flask_client.post('/kitebase/endpoint/echo', json={'a': 1},
                                   headers=bearer())
-    fastapi_res = fastapi_client.post('/coframe/endpoint/echo', json={'a': 1},
+    fastapi_res = fastapi_client.post('/kitebase/endpoint/echo', json={'a': 1},
                                       headers=bearer())
 
     assert flask_res.get_json() == fastapi_res.json()
@@ -369,10 +369,10 @@ def test_both_frameworks_answer_the_same(flask_client, fastapi_client):
 def test_both_frameworks_refuse_the_same(flask_client, fastapi_client):
     """Parity on the unhappy path too. FastAPI used to raise an HTTPException
     here, which came back in FastAPI's shape (`{"detail": …}`) and not in
-    coframe's — and, in a mounted deployment, in whatever shape the host's
+    kitebase's — and, in a mounted deployment, in whatever shape the host's
     exception handlers give it."""
-    flask_res = flask_client.post('/coframe/endpoint/echo', json={})
-    fastapi_res = fastapi_client.post('/coframe/endpoint/echo', json={})
+    flask_res = flask_client.post('/kitebase/endpoint/echo', json={})
+    fastapi_res = fastapi_client.post('/kitebase/endpoint/echo', json={})
 
     assert flask_res.status_code == fastapi_res.status_code == 401
     assert flask_res.get_json() == fastapi_res.json()
@@ -380,8 +380,8 @@ def test_both_frameworks_refuse_the_same(flask_client, fastapi_client):
 
 
 def test_both_frameworks_report_a_failure_the_same(flask_client, fastapi_client):
-    flask_res = flask_client.post('/coframe/endpoint/boom', json={}, headers=bearer())
-    fastapi_res = fastapi_client.post('/coframe/endpoint/boom', json={},
+    flask_res = flask_client.post('/kitebase/endpoint/boom', json={}, headers=bearer())
+    fastapi_res = fastapi_client.post('/kitebase/endpoint/boom', json={},
                                       headers=bearer())
 
     assert flask_res.status_code == fastapi_res.status_code
@@ -390,8 +390,8 @@ def test_both_frameworks_report_a_failure_the_same(flask_client, fastapi_client)
 
 def test_both_frameworks_carry_the_field_errors_of_a_refusal(flask_client, fastapi_client):
     """A form shows each error under its field: the errors travel in `data`."""
-    flask_res = flask_client.post('/coframe/endpoint/refuse', json={}, headers=bearer())
-    fastapi_res = fastapi_client.post('/coframe/endpoint/refuse', json={},
+    flask_res = flask_client.post('/kitebase/endpoint/refuse', json={}, headers=bearer())
+    fastapi_res = fastapi_client.post('/kitebase/endpoint/refuse', json={},
                                       headers=bearer())
 
     expected = {'errors': {'confirm': 'the two do not match'}}
@@ -403,15 +403,15 @@ def test_both_frameworks_carry_the_field_errors_of_a_refusal(flask_client, fasta
 def test_fastapi_keys_of_mixed_type_do_not_raise(fastapi_client):
     """A descriptor carries them; sorting them raises. Flask has had this
     covered since it stopped using jsonify — FastAPI needed its own answer."""
-    res = fastapi_client.post('/coframe/endpoint/mixed_keys', json={},
+    res = fastapi_client.post('/kitebase/endpoint/mixed_keys', json={},
                               headers=bearer())
 
     assert res.status_code == 200
     assert res.json()['data'] == {'1': 'one', 'two': 2}
 
 
-def test_fastapi_ignores_the_hosts_exception_handler(coframe_app, plugins):
-    """An application that reshapes its own errors must not reshape coframe's:
+def test_fastapi_ignores_the_hosts_exception_handler(kitebase_app, plugins):
+    """An application that reshapes its own errors must not reshape kitebase's:
     the refusal is returned, so it never reaches a handler."""
     from fastapi import FastAPI, Request
     from fastapi.exceptions import HTTPException
@@ -424,17 +424,17 @@ def test_fastapi_ignores_the_hosts_exception_handler(coframe_app, plugins):
     async def host_errors(request: Request, exc: HTTPException):
         return JSONResponse({'host_says': 'mine'}, status_code=exc.status_code)
 
-    srv.register_fastapi(app, coframe_app, plugins, SECRET)
+    srv.register_fastapi(app, kitebase_app, plugins, SECRET)
 
-    res = TestClient(app).post('/coframe/endpoint/echo', json={})
+    res = TestClient(app).post('/kitebase/endpoint/echo', json={})
 
     assert res.status_code == 401
     assert res.json()['status'] == 'error'
 
 
-def test_fastapi_ignores_the_hosts_default_response_class(coframe_app, plugins):
+def test_fastapi_ignores_the_hosts_default_response_class(kitebase_app, plugins):
     """The FastAPI counterpart of Flask's JSON provider: an application-wide
-    encoder coframe's routes would otherwise inherit."""
+    encoder kitebase's routes would otherwise inherit."""
     from fastapi import FastAPI
     from fastapi.responses import JSONResponse
     from fastapi.testclient import TestClient
@@ -444,9 +444,9 @@ def test_fastapi_ignores_the_hosts_default_response_class(coframe_app, plugins):
             return b'{"host": "took over"}'
 
     app = FastAPI(default_response_class=ShoutingResponse)
-    srv.register_fastapi(app, coframe_app, plugins, SECRET)
+    srv.register_fastapi(app, kitebase_app, plugins, SECRET)
 
-    res = TestClient(app).post('/coframe/endpoint/a_date', json={},
+    res = TestClient(app).post('/kitebase/endpoint/a_date', json={},
                                headers=bearer())
 
     assert res.json()['data'] == {'when': '2026-08-24', 'at': '2026-08-24T10:30:00'}
@@ -456,7 +456,7 @@ def test_fastapi_still_refreshes_a_token_on_a_response_it_builds(fastapi_client)
     """The trap the refusal fix could have sprung: a Response returned by a
     handler replaces the injected one, headers and all, so the refreshed token
     has to be written on the response that is actually returned."""
-    res = fastapi_client.post('/coframe/endpoint/echo', json={},
+    res = fastapi_client.post('/kitebase/endpoint/echo', json={},
                               headers=bearer(last_refresh=0))
 
     assert 'X-New-Token' in res.headers

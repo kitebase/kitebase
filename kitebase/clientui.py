@@ -1,12 +1,12 @@
 """
-coframe.clientui — where the compiled client is mounted, and who logs people in.
+kitebase.clientui — where the compiled client is mounted, and who logs people in.
 
-Coframe has two natures, and an application says which one it has in the
+Kitebase has two natures, and an application says which one it has in the
 `client:` section of its config.yaml:
 
     client:
-      role: app | admin   # app:   coframe IS the application and owns "/"
-                          # admin: coframe is the admin of a host application,
+      role: app | admin   # app:   kitebase IS the application and owns "/"
+                          # admin: kitebase is the admin of a host application,
                           #        mounted under /admin/; "/" belongs to the host
       login: /login       # the host's login page; absent = the client's own login
       logout: /logout     # the host's page that ends its session
@@ -21,7 +21,7 @@ The compiled client always lives in `<app>/clientui/`: the directory says what i
 is, the configuration says where it is mounted. `static/` stays the host's, with
 the route its framework gives it.
 
-Pure: no web framework is imported here, so `check`, `coframe dev` and the
+Pure: no web framework is imported here, so `check`, `kitebase dev` and the
 servers read the same rule.
 """
 from typing import Any, Dict, NamedTuple, Optional

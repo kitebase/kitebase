@@ -1,15 +1,15 @@
-# Coframe — packaging.
+# Kitebase — packaging.
 #
 # The library is installed, never copied: an application declares it as a
 # dependency and pins a version, so what is running is a fact the application
 # states rather than whatever happened to be on the machine.
 #
-#   uv add "coframe @ git+https://github.com/claudiodriussi/coframe@v0.5.0"
-#   uv add "coframe @ git+file:///path/to/coframe"        # a local checkout
-#   uv pip install -e ../coframe                          # editable, for dev
+#   uv add "kitebase @ git+https://github.com/kitebase/kitebase@v0.5.0"
+#   uv add "kitebase @ git+file:///path/to/kitebase"        # a local checkout
+#   uv pip install -e ../kitebase                          # editable, for dev
 #
-# The version lives in `coframe/__init__.py` and is read from there: one place
-# to bump, and `import coframe; coframe.__version__` always agrees with what
+# The version lives in `kitebase/__init__.py` and is read from there: one place
+# to bump, and `import kitebase; kitebase.__version__` always agrees with what
 # pip reports.
 
 [build-system]
@@ -17,7 +17,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "coframe"
+name = "kitebase"
 dynamic = ["version"]
 description = "Plugin-based, data-driven framework: YAML schema to SQLAlchemy models, endpoints and auto-generated UI"
 readme = "README.md"
@@ -40,7 +40,7 @@ classifiers = [
     "Topic :: Software Development :: Code Generators",
 ]
 
-# What `import coframe` needs, and nothing else. The package auto-imports its
+# What `import kitebase` needs, and nothing else. The package auto-imports its
 # own modules, so anything imported at module level is a hard requirement:
 # sqlalchemy (db), pyyaml (plugins), pyjwt (server_utils), bcrypt (transforms).
 dependencies = [
@@ -50,12 +50,12 @@ dependencies = [
     "bcrypt",
     # Schema comparison: db-check, db-sync, and the startup guard, which is on
     # by default. Only the comparison is borrowed — no revision files, no
-    # migration history: the YAML is the truth (see coframe/schema_sync.py).
+    # migration history: the YAML is the truth (see kitebase/schema_sync.py).
     "alembic",
 ]
 
 # The web frameworks are imported inside the registration functions, never at
-# module level: an application installs the one it serves with, and coframe
+# module level: an application installs the one it serves with, and kitebase
 # does not drag the other into its environment.
 [project.optional-dependencies]
 flask = ["flask>=3.0"]
@@ -63,20 +63,20 @@ fastapi = ["fastapi", "uvicorn"]
 dev = ["pytest", "flask>=3.0", "fastapi", "uvicorn", "httpx"]
 
 [project.urls]
-Homepage = "https://github.com/claudiodriussi/coframe"
-Source = "https://github.com/claudiodriussi/coframe"
-Issues = "https://github.com/claudiodriussi/coframe/issues"
+Homepage = "https://github.com/kitebase/kitebase"
+Source = "https://github.com/kitebase/kitebase"
+Issues = "https://github.com/kitebase/kitebase/issues"
 
 [project.scripts]
-coframe = "coframe.cli:main"
+kitebase = "kitebase.cli:main"
 
 [tool.hatch.version]
-path = "coframe/__init__.py"
+path = "kitebase/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["coframe"]
+packages = ["kitebase"]
 # Working notes live inside the package directory and are not part of it.
 exclude = ["_notes", "**/__pycache__"]
 
 [tool.hatch.build.targets.sdist]
-include = ["coframe", "README.md", "CHANGELOG.md", "LICENSE"]
+include = ["kitebase", "README.md", "CHANGELOG.md", "LICENSE"]

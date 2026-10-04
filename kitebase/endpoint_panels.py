@@ -1,7 +1,7 @@
 from typing import Any, Dict
-import coframe.utils
-from coframe.endpoints import endpoint
-from coframe.pages import load_page, strip_meta
+import kitebase.utils
+from kitebase.endpoints import endpoint
+from kitebase.pages import load_page, strip_meta
 # Note: context is set globally via BaseApp.set_context() before each call —
 # endpoint functions receive only (data).
 
@@ -31,7 +31,7 @@ def get_page(data: Dict[str, Any]) -> Dict[str, Any]:
     if not page_id:
         return {'status': 'error', 'message': 'id is required', 'code': 400}
 
-    app = coframe.utils.get_app()
+    app = kitebase.utils.get_app()
     try:
         page = load_page(app, page_id)
     except ValueError as e:

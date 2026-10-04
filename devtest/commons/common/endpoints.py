@@ -12,21 +12,21 @@ Which verb appears is decided here too — only the one that applies to the
 record, and none without a row — which is what a server-driven popup means
 without any machinery on the client's side.
 """
-import coframe.utils
-from coframe.endpoints import endpoint
-from coframe.i18n import _, _f
-from coframe.utils import search_info, table_definition
+import kitebase.utils
+from kitebase.endpoints import endpoint
+from kitebase.i18n import _, _f
+from kitebase.utils import search_info, table_definition
 
 
 def _archivable_model(data):
     """The model named by `table`, refused when it is not Archivable."""
-    app = coframe.utils.get_app()
+    app = kitebase.utils.get_app()
     table = data.get('table')
     model = app.models.get(table) if table else None
     if model is None:
         return None, {'status': 'error', 'code': 400,
                       'message': _f("Unknown table '{table}'", table=table)}
-    if not hasattr(model, '_cf_archive_field'):
+    if not hasattr(model, '_kb_archive_field'):
         return None, {'status': 'error', 'code': 400,
                       'message': _f("'{table}' is not Archivable", table=table)}
     return model, None
@@ -59,7 +59,7 @@ def archivable(data):
     ]
 
     ids = data.get('ids') or []
-    app = coframe.utils.get_app()
+    app = kitebase.utils.get_app()
     if ids:
         n = len(ids)
         options.append({
@@ -94,7 +94,7 @@ def _flip(data, archive: bool):
     if not ids:
         return {'status': 'error', 'code': 400, 'message': _('No record given')}
 
-    app = coframe.utils.get_app()
+    app = kitebase.utils.get_app()
     touched = []
     with app.get_session() as session:
         for record_id in ids:

@@ -11,7 +11,7 @@ from types import SimpleNamespace
 import pytest
 import sqlalchemy as sa
 
-from coframe.cli import db_backup
+from kitebase.cli import db_backup
 
 
 def app_on(url):

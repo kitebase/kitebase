@@ -1,8 +1,8 @@
-"""Pytest bootstrap for the coframe backend test suite.
+"""Pytest bootstrap for the kitebase backend test suite.
 
-coframe is used as a source checkout (not pip-installed), so the package is
+kitebase is used as a source checkout (not pip-installed), so the package is
 importable only when the repo root is on sys.path. The repo root is the parent
-of this tests/ directory and contains the `coframe/` package.
+of this tests/ directory and contains the `kitebase/` package.
 """
 import sys
 from pathlib import Path

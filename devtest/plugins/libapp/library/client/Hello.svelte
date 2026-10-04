@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * Library Plugin - Hello World Component
-   * Located in: coframe/devtest/plugins/libapp/library/client/
+   * Located in: kitebase/devtest/plugins/libapp/library/client/
    * Registry ID: library.hello
    *
    * Demonstrates callback props: the host page can pass `onAction` to react

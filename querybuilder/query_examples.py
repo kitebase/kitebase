@@ -230,7 +230,7 @@ query_best_selling_Product = '''
 
 
 if __name__ == "__main__":
-    from coframe.querybuilder import DynamicQueryBuilder
+    from kitebase.querybuilder import DynamicQueryBuilder
 
     db_path = "northwind.sqlite"
     if not os.path.exists(db_path):

@@ -1,5 +1,5 @@
-import coframe
-from coframe.endpoints import endpoint
+import kitebase
+from kitebase.endpoints import endpoint
 
 
 def ok():
@@ -40,7 +40,7 @@ def book_stats(data):
         return {'status': 'error', 'message': 'Save the book first — it has no key yet',
                 'code': 400}
 
-    app = coframe.utils.get_app()
+    app = kitebase.utils.get_app()
     with app.get_session() as session:
         book = session.get(app.model.Book, book_id)
         if book is None:
@@ -63,7 +63,7 @@ def book_stats(data):
 
 @endpoint('books')
 def query_books(data):
-    app = coframe.utils.get_app()
+    app = kitebase.utils.get_app()
 
     with app.get_session() as session:
         books = session.query(app.model.Book).all()

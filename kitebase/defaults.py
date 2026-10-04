@@ -1,14 +1,14 @@
 """
 System (framework) column defaults.
 
-These are values Coframe itself provides — resolved at INSERT time from the
+These are values Kitebase itself provides — resolved at INSERT time from the
 request context — that a model can opt into from YAML via a `$`-token, e.g.:
 
     - name: review_date
       type: Date
       default: $op_date
 
-The source generator (coframe.source) translates the token into a reference to
+The source generator (kitebase.source) translates the token into a reference to
 the registered callable and emits the needed import into the generated model.
 SQLAlchemy then calls it per insert, so it reflects the operator's current
 op_date each time.
@@ -23,14 +23,14 @@ from datetime import date, datetime
 from typing import Callable, Optional, Set
 from uuid import uuid4
 
-from coframe import apptime
-from coframe.db import BaseApp
+from kitebase import apptime
+from kitebase.db import BaseApp
 
 
 def op_date() -> date:
     """Operational ("working") date from the request context; today if unset.
 
-    "Today" is the organisation's, not the machine's — see coframe.apptime.
+    "Today" is the organisation's, not the machine's — see kitebase.apptime.
     On a server running in UTC the two differ for the first hours after
     midnight, and an op_date a day out produces documents that look right.
     """

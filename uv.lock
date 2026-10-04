@@ -145,51 +145,6 @@ wheels = [
 ]
 
 [[package]]
-name = "coframe"
-source = { editable = "." }
-dependencies = [
-    { name = "alembic" },
-    { name = "bcrypt" },
-    { name = "pyjwt" },
-    { name = "pyyaml" },
-    { name = "sqlalchemy" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "fastapi" },
-    { name = "flask" },
-    { name = "httpx" },
-    { name = "pytest" },
-    { name = "uvicorn" },
-]
-fastapi = [
-    { name = "fastapi" },
-    { name = "uvicorn" },
-]
-flask = [
-    { name = "flask" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "alembic" },
-    { name = "bcrypt" },
-    { name = "fastapi", marker = "extra == 'dev'" },
-    { name = "fastapi", marker = "extra == 'fastapi'" },
-    { name = "flask", marker = "extra == 'dev'", specifier = ">=3.0" },
-    { name = "flask", marker = "extra == 'flask'", specifier = ">=3.0" },
-    { name = "httpx", marker = "extra == 'dev'" },
-    { name = "pyjwt" },
-    { name = "pytest", marker = "extra == 'dev'" },
-    { name = "pyyaml" },
-    { name = "sqlalchemy", specifier = ">=2.0" },
-    { name = "uvicorn", marker = "extra == 'dev'" },
-    { name = "uvicorn", marker = "extra == 'fastapi'" },
-]
-provides-extras = ["dev", "fastapi", "flask"]
-
-[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -306,6 +261,51 @@ sdist = { url = "https://files.pythonhosted.org/packages/df/bf/f7da0350254c0ed7c
 wheels = [
     { url = "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67", size = 134899, upload-time = "2025-03-05T20:05:00.369Z" },
 ]
+
+[[package]]
+name = "kitebase"
+source = { editable = "." }
+dependencies = [
+    { name = "alembic" },
+    { name = "bcrypt" },
+    { name = "pyjwt" },
+    { name = "pyyaml" },
+    { name = "sqlalchemy" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "fastapi" },
+    { name = "flask" },
+    { name = "httpx" },
+    { name = "pytest" },
+    { name = "uvicorn" },
+]
+fastapi = [
+    { name = "fastapi" },
+    { name = "uvicorn" },
+]
+flask = [
+    { name = "flask" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "alembic" },
+    { name = "bcrypt" },
+    { name = "fastapi", marker = "extra == 'dev'" },
+    { name = "fastapi", marker = "extra == 'fastapi'" },
+    { name = "flask", marker = "extra == 'dev'", specifier = ">=3.0" },
+    { name = "flask", marker = "extra == 'flask'", specifier = ">=3.0" },
+    { name = "httpx", marker = "extra == 'dev'" },
+    { name = "pyjwt" },
+    { name = "pytest", marker = "extra == 'dev'" },
+    { name = "pyyaml" },
+    { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "uvicorn", marker = "extra == 'dev'" },
+    { name = "uvicorn", marker = "extra == 'fastapi'" },
+]
+provides-extras = ["dev", "fastapi", "flask"]
 
 [[package]]
 name = "mako"

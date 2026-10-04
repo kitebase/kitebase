@@ -7,8 +7,8 @@ import csv
 from io import StringIO
 from pathlib import Path
 from typing import Dict, Any, List
-import coframe
-from coframe.endpoints import endpoint
+import kitebase
+from kitebase.endpoints import endpoint
 
 
 @endpoint('read_file')
@@ -17,7 +17,7 @@ def read_file(data: Dict[str, Any]) -> Dict[str, Any]:
     Generic endpoint for reading files of various formats.
 
     This endpoint allows clients to read files from server-side directories that are
-    configured as allowed in the Coframe configuration. It supports multiple file
+    configured as allowed in the Kitebase configuration. It supports multiple file
     formats including structured data (JSON, YAML, CSV) and binary files.
 
     Parameters:
@@ -88,7 +88,7 @@ def read_file(data: Dict[str, Any]) -> Dict[str, Any]:
         if not file_path:
             return {"status": "error", "message": "File path is required", "code": 400}
 
-        app = coframe.utils.get_app()
+        app = kitebase.utils.get_app()
         pm = app.pm
         file_config = pm.config.get('read_files', {})
         text_suffixes = file_config.get('text_suffix', ['.txt', '.md', '.xml', '.html', '.css', '.js'])

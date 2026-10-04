@@ -1,6 +1,6 @@
-# Sample Data for Coframe Library Demo
+# Sample Data for Kitebase Library Demo
 
-This directory contains sample data to populate the Coframe library database with realistic books, authors, and publishers.
+This directory contains sample data to populate the Kitebase library database with realistic books, authors, and publishers.
 
 ## 🚀 Usage
 
@@ -8,7 +8,7 @@ This directory contains sample data to populate the Coframe library database wit
 
 1. Update the model with new fields:
    ```bash
-   cd /home/claudio/sviluppo/python/webapp/coframe/devtest
+   cd /home/claudio/sviluppo/python/webapp/kitebase/devtest
    python devtest.py  # Regenerates model.py with Publisher and new Book fields
    ```
 

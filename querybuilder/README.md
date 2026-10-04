@@ -1,6 +1,6 @@
 # querybuilder
 
-The script `querybuilder.py` is part of the Coframe framework, but it is truly
+The script `querybuilder.py` is part of the Kitebase framework, but it is truly
 independent.
 
 It can be used to generate a query for an SQLAlchemy database starting from a

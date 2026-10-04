@@ -14,8 +14,8 @@ import pytest
 from sqlalchemy import Column, Integer, String, Boolean
 from sqlalchemy.orm import declarative_base
 
-import coframe.utils
-from coframe.querybuilder import DynamicQueryBuilder
+import kitebase.utils
+from kitebase.querybuilder import DynamicQueryBuilder
 
 Base = declarative_base()
 
@@ -40,7 +40,7 @@ class AppStub:
 
 @pytest.fixture
 def builder(monkeypatch):
-    monkeypatch.setattr(coframe.utils, 'get_app', lambda: AppStub(), raising=False)
+    monkeypatch.setattr(kitebase.utils, 'get_app', lambda: AppStub(), raising=False)
     return DynamicQueryBuilder(session=None, models={'Book': Book})
 
 

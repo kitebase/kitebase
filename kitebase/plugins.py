@@ -7,8 +7,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union, Any
 import yaml
-from coframe import apptime
-from coframe.utils import deep_merge
+from kitebase import apptime
+from kitebase.utils import deep_merge
 
 # Merge directives. They belong to the YAML protocol, not to a single function:
 # every one of them is consumed while merging and never reaches a consumer.
@@ -75,7 +75,7 @@ class PluginsManager:
     - History tracking of all plugin operations
     """
 
-    def __init__(self, logger_name: str = 'coframe') -> None:
+    def __init__(self, logger_name: str = 'kitebase') -> None:
         """
         Initialize the plugin manager.
 
@@ -106,7 +106,7 @@ class PluginsManager:
     def add_issue(self, severity: str, code: str, path: str, message: str,
                   plugin: Optional[str] = None) -> None:
         """
-        Record a load-time issue (same format as coframe.diagnostics).
+        Record a load-time issue (same format as kitebase.diagnostics).
 
         Issues are collected here during merge and picked up later by
         diagnostics.run_checks(). Exact duplicates are skipped.
@@ -183,7 +183,7 @@ class PluginsManager:
         # The timezone the stored naive datetimes are written in. Declaring it
         # is what asks for the guarantee: from here on the clock is read
         # through it, and a process whose own clock disagrees does not start.
-        # See coframe.apptime for why an ambient timezone is the dangerous one.
+        # See kitebase.apptime for why an ambient timezone is the dangerous one.
         apptime.set_app_timezone(self.config['timezone'])
         apptime.check_process_timezone()
 
@@ -900,7 +900,7 @@ class PluginsManager:
         """
         Load translations for the given locale from the core library and all plugins.
 
-        - Core: coframe.locale.{locale}  (standard importlib)
+        - Core: kitebase.locale.{locale}  (standard importlib)
         - Plugins: {plugin_dir}/locale/{locale}.py  (spec_from_file_location, no __init__ needed)
 
         Call after load_plugins(). Safe to call with locale='en' (no-op).
@@ -910,7 +910,7 @@ class PluginsManager:
 
         # Core library translations
         try:
-            importlib.import_module(f'coframe.locale.{locale}')
+            importlib.import_module(f'kitebase.locale.{locale}')
         except ModuleNotFoundError:
             pass
 
@@ -921,7 +921,7 @@ class PluginsManager:
             if not locale_file.exists():
                 continue
             spec = importlib.util.spec_from_file_location(
-                f'_coframe_locale_{name}_{locale}', locale_file
+                f'_kitebase_locale_{name}_{locale}', locale_file
             )
             if spec and spec.loader:
                 module = importlib.util.module_from_spec(spec)
@@ -932,7 +932,7 @@ class PluginsManager:
         """
         Load every locale file found in the core library and all plugins.
 
-        Scans coframe/locale/*.py and {plugin_dir}/locale/*.py for each plugin,
+        Scans kitebase/locale/*.py and {plugin_dir}/locale/*.py for each plugin,
         then calls load_locale() for each unique locale found.
         Replaces load_locale(single_locale) when multi-language support is needed.
         """

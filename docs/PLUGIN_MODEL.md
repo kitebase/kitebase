@@ -1,11 +1,11 @@
-# Coframe Plugin Model — Reference Manual
+# Kitebase Plugin Model — Reference Manual
 
-*This manual describes how plugins define, extend, and override data models in Coframe.
+*This manual describes how plugins define, extend, and override data models in Kitebase.
 It is written for application developers building on top of the framework.*
 
 *Last revised: 2026-08-17. Living document — sections marked* (planned) *or* (future) *are not yet implemented.*
 
-Coframe is designed around a single workflow: **configure, build, deploy**.
+Kitebase is designed around a single workflow: **configure, build, deploy**.
 An application developer starts from a skeleton project, writes plugins that declare
 data models and UI descriptors in YAML, wires a minimal set of configuration files,
 runs `pnpm build`, and ships. The framework generates the database schema, the API
@@ -227,7 +227,7 @@ wrong for lists of named objects: if two plugins both provide a list of columns,
 you want the second plugin to *modify* the first plugin's column, not add a
 duplicate.
 
-Coframe resolves this by detecting an **identity key** on list items.
+Kitebase resolves this by detecting an **identity key** on list items.
 The identity key is the first recognised key found among the items:
 
 | Priority | Key | Typical use |
@@ -427,7 +427,7 @@ request* against runtime state, not during the merge:
 
 **C. System defaults** — a `default:` (or `onupdate:`) on a *column* whose value
 is a `$` token names a callable registered in the core registry
-`coframe.defaults`. The generator emits a reference to it into the model, so
+`kitebase.defaults`. The generator emits a reference to it into the model, so
 SQLAlchemy calls it on every insert:
 
 | Token | Meaning |
@@ -644,13 +644,13 @@ from that Python class. This is how a mixin carries both **column definitions**
 ```python
 # plugins/common/model.py
 class Archivable:
-    _cf_archive_field = 'active'   # protocol attribute read by the querybuilder
+    _kb_archive_field = 'active'   # protocol attribute read by the querybuilder
 
     def archive(self):
-        setattr(self, self._cf_archive_field, False)
+        setattr(self, self._kb_archive_field, False)
 
     def unarchive(self):
-        setattr(self, self._cf_archive_field, True)
+        setattr(self, self._kb_archive_field, True)
 ```
 
 ```yaml
@@ -757,7 +757,7 @@ Two consequences on writes follow from it, and are applied by the `db` endpoint:
 - an **empty value is dropped, not written**: a client cannot echo back what it
   never received, so an empty secret means "unchanged" — without this, opening a
   user and saving would wipe the password;
-- `on_write` names a transform from the registry in `coframe.transforms`,
+- `on_write` names a transform from the registry in `kitebase.transforms`,
   applied before the value is stored. `password_hash` (bcrypt) is built in
   because the core is its consumer — the `auth` endpoint has to know how
   credentials were stored. Apps register their own with
@@ -788,7 +788,7 @@ to every query on a matching model. Behaviors are registered at startup via
 ```python
 # server_fastapi.py
 from plugins.common.model import Archivable
-coframe_app.add_query_behavior(Archivable)
+kitebase_app.add_query_behavior(Archivable)
 ```
 
 A behavior class implements two classmethods:
@@ -799,7 +799,7 @@ A behavior class implements two classmethods:
 | `apply` | `(cls, model_class, query_def, query) → query` | Modify the SQLAlchemy query object |
 
 The `Archivable` behavior adds `WHERE active = True` to every query on a model
-that carries `_cf_archive_field`, unless the caller passes `include_archived: true`
+that carries `_kb_archive_field`, unless the caller passes `include_archived: true`
 or already filters on the archive field explicitly:
 
 ```python
@@ -1081,7 +1081,7 @@ modelled):
   emits it explicitly (`primaryjoin` + `foreign_keys`).
 
 > **Note on SQLite.** SQLite does not enforce foreign-key constraints unless
-> `PRAGMA foreign_keys=ON` is set per connection — which Coframe does not set
+> `PRAGMA foreign_keys=ON` is set per connection — which Kitebase does not set
 > today. So on the SQLite dev database even *hard* FKs are not currently
 > enforced; the distinction bites on PostgreSQL/MySQL. Soft FKs behave the same
 > everywhere: never enforced, by design.
@@ -1114,7 +1114,7 @@ a shortcut:
   all — otherwise half the mechanism would live somewhere else;
 - it survives dialects that refuse the constraint: SQL Server rejects
   `ON DELETE CASCADE` on a self-referential foreign key outright, and that is a
-  shape Coframe models routinely (a partner and its contacts);
+  shape Kitebase models routinely (a partner and its contacts);
 - it needs **no migration**: adding it to an installed application is a code
   change, whereas altering a constraint is a schema change `db-sync` cannot
   perform — its list is closed and its comparator does not look at constraints;
@@ -1139,7 +1139,7 @@ Most collections are compositions — the lines of a document, the contacts of a
 partner — but not all: the reviews of a book can be edited there and still outlive
 it. The two are declared separately and neither implies the other.
 
-Because the mistake is silent, `coframe.diagnostics` **asks** — a collection node
+Because the mistake is silent, `kitebase.diagnostics` **asks** — a collection node
 on a foreign key that says nothing about ownership raises a *warning*, which either
 answer silences. A junction needs no answer: it is owned by both ends already.
 See `docs/pending/relations.md § 18`.

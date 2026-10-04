@@ -1,13 +1,13 @@
-"""Tests for coframe.endpoint_files.read_file — which files it agrees to read.
+"""Tests for kitebase.endpoint_files.read_file — which files it agrees to read.
 
 The endpoint is closed unless `read_files.allowed_dirs` names directories, and
 a directory admits only what lies inside it by path components.
 """
 import pytest
 
-import coframe.utils
-from coframe.endpoint_files import read_file
-from coframe.plugins import PluginsManager
+import kitebase.utils
+from kitebase.endpoint_files import read_file
+from kitebase.plugins import PluginsManager
 
 
 class FakeApp:
@@ -36,7 +36,7 @@ def configure(app_dir, monkeypatch):
         pm = PluginsManager()
         pm.app_root = app_dir
         pm.config = {} if read_files is None else {'read_files': read_files}
-        monkeypatch.setattr(coframe.utils, 'get_app', lambda: FakeApp(pm))
+        monkeypatch.setattr(kitebase.utils, 'get_app', lambda: FakeApp(pm))
     return _set
 
 

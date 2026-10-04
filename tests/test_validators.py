@@ -10,9 +10,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from coframe import transforms
-from coframe.diagnostics import _check_validators
-from coframe.endpoint_db import handle_create, write_values
+from kitebase import transforms
+from kitebase.diagnostics import _check_validators
+from kitebase.endpoint_db import handle_create, write_values
 
 
 class StubColumn:

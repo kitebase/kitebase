@@ -1,4 +1,4 @@
-"""Tests for coframe.endpoint_db.build_filters — the `db` endpoint filter DSL.
+"""Tests for kitebase.endpoint_db.build_filters — the `db` endpoint filter DSL.
 
 This path had zero coverage, which let a real bug survive: handle_get used
 `if filter_conditions:` on a SQLAlchemy clause (bool() raises), crashing every
@@ -6,14 +6,14 @@ filtered list request. Covered here: the clause has no boolean value
 (regression), implicit AND of siblings, `$or`, and `$and` nesting
 — (A OR B) AND (C OR D), which the flat implicit-AND form cannot express.
 
-Uses a standalone SQLAlchemy model (no coframe model machinery needed): filters
+Uses a standalone SQLAlchemy model (no kitebase model machinery needed): filters
 are compiled to literal SQL and asserted on structure.
 """
 import pytest
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
-from coframe.endpoint_db import build_filters
+from kitebase.endpoint_db import build_filters
 
 Base = declarative_base()
 

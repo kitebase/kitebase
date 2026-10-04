@@ -1,5 +1,5 @@
 """
-Framework-agnostic server utilities for Coframe.
+Framework-agnostic server utilities for Kitebase.
 
 All handlers return plain dict with:
 - 'status': 'success' | 'error'
@@ -69,11 +69,11 @@ def _error_from_result(result: Dict[str, Any], default_message: str = 'Operation
 def setup_logging(level: str = 'INFO', file: Optional[str] = None, *,
                   max_bytes: int = 5 * 1024 * 1024, backups: int = 5) -> logging.Logger:
     """
-    Make the process's log audible. The library only speaks (`coframe` logger,
+    Make the process's log audible. The library only speaks (`kitebase` logger,
     one line per request, the traceback on a failure); this is where an
     application decides to listen, once at startup, with values from its
     environment. Not calling it is a choice too: an application that embeds
-    coframe in a process of its own keeps its own logging.
+    kitebase in a process of its own keeps its own logging.
 
     Always stdout — under systemd that is journald, at a console it is the
     terminal, so running by hand and running as a service read the same. The
@@ -85,7 +85,7 @@ def setup_logging(level: str = 'INFO', file: Optional[str] = None, *,
     """
     root = logging.getLogger()
     for handler in list(root.handlers):
-        if getattr(handler, '_coframe', False):
+        if getattr(handler, '_kitebase', False):
             root.removeHandler(handler)
 
     stdout = logging.StreamHandler(sys.stdout)
@@ -98,7 +98,7 @@ def setup_logging(level: str = 'INFO', file: Optional[str] = None, *,
             '%(asctime)s %(levelname)s %(name)s: %(message)s'))
         handlers.append(rotating)
     for handler in handlers:
-        handler._coframe = True  # type: ignore[attr-defined]
+        handler._kitebase = True  # type: ignore[attr-defined]
         root.addHandler(handler)
     root.setLevel(getattr(logging, str(level).upper(), logging.INFO))
     # Third parties whisper: what they say at INFO is their own bookkeeping
@@ -106,7 +106,7 @@ def setup_logging(level: str = 'INFO', file: Optional[str] = None, *,
     # bury the one line per request this exists for. WARNING still passes.
     for noisy in ('alembic', 'sqlalchemy'):
         logging.getLogger(noisy).setLevel(logging.WARNING)
-    return logging.getLogger('coframe')
+    return logging.getLogger('kitebase')
 
 
 # ============================================
@@ -255,7 +255,7 @@ def handle_host_token(host_session, request, auth: 'AuthMiddleware') -> Dict[str
     """
     Answer `auth/token`: a JWT for the user the host's session says is in.
 
-    The host logs people in and keeps its own session; coframe only asks it,
+    The host logs people in and keeps its own session; kitebase only asks it,
     through `host_session(request) -> context | None`, who the user is, and
     signs that context as the login would. No session is a 401, which the
     client turns into a redirect to the host's login page.
@@ -280,7 +280,7 @@ def handle_auth(
     Framework-agnostic authentication handler.
 
     Args:
-        command_processor: Coframe command processor instance
+        command_processor: Kitebase command processor instance
         data: Request data with 'username' and 'password'
         secret_key: JWT secret key
         jwt_expiration_hours: Token expiration in hours
@@ -334,10 +334,10 @@ def custom_context_fields(config: Dict[str, Any]) -> list:
 
     Identity columns (id, email, is_active, is_admin, ...) come from the user
     record and must stay server-authoritative — a client must never be able to
-    set them in its own token. Requires the coframe app to be loaded.
+    set them in its own token. Requires the kitebase app to be loaded.
     """
-    import coframe.utils
-    app = coframe.utils.get_app()
+    import kitebase.utils
+    app = kitebase.utils.get_app()
     auth = config.get('authentication', {})
     user_model = app.models.get(auth.get('user_table', 'User'))
     if user_model is None:
@@ -422,7 +422,7 @@ def handle_db_operation(
     Framework-agnostic database operation handler.
 
     Args:
-        command_processor: Coframe command processor
+        command_processor: Kitebase command processor
         operation: 'get', 'create', 'update', 'delete'
         table: Table name
         record_id: Record ID (for get, update, delete)
@@ -470,7 +470,7 @@ def handle_query(
     Framework-agnostic query handler.
 
     Args:
-        command_processor: Coframe command processor
+        command_processor: Kitebase command processor
         query_data: Query definition (table, fields, filters, etc.)
         context: User context
 
@@ -507,7 +507,7 @@ def handle_generic_endpoint(
     Framework-agnostic generic endpoint handler.
 
     Args:
-        command_processor: Coframe command processor
+        command_processor: Kitebase command processor
         operation: Endpoint operation name
         data: Operation parameters
         context: User context
@@ -574,7 +574,7 @@ class AuthMiddleware:
         Initialize auth middleware with configuration.
 
         Args:
-            config: Coframe configuration dict (from plugins.config)
+            config: Kitebase configuration dict (from plugins.config)
             secret_key: Secret key for JWT encoding/decoding
         """
         self.config = config
@@ -614,7 +614,7 @@ class AuthMiddleware:
         Handle login using configured parameters.
 
         Args:
-            command_processor: Coframe command processor
+            command_processor: Kitebase command processor
             credentials: {'username': '...', 'password': '...'}
 
         Returns:
@@ -660,14 +660,14 @@ def get_app_info(plugins_config: Dict[str, Any], api_prefix: str) -> Dict[str, A
 
     Args:
         plugins_config: Plugins configuration dict
-        api_prefix: API prefix (e.g., '/coframe' or '/api/v1')
+        api_prefix: API prefix (e.g., '/kitebase' or '/api/v1')
 
     Returns:
         Dict with app information. `client` is the `client:` section, read by
         the client at startup: who logs people in follows config.yaml without
         rebuilding it.
     """
-    from coframe.clientui import client_settings
+    from kitebase.clientui import client_settings
 
     return {
         'status': 'success',
@@ -676,16 +676,16 @@ def get_app_info(plugins_config: Dict[str, Any], api_prefix: str) -> Dict[str, A
             'version': plugins_config.get('version', '0.0.0'),
             'description': plugins_config.get('description', ''),
             'client': client_settings(plugins_config)._asdict(),
-            'coframe_api_prefix': api_prefix,
+            'kitebase_api_prefix': api_prefix,
             'available_endpoints': {
                 'home': '/',
                 'app_info': '/info',
-                'coframe_auth': f'{api_prefix}/auth/login',
-                'coframe_auth_update': f'{api_prefix}/auth/update_context',
-                'coframe_database': f'{api_prefix}/db/<table>',
-                'coframe_query': f'{api_prefix}/query',
-                'coframe_files': f'{api_prefix}/read_file',
-                'coframe_commands': f'{api_prefix}/endpoint/<operation>'
+                'kitebase_auth': f'{api_prefix}/auth/login',
+                'kitebase_auth_update': f'{api_prefix}/auth/update_context',
+                'kitebase_database': f'{api_prefix}/db/<table>',
+                'kitebase_query': f'{api_prefix}/query',
+                'kitebase_files': f'{api_prefix}/read_file',
+                'kitebase_commands': f'{api_prefix}/endpoint/<operation>'
             }
         },
         'status_code': 200
@@ -702,16 +702,16 @@ def get_app_info(plugins_config: Dict[str, Any], api_prefix: str) -> Dict[str, A
 # signature, so one function serves both cases and the caller's choice of
 # target is what decides the scope:
 #
-#     srv.register_flask(app, coframe_app, plugins, SECRET_KEY)
+#     srv.register_flask(app, kitebase_app, plugins, SECRET_KEY)
 #
-#         coframe owns the process: the routes and the after_request hook are
+#         kitebase owns the process: the routes and the after_request hook are
 #         the application's, which is what a standalone server wants.
 #
-#     bp = Blueprint('coframe', __name__)
-#     srv.register_flask(bp, coframe_app, plugins, SECRET_KEY)
+#     bp = Blueprint('kitebase', __name__)
+#     srv.register_flask(bp, kitebase_app, plugins, SECRET_KEY)
 #     host_app.register_blueprint(bp)
 #
-#         coframe is a guest: everything registered here lives inside the
+#         kitebase is a guest: everything registered here lives inside the
 #         blueprint, and the host's own routes and hooks are untouched.
 #
 # Neither form touches anything outside its target — no CORS, no static
@@ -719,7 +719,7 @@ def get_app_info(plugins_config: Dict[str, Any], api_prefix: str) -> Dict[str, A
 # outside it: both adapters serialize their own responses, with the ISO 8601
 # dates their endpoints accept back on write, and both return a refusal rather
 # than raising it. A host is free to keep its own JSON provider, its own
-# default response class and its own exception handlers, and coframe answers
+# default response class and its own exception handlers, and kitebase answers
 # the same either way.
 
 def _prefixes(plugins_config: Dict[str, Any],
@@ -728,25 +728,25 @@ def _prefixes(plugins_config: Dict[str, Any],
     """Resolve the API prefixes, falling back to config.yaml."""
     api = plugins_config.get('api', {})
     if prefix is None:
-        prefix = '/' + api.get('prefix', 'coframe').strip('/')
+        prefix = '/' + api.get('prefix', 'kitebase').strip('/')
     if endpoint_prefix is None:
         endpoint_prefix = api.get('endpoint_prefix', 'endpoint').strip('/')
     return prefix.rstrip('/'), endpoint_prefix.strip('/')
 
 
-def register_flask(target, coframe_app, plugins, secret_key: str, *,
+def register_flask(target, kitebase_app, plugins, secret_key: str, *,
                    prefix: Optional[str] = None,
                    endpoint_prefix: Optional[str] = None,
                    auth: Optional['AuthMiddleware'] = None,
                    host_session: Optional[Callable[[Any], Optional[Dict[str, Any]]]] = None
                    ) -> 'AuthMiddleware':
     """
-    Register coframe's routes on a Flask application or Blueprint.
+    Register kitebase's routes on a Flask application or Blueprint.
 
     Args:
         target:          a Flask app or a Blueprint — anything with .route()
                          and .after_request()
-        coframe_app:     the coframe application (BaseApp)
+        kitebase_app:     the kitebase application (BaseApp)
         plugins:         the PluginsManager
         secret_key:      key the JWT is signed with
         prefix:          path the routes hang from, config.yaml's `api.prefix`
@@ -769,14 +769,14 @@ def register_flask(target, coframe_app, plugins, secret_key: str, *,
     from functools import wraps
     from flask import Response, g, request
 
-    from coframe.db import BaseApp
-    from coframe.i18n import set_locale
-    from coframe.querybuilder import JSONEncoder
+    from kitebase.db import BaseApp
+    from kitebase.i18n import set_locale
+    from kitebase.querybuilder import JSONEncoder
 
     config = plugins.config
     prefix, endpoint_prefix = _prefixes(config, prefix, endpoint_prefix)
     auth = auth or AuthMiddleware(config, secret_key)
-    command_processor = coframe_app.cp
+    command_processor = kitebase_app.cp
 
     def reply(result: Dict[str, Any], status_code: Optional[int] = None) -> Any:
         """Send a handler result with the status code it carries.
@@ -792,11 +792,11 @@ def register_flask(target, coframe_app, plugins, secret_key: str, *,
                         status=status_code, mimetype='application/json')
 
     @target.teardown_request
-    def coframe_clear_context(exception=None):
+    def kitebase_clear_context(exception=None):
         """Leave the thread as it was found.
 
         Every dispatch sets the context of the user it serves, so within
-        coframe's own surface a leftover is overwritten. It is a guest that
+        kitebase's own surface a leftover is overwritten. It is a guest that
         pays for it: the worker goes back to the pool carrying an identity, and
         whatever the host serves next on that thread — a page, another API —
         inherits a user nobody chose, with the query behaviors filtering
@@ -805,10 +805,10 @@ def register_flask(target, coframe_app, plugins, secret_key: str, *,
         BaseApp.set_context(None)
 
     @target.after_request
-    def coframe_token_refresh(response):
+    def kitebase_token_refresh(response):
         """Hand a refreshed token back in X-New-Token whenever one was issued."""
-        if hasattr(g, 'coframe_new_token'):
-            response.headers['X-New-Token'] = g.coframe_new_token
+        if hasattr(g, 'kitebase_new_token'):
+            response.headers['X-New-Token'] = g.kitebase_new_token
         return response
 
     def authenticated(view):
@@ -824,7 +824,7 @@ def register_flask(target, coframe_app, plugins, secret_key: str, *,
             if error:
                 return reply({'status': 'error', 'message': error}, 401)
             if new_token:
-                g.coframe_new_token = new_token
+                g.kitebase_new_token = new_token
 
             g.user_context = payload
             set_locale(payload.get('locale') or config.get('locale', 'en'))
@@ -833,11 +833,11 @@ def register_flask(target, coframe_app, plugins, secret_key: str, *,
         return wrapper
 
     @target.route(f'{prefix}/info', methods=['GET'])
-    def coframe_info():
+    def kitebase_info():
         return reply(get_app_info(config, prefix))
 
     @target.route(f'{prefix}/auth/login', methods=['POST'])
-    def coframe_login():
+    def kitebase_login():
         try:
             return reply(auth.login(command_processor, request.json))
         except Exception as e:
@@ -845,12 +845,12 @@ def register_flask(target, coframe_app, plugins, secret_key: str, *,
 
     @target.route(f'{prefix}/auth/update_context', methods=['POST'])
     @authenticated
-    def coframe_update_context():
+    def kitebase_update_context():
         return reply(auth.update_context(g.user_context, request.json))
 
     if host_session is not None:
         @target.route(f'{prefix}/auth/token', methods=['POST'])
-        def coframe_host_token():
+        def kitebase_host_token():
             """A JWT for the user of the host's session (see handle_host_token)."""
             if not request.is_json:
                 return reply(HOST_TOKEN_NOT_JSON, 415)
@@ -858,7 +858,7 @@ def register_flask(target, coframe_app, plugins, secret_key: str, *,
 
     @target.route(f'{prefix}/{endpoint_prefix}/<operation>', methods=['POST'])
     @authenticated
-    def coframe_dispatch(operation: str):
+    def kitebase_dispatch(operation: str):
         """Everything that is not authentication: db, query, get_page, get_menu…"""
         return reply(handle_generic_endpoint(
             command_processor, operation, request.json, context=g.user_context))
@@ -866,14 +866,14 @@ def register_flask(target, coframe_app, plugins, secret_key: str, *,
     return auth
 
 
-def register_fastapi(target, coframe_app, plugins, secret_key: str, *,
+def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
                      prefix: Optional[str] = None,
                      endpoint_prefix: Optional[str] = None,
                      auth: Optional['AuthMiddleware'] = None,
                      host_session: Optional[Callable[[Any], Optional[Dict[str, Any]]]] = None
                      ) -> 'AuthMiddleware':
     """
-    Register coframe's routes on a FastAPI application or APIRouter.
+    Register kitebase's routes on a FastAPI application or APIRouter.
 
     Same arguments and same routes as `register_flask`, answering byte for
     byte the same — which is the property the pair exists to hold.
@@ -889,14 +889,14 @@ def register_fastapi(target, coframe_app, plugins, secret_key: str, *,
 
     from fastapi import Depends, Request, Response
 
-    from coframe.db import BaseApp
-    from coframe.i18n import set_locale
-    from coframe.querybuilder import JSONEncoder
+    from kitebase.db import BaseApp
+    from kitebase.i18n import set_locale
+    from kitebase.querybuilder import JSONEncoder
 
     config = plugins.config
     prefix, endpoint_prefix = _prefixes(config, prefix, endpoint_prefix)
     auth = auth or AuthMiddleware(config, secret_key)
-    command_processor = coframe_app.cp
+    command_processor = kitebase_app.cp
 
     def reply(result: Dict[str, Any], status_code: Optional[int] = None,
               new_token: Optional[str] = None) -> Response:
@@ -904,7 +904,7 @@ def register_fastapi(target, coframe_app, plugins, secret_key: str, *,
 
         A plain Response and not a returned dict: FastAPI would serialize the
         dict with the application's default response class and encoder — the
-        host's, in a mounted deployment. coframe's ISO 8601 dates are the
+        host's, in a mounted deployment. kitebase's ISO 8601 dates are the
         format its own endpoints accept back on write, so they travel with the
         route rather than depending on the process they are in.
         """
@@ -945,18 +945,18 @@ def register_fastapi(target, coframe_app, plugins, secret_key: str, *,
         return payload, None, new_token
 
     @target.get(f'{prefix}/info', dependencies=cleanup)
-    def coframe_info():
+    def kitebase_info():
         return reply(get_app_info(config, prefix))
 
     @target.post(f'{prefix}/auth/login', dependencies=cleanup)
-    def coframe_login(data: dict):
+    def kitebase_login(data: dict):
         try:
             return reply(auth.login(command_processor, data))
         except Exception as e:
             return reply({'status': 'error', 'message': str(e)}, 500)
 
     @target.post(f'{prefix}/auth/update_context', dependencies=cleanup)
-    def coframe_update_context(data: dict, request: Request):
+    def kitebase_update_context(data: dict, request: Request):
         user, refused, new_token = identify(request)
         if refused is not None:
             return refused
@@ -964,7 +964,7 @@ def register_fastapi(target, coframe_app, plugins, secret_key: str, *,
 
     if host_session is not None:
         @target.post(f'{prefix}/auth/token', dependencies=cleanup)
-        def coframe_host_token(request: Request):
+        def kitebase_host_token(request: Request):
             """A JWT for the user of the host's session (see handle_host_token)."""
             content_type = request.headers.get('content-type', '')
             if not content_type.startswith('application/json'):
@@ -972,7 +972,7 @@ def register_fastapi(target, coframe_app, plugins, secret_key: str, *,
             return reply(handle_host_token(host_session, request, auth))
 
     @target.post(f'{prefix}/{endpoint_prefix}/{{operation}}', dependencies=cleanup)
-    def coframe_dispatch(operation: str, data: dict, request: Request):
+    def kitebase_dispatch(operation: str, data: dict, request: Request):
         """Everything that is not authentication: db, query, get_page, get_menu…"""
         user, refused, new_token = identify(request)
         if refused is not None:
@@ -987,7 +987,7 @@ def register_fastapi(target, coframe_app, plugins, secret_key: str, *,
 # ── The compiled client ──────────────────────────────────────────────────────
 #
 # Where the client is mounted is the application's `client:` section, read by
-# coframe.clientui: "/" when coframe is the application, "/admin/" when it is
+# kitebase.clientui: "/" when kitebase is the application, "/admin/" when it is
 # the admin of a host. The directory is always `<app>/clientui/`, so `static/`
 # stays the application's own, with the route its framework gives it.
 #
@@ -1005,7 +1005,7 @@ def serve_client_flask(target, app_dir, config: Dict[str, Any]) -> bool:
     """
     from pathlib import Path
     from flask import redirect, send_from_directory
-    from coframe.clientui import CLIENT_DIR, client_settings
+    from kitebase.clientui import CLIENT_DIR, client_settings
 
     directory = Path(app_dir) / CLIENT_DIR
     if not directory.is_dir():
@@ -1017,10 +1017,10 @@ def serve_client_flask(target, app_dir, config: Dict[str, Any]) -> bool:
             return send_from_directory(directory, path)
         return send_from_directory(directory, 'index.html')
 
-    target.add_url_rule(f'{base}/', 'coframe_client', client)
-    target.add_url_rule(f'{base}/<path:path>', 'coframe_client_path', client)
+    target.add_url_rule(f'{base}/', 'kitebase_client', client)
+    target.add_url_rule(f'{base}/<path:path>', 'kitebase_client_path', client)
     if base:
-        target.add_url_rule(base, 'coframe_client_base', lambda: redirect(f'{base}/'))
+        target.add_url_rule(base, 'kitebase_client_base', lambda: redirect(f'{base}/'))
     return True
 
 
@@ -1035,7 +1035,7 @@ def serve_client_fastapi(target, app_dir, config: Dict[str, Any]) -> bool:
     from pathlib import Path
     from starlette.exceptions import HTTPException
     from starlette.staticfiles import StaticFiles
-    from coframe.clientui import CLIENT_DIR, client_settings
+    from kitebase.clientui import CLIENT_DIR, client_settings
 
     directory = Path(app_dir) / CLIENT_DIR
     if not directory.is_dir():
@@ -1057,5 +1057,5 @@ def serve_client_fastapi(target, app_dir, config: Dict[str, Any]) -> bool:
             return response
 
     target.mount(base or '/', SinglePageApp(directory=str(directory), html=True),
-                 name='coframe_client')
+                 name='kitebase_client')
     return True

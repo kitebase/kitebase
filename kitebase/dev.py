@@ -1,4 +1,4 @@
-"""coframe dev — the processes a development session needs, started together.
+"""kitebase dev — the processes a development session needs, started together.
 
 A session is two processes that must agree on two things: which application
 is being served, and which copy of the library is running. Started by hand
@@ -15,14 +15,14 @@ What the command knows by itself, and what has to be told:
                      `config.yaml` — and the API port is read from it
   the library        the package this command belongs to; when that is a source
                      checkout, the application runs against it instead of the
-                     version it declares (`--src`, `$COFRAME_SRC` to say which)
-  the client         the only thing nobody can derive: `--ui`, `$COFRAME_UI`,
+                     version it declares (`--src`, `$KITEBASE_SRC` to say which)
+  the client         the only thing nobody can derive: `--ui`, `$KITEBASE_UI`,
                      or the workspace layout, where it sits beside the library
 
 Nothing here belongs in production: a server started this way is the
 development server of its framework. What does belong there is the artifact —
 `build_client` compiles the same client into the application's `clientui/`,
-which its own server mounts where `client:` in config.yaml says (coframe.clientui).
+which its own server mounts where `client:` in config.yaml says (kitebase.clientui).
 """
 import os
 import shutil
@@ -36,16 +36,16 @@ from typing import List, Optional
 
 import yaml
 
-from coframe.clientui import CLIENT_DIR
+from kitebase.clientui import CLIENT_DIR
 
 # The client repository, recognised by the one client every checkout has.
 UI_MARKER = Path("apps") / "shell" / "package.json"
 
 # Where a client checkout sits when nobody says: the workspace layout, seen
 # from the library checkout and from the application.
-UI_CANDIDATES = ["client/svelte", "coframe-ui"]
+UI_CANDIDATES = ["client", "kitebase-ui"]
 
-# Entry points per framework, best name first. `coframe new` writes
+# Entry points per framework, best name first. `kitebase new` writes
 # `server_*.py`; the rest are what applications generated earlier have, and
 # they keep working because a name changing is not a reason to rewrite an app.
 SERVERS = {
@@ -72,7 +72,7 @@ def find_app(given: Optional[str] = None) -> Path:
     if not (app / "config.yaml").is_file():
         raise DevError(
             f"{app} holds no config.yaml — an application directory does.\n"
-            f"Give one: coframe dev /path/to/app")
+            f"Give one: kitebase dev /path/to/app")
     return app
 
 
@@ -97,20 +97,20 @@ def read_api_port(app: Path, default: int = 8300) -> int:
 def find_source_checkout(given: Optional[str] = None) -> Optional[Path]:
     """The library sources to run against, if there are any.
 
-    Explicit first, then `$COFRAME_SRC`, then the checkout this very command
+    Explicit first, then `$KITEBASE_SRC`, then the checkout this very command
     was imported from — which is the case that matters on a workstation
     developing the library and an application at the same time. Installed as a
     package, nothing is returned and the application runs with what it declares.
     """
-    for candidate in (given, os.environ.get("COFRAME_SRC")):
+    for candidate in (given, os.environ.get("KITEBASE_SRC")):
         if candidate:
             path = Path(candidate).resolve()
             if not (path / "pyproject.toml").is_file():
-                raise DevError(f"{path} is not a coframe checkout (no pyproject.toml).")
+                raise DevError(f"{path} is not a kitebase checkout (no pyproject.toml).")
             return path
 
-    import coframe
-    repo = Path(coframe.__file__).resolve().parent.parent
+    import kitebase
+    repo = Path(kitebase.__file__).resolve().parent.parent
     return repo if (repo / "pyproject.toml").is_file() else None
 
 
@@ -118,16 +118,16 @@ def find_ui(given: Optional[str] = None, app: Optional[Path] = None,
             src: Optional[Path] = None) -> Path:
     """The client checkout — the one thing that cannot be derived.
 
-    Asked for explicitly, named by `$COFRAME_UI`, or found where the workspace
+    Asked for explicitly, named by `$KITEBASE_UI`, or found where the workspace
     layout puts it: beside the library checkout, or one or two levels above the
     application. When none of that holds, the error lists what was tried, so
     the answer is to point at it rather than to move it.
     """
-    for candidate in (given, os.environ.get("COFRAME_UI")):
+    for candidate in (given, os.environ.get("KITEBASE_UI")):
         if candidate:
             path = Path(candidate).resolve()
             if not (path / UI_MARKER).is_file():
-                raise DevError(f"{path} is not a coframe-ui checkout (no {UI_MARKER}).")
+                raise DevError(f"{path} is not a kitebase-ui checkout (no {UI_MARKER}).")
             return path
 
     tried: List[Path] = []
@@ -143,9 +143,9 @@ def find_ui(given: Optional[str] = None, app: Optional[Path] = None,
 
     listed = "\n  ".join(str(p) for p in tried) or "(nowhere to look)"
     raise DevError(
-        "No coframe-ui checkout found. Looked in:\n  " + listed +
-        "\nSay where it is: coframe dev --ui /path/to/coframe-ui, or set "
-        "COFRAME_UI.\nOr start the server alone: coframe dev --no-client")
+        "No kitebase-ui checkout found. Looked in:\n  " + listed +
+        "\nSay where it is: kitebase dev --ui /path/to/kitebase-ui, or set "
+        "KITEBASE_UI.\nOr start the server alone: kitebase dev --no-client")
 
 
 def pick_server(app: Path, framework: Optional[str] = None) -> Path:
@@ -189,7 +189,7 @@ def client_command() -> List[str]:
     pnpm = shutil.which("pnpm")
     if not pnpm:
         raise DevError("pnpm is not installed — needed for the client.\n"
-                       "Start the server alone: coframe dev --no-client")
+                       "Start the server alone: kitebase dev --no-client")
     return [pnpm, "--filter", "shell", "dev"]
 
 
@@ -262,7 +262,7 @@ def run(app: Optional[str] = None, framework: Optional[str] = None,
             raise DevError(
                 f"Port {port} is already in use — this application's server is "
                 f"probably already running.\nStop it (Ctrl-C in its terminal), "
-                f"or run the client alone: coframe dev --no-server")
+                f"or run the client alone: kitebase dev --no-server")
         command = backend_command(app_dir, server, checkout)
         print(f"server  {server.name}  →  http://localhost:{port}", flush=True)
         if checkout:
@@ -272,7 +272,7 @@ def run(app: Optional[str] = None, framework: Optional[str] = None,
     if not no_client:
         print(f"client  shell  ←  {app_dir}", flush=True)
         processes.append(_spawn(client_command(), ui_dir,
-                                {"COFRAME_APP_ROOT": str(app_dir)}))
+                                {"KITEBASE_APP_ROOT": str(app_dir)}))
 
     print("Ctrl-C stops both.\n", flush=True)
 

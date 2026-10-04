@@ -1,7 +1,7 @@
 from sqlalchemy import Index
 from sqlalchemy.orm import validates
 from sqlalchemy.ext.hybrid import hybrid_property
-from coframe.i18n import _
+from kitebase.i18n import _
 
 
 class Author:

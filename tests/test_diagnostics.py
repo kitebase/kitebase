@@ -1,4 +1,4 @@
-"""Tests for coframe.diagnostics.run_checks — post-load descriptor validation.
+"""Tests for kitebase.diagnostics.run_checks — post-load descriptor validation.
 
 Uses a PluginsManager populated via merge_dicts (so $plugin attribution is
 real) and stub tables exposing only what the checks read: effective_columns
@@ -6,8 +6,8 @@ with .name, and .attributes.
 """
 import pytest
 
-from coframe.plugins import PluginsManager
-from coframe.diagnostics import run_checks
+from kitebase.plugins import PluginsManager
+from kitebase.diagnostics import run_checks
 
 
 class FakeCol:
@@ -189,7 +189,7 @@ def test_generic_descriptor_sections_are_checked():
 
 def test_db_sections_not_walked_as_descriptors():
     """tables/types/schemas are DB/type sections, not descriptor trees."""
-    from coframe.diagnostics import _descriptor_sections
+    from kitebase.diagnostics import _descriptor_sections
     pm = PluginsManager()
     pm.merge_dicts({'tables': {}, 'types': {}, 'schemas': {}, 'menus': {}}, 'p')
     assert _descriptor_sections(pm) == ['menus']

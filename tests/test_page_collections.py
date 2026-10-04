@@ -11,10 +11,10 @@ tests check both ends of that claim.
 """
 import pytest
 
-import coframe.utils
-from coframe.plugins import PluginsManager
-from coframe.pages import Collection, page_aggregate, resolve_collections
-from coframe.endpoint_panels import get_page
+import kitebase.utils
+from kitebase.plugins import PluginsManager
+from kitebase.pages import Collection, page_aggregate, resolve_collections
+from kitebase.endpoint_panels import get_page
 
 
 class FakeApp:
@@ -326,7 +326,7 @@ def test_a_button_that_calls_an_endpoint_declares_no_tree():
 
 def test_get_page_hands_the_client_the_completed_descriptor(monkeypatch):
     app = make_app({'book_form': form_page(authors_node())})
-    monkeypatch.setattr(coframe.utils, 'get_app', lambda: app)
+    monkeypatch.setattr(kitebase.utils, 'get_app', lambda: app)
 
     result = get_page({'id': 'book_form'})
     node = result['data']['content']['layout'][0]
@@ -337,7 +337,7 @@ def test_get_page_hands_the_client_the_completed_descriptor(monkeypatch):
 
 def test_get_page_reports_a_broken_node_instead_of_serving_it(monkeypatch):
     app = make_app({'book_form': form_page(authors_node(fk=None))})
-    monkeypatch.setattr(coframe.utils, 'get_app', lambda: app)
+    monkeypatch.setattr(kitebase.utils, 'get_app', lambda: app)
 
     result = get_page({'id': 'book_form'})
 
@@ -369,7 +369,7 @@ def titled_app(pages):
 
 
 def test_a_written_list_takes_titles_from_the_model():
-    from coframe.pages import load_page
+    from kitebase.pages import load_page
     app = titled_app({'book_list': {'content': {
         'type': 'table',
         'source': {'model': 'Book'},
@@ -387,7 +387,7 @@ def test_a_written_list_takes_titles_from_the_model():
 
 
 def test_a_collection_grid_takes_titles_from_its_model():
-    from coframe.pages import load_page
+    from kitebase.pages import load_page
     app = titled_app({'book_form': form_page(
         {'type': 'section', 'columns': [{'id': 'left', 'fields': [authors_node()]}]})})
 
@@ -404,7 +404,7 @@ class _FkTable:
 
 
 def test_a_written_form_field_inherits_its_column_and_keeps_what_it_says():
-    from coframe.pages import load_page
+    from kitebase.pages import load_page
     app = titled_app({'book_form': form_page(
         {'type': 'section', 'columns': [{'id': 'left', 'fields': [
             {'name': 'title', 'width': '50%'},

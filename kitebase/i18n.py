@@ -1,8 +1,8 @@
 """
-coframe.i18n — lightweight gettext-style translation.
+kitebase.i18n — lightweight gettext-style translation.
 
 Usage:
-    from coframe.i18n import _, set_locale
+    from kitebase.i18n import _, set_locale
 
     set_locale('it')          # called by auth middleware from JWT context
     _('Record not found')     # → 'Record non trovato'

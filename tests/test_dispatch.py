@@ -13,8 +13,8 @@ set on every dispatch keeps one user's context out of the next user's request.
 import logging
 import pytest
 
-from coframe.db import BaseApp
-from coframe.endpoints import CommandProcessor, endpoint, _ENDPOINTS
+from kitebase.db import BaseApp
+from kitebase.endpoints import CommandProcessor, endpoint, _ENDPOINTS
 
 
 @pytest.fixture
@@ -146,10 +146,10 @@ def test_endpoint_decorator_registers_a_dispatchable_operation(processor):
 # never: a `db update` on a user carries the password.
 
 def test_a_request_leaves_one_line_with_who_and_how_long(processor, caplog):
-    with caplog.at_level(logging.INFO, logger='coframe'):
+    with caplog.at_level(logging.INFO, logger='kitebase'):
         result = processor.send({'operation': 'echo', 'parameters': {'a': 1},
                                  'context': {'username': 'rossi'}, 'request_id': 'req-1'})
-    lines = [r for r in caplog.records if r.name == 'coframe']
+    lines = [r for r in caplog.records if r.name == 'kitebase']
     assert len(lines) == 1
     assert lines[0].levelno == logging.INFO
     assert 'echo by rossi → success 200' in lines[0].getMessage()
@@ -158,7 +158,7 @@ def test_a_request_leaves_one_line_with_who_and_how_long(processor, caplog):
 
 
 def test_a_failure_logs_the_traceback_under_the_request_id(processor, caplog):
-    with caplog.at_level(logging.INFO, logger='coframe'):
+    with caplog.at_level(logging.INFO, logger='kitebase'):
         processor.send({'operation': 'boom', 'request_id': 'req-2'})
     errors = [r for r in caplog.records if r.levelno == logging.ERROR]
     assert len(errors) == 1
@@ -167,17 +167,17 @@ def test_a_failure_logs_the_traceback_under_the_request_id(processor, caplog):
 
 
 def test_a_refusal_is_a_warning_not_a_failure(processor, caplog):
-    with caplog.at_level(logging.INFO, logger='coframe'):
+    with caplog.at_level(logging.INFO, logger='kitebase'):
         processor.send({'operation': 'shaped'})
         processor.send({'operation': 'nowhere'})
-    levels = [(r.levelno, r.getMessage().split(' ')[0]) for r in caplog.records if r.name == 'coframe']
+    levels = [(r.levelno, r.getMessage().split(' ')[0]) for r in caplog.records if r.name == 'kitebase']
     assert (logging.WARNING, 'shaped') in levels
     assert (logging.WARNING, 'nowhere') in levels
     assert not any(lvl == logging.ERROR for lvl, _ in levels)
 
 
 def test_parameter_values_are_never_logged(processor, caplog):
-    with caplog.at_level(logging.DEBUG, logger='coframe'):
+    with caplog.at_level(logging.DEBUG, logger='kitebase'):
         processor.send({'operation': 'echo',
                         'parameters': {'table': 'User', 'data': {'password': 'hunter2'}, 'ids': [1, 2]}})
     text = '\n'.join(r.getMessage() for r in caplog.records)

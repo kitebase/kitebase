@@ -1,7 +1,7 @@
 """Reading and writing an aggregate — a record and the collections it owns.
 
 The client sends a page id and a list of operations; the page's descriptor says
-which tables those operations may touch (`coframe.pages`). Nothing here trusts
+which tables those operations may touch (`kitebase.pages`). Nothing here trusts
 the payload for a table name, and that is the whole point of the seam: the tree
 is a fact of the application, not of the request.
 
@@ -38,11 +38,11 @@ this becomes the only write path is a decision for the day the client moves.
 """
 from typing import Any, Dict, List, Optional, Tuple
 
-import coframe.utils
-from coframe.endpoints import endpoint
-from coframe.endpoint_db import pk_field, write_values, coerce_value
-from coframe.pages import Aggregate, Collection, page_aggregate
-from coframe.querybuilder import DynamicQueryBuilder
+import kitebase.utils
+from kitebase.endpoints import endpoint
+from kitebase.endpoint_db import pk_field, write_values, coerce_value
+from kitebase.pages import Aggregate, Collection, page_aggregate
+from kitebase.querybuilder import DynamicQueryBuilder
 
 _OPS = ('create', 'update', 'delete')
 
@@ -195,7 +195,7 @@ def load_tree(data: Dict[str, Any]) -> Dict[str, Any]:
     if 'id' not in data or data['id'] is None:
         return {'status': 'error', 'message': 'id is required', 'code': 400}
 
-    app = coframe.utils.get_app()
+    app = kitebase.utils.get_app()
     try:
         aggregate = page_aggregate(app, page_id)
         with app.get_session() as session:
@@ -439,7 +439,7 @@ def save_tree(data: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(root_node, dict):
         return {'status': 'error', 'message': 'root must be a node', 'code': 400}
 
-    app = coframe.utils.get_app()
+    app = kitebase.utils.get_app()
     try:
         aggregate = page_aggregate(app, page_id)
 

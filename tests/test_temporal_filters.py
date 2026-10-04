@@ -11,9 +11,9 @@ import pytest
 from sqlalchemy import Column, Date, DateTime, Integer, Time, create_engine
 from sqlalchemy.orm import Session, declarative_base
 
-import coframe.utils
-from coframe.endpoint_db import build_filters
-from coframe.querybuilder import DynamicQueryBuilder
+import kitebase.utils
+from kitebase.endpoint_db import build_filters
+from kitebase.querybuilder import DynamicQueryBuilder
 
 Base = declarative_base()
 
@@ -32,7 +32,7 @@ class AppStub:
 
 @pytest.fixture
 def session(monkeypatch):
-    monkeypatch.setattr(coframe.utils, 'get_app', lambda: AppStub(), raising=False)
+    monkeypatch.setattr(kitebase.utils, 'get_app', lambda: AppStub(), raising=False)
     engine = create_engine('sqlite://')
     Base.metadata.create_all(engine)
     with Session(engine) as s:

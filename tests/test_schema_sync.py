@@ -1,5 +1,5 @@
 """
-Schema alignment (coframe.schema_sync).
+Schema alignment (kitebase.schema_sync).
 
 The point of these tests is the closed list: what the sync applies by itself,
 what it refuses, and — the part that costs data if it is wrong — that a refused
@@ -13,7 +13,7 @@ change goes through a table rebuild), which makes it the right one to test on.
 import pytest
 import sqlalchemy as sa
 
-from coframe.schema_sync import (
+from kitebase.schema_sync import (
     REFUSED,
     SAFE,
     SchemaOutOfDateError,
@@ -247,7 +247,7 @@ def test_widening_a_decorated_string_is_still_a_widening(engine):
     widening a decision to take by hand — and with `on_startup: error` that
     stops the server over an ALTER that SQLite cannot even run.
     """
-    from coframe.db import CaseString
+    from kitebase.db import CaseString
 
     md = base_metadata()
     md.tables['book'].c.title.type = CaseString(200, case='upper')
@@ -260,7 +260,7 @@ def test_widening_a_decorated_string_is_still_a_widening(engine):
 
 def test_narrowing_a_decorated_string_is_still_refused(engine):
     """The unwrapping must not cost the refusal in the other direction."""
-    from coframe.db import CaseString
+    from kitebase.db import CaseString
 
     md = base_metadata()
     md.tables['book'].c.title.type = CaseString(10, case='upper')
@@ -577,16 +577,16 @@ class _AppStub:
 
 
 def _forced_schema(monkeypatch):
-    import coframe.db
+    import kitebase.db
     from types import SimpleNamespace
     md = base_metadata()
     md.tables['book']._columns.remove(md.tables['book'].c.note)
-    monkeypatch.setattr(coframe.db, 'Base', SimpleNamespace(metadata=md))
+    monkeypatch.setattr(kitebase.db, 'Base', SimpleNamespace(metadata=md))
     return md
 
 
 def test_db_sync_force_declined_applies_nothing(engine, monkeypatch):
-    from coframe.cli import db_sync
+    from kitebase.cli import db_sync
     _forced_schema(monkeypatch)
     asked = []
 
@@ -599,7 +599,7 @@ def test_db_sync_force_declined_applies_nothing(engine, monkeypatch):
 
 
 def test_db_sync_force_confirmed_applies(engine, monkeypatch):
-    from coframe.cli import db_sync
+    from kitebase.cli import db_sync
     md = _forced_schema(monkeypatch)
 
     report, aligned = db_sync(_AppStub(engine), force=True, confirm=lambda changes: True)

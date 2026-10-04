@@ -1,6 +1,6 @@
 # Getting Started
 
-How to put Coframe on your machine, write an application that runs against your
+How to put Kitebase on your machine, write an application that runs against your
 own sources, and compile the client it is served with — starting from nothing but
 git, Node and uv.
 
@@ -39,15 +39,15 @@ road before leaving it.
 
 ## 1. The workstation: three repositories
 
-Make a directory to hold them — the name is yours, `coframe-station` here — and
+Make a directory to hold them — the name is yours, `kitebase-station` here — and
 clone the three into it:
 
 ```bash
-mkdir coframe-station && cd coframe-station
+mkdir kitebase-station && cd kitebase-station
 
-git clone https://github.com/claudiodriussi/coframe.git
-git clone https://github.com/claudiodriussi/coframe-ui.git
-git clone https://github.com/claudiodriussi/coframe-commons.git
+git clone https://github.com/kitebase/kitebase.git
+git clone https://github.com/kitebase/kitebase-ui.git
+git clone https://github.com/kitebase/kitebase-commons.git
 ```
 
 > **If git asks for a username**, on a repository that is public: GitHub served
@@ -55,50 +55,50 @@ git clone https://github.com/claudiodriussi/coframe-commons.git
 > `401 www-authenticate: Basic realm="GitHub"`. That is its anonymous rate limit,
 > counted per IP, and it has nothing to do with permissions. Wait a few minutes,
 > or clone as yourself if you have a GitHub account: `gh repo clone
-> claudiodriussi/coframe`, or the SSH form `git@github.com:claudiodriussi/coframe.git`
+> claudiodriussi/kitebase`, or the SSH form `git@github.com:claudiodriussi/kitebase.git`
 > once you have a key. `GIT_TERMINAL_PROMPT=0` in front of the command shows the
 > real error instead of the prompt.
 
 | directory | what it is |
 |---|---|
-| `coframe/` | the library: plugin system, model generation, dispatcher, CLI |
-| `coframe-ui/` | the client library and the generic shell |
-| `coframe-commons/` | the shared plugins: types, mixins, the party model |
+| `kitebase/` | the library: plugin system, model generation, dispatcher, CLI |
+| `kitebase-ui/` | the client library and the generic shell |
+| `kitebase-commons/` | the shared plugins: types, mixins, the party model |
 
 What you end up with, once chapter 2 adds an application of its own:
 
 ```
-coframe-station/
-├── coframe/
-├── coframe-ui/
-├── coframe-commons/
+kitebase-station/
+├── kitebase/
+├── kitebase-ui/
+├── kitebase-commons/
 └── myapp/              the application, a sibling of the three
 ```
 
 **Nothing in the framework depends on that arrangement.** Two conveniences do:
-the client finds the `devtest` bench by looking for `coframe/devtest` up to three
+the client finds the `devtest` bench by looking for `kitebase/devtest` up to three
 levels above itself, and an application that declares a shared plugin root writes
 the path to it — which is shorter when they are siblings. Your applications say
 where they are, and can live anywhere.
 
-Then the environment, still from `coframe-station/`:
+Then the environment, still from `kitebase-station/`:
 
 ```bash
 uv venv
 source .venv/bin/activate              # Windows: .venv\Scripts\activate
-uv pip install -e "./coframe[dev]"     # the library, editable, plus the tests
+uv pip install -e "./kitebase[dev]"     # the library, editable, plus the tests
 
-cd coframe-ui
+cd kitebase-ui
 pnpm install                           # the client workspace, once
 cd ..
 ```
 
-That venv is the workstation's: it is what gives you the `coframe` command, and
+That venv is the workstation's: it is what gives you the `kitebase` command, and
 the chapters below assume it is active. It is **not** the environment your
 applications run in — each of those has a `.venv` of its own, made by `uv sync`.
 
 `[dev]` brings pytest and both web frameworks. An application installs only the
-one it serves with — `coframe[flask]` or `coframe[fastapi]`.
+one it serves with — `kitebase[flask]` or `kitebase[fastapi]`.
 
 `pnpm install` sets up the whole client workspace — the UI library and the two
 clients that consume it — in one go, and it is what chapter 3 compiles with. It
@@ -108,17 +108,17 @@ is only skippable by someone who will never build a client.
 > targets `$VIRTUAL_ENV`, not the directory you are in, so it would install into
 > that one. `env -u VIRTUAL_ENV uv ...` does the same job without deactivating.
 
-**What you should see.** The `coframe` command exists, and lists what it can do:
+**What you should see.** The `kitebase` command exists, and lists what it can do:
 
 ```bash
-coframe --help              # without the venv activated: .venv/bin/coframe --help
+kitebase --help              # without the venv activated: .venv/bin/kitebase --help
 ```
 
 ---
 
 ## 2. Your first application
 
-From `coframe-station/`, so that the application lands beside the three
+From `kitebase-station/`, so that the application lands beside the three
 repositories. **An application is free to live anywhere** — nothing looks for it,
 and it is the one that says where things are: the library comes from its own
 environment, and the shared plugins from a path it writes in chapter 4, relative
@@ -126,15 +126,15 @@ to itself or absolute. A sibling here only keeps that path short and the tree
 easy to read.
 
 ```bash
-coframe new myapp
+kitebase new myapp
 cd myapp
 deactivate                  # the workstation venv has done its job
 uv sync                     # this application's own .venv
 ```
 
-The workstation venv was needed for one thing, `coframe new`, and that is done:
+The workstation venv was needed for one thing, `kitebase new`, and that is done:
 from here an application runs in **its own** `.venv`, and `uv run` finds
-everything there — the `coframe` command included, because coframe is a
+everything there — the `kitebase` command included, because kitebase is a
 dependency of the application too. Chapter 5 activates the workstation one again
 for the library's tests.
 
@@ -144,21 +144,21 @@ for the library's tests.
 > must run. The warning is the reason for the `deactivate` above, not a problem
 > to solve.
 
-`coframe new` knows where the coframe that ran it lives. Yours is a checkout, so
+`kitebase new` knows where the kitebase that ran it lives. Yours is a checkout, so
 the generated `pyproject.toml` carries a block that an application created from
 the published library would not have:
 
 ```toml
 [tool.uv.sources]
-coframe = { path = "/…/coframe", editable = true }
+kitebase = { path = "/…/kitebase", editable = true }
 ```
 
 The application now resolves the library from your working copy: edit the
 library, and it sees the change at once. **The line that proves it:**
 
 ```bash
-uv run python -c "import coframe; print(coframe.__file__)"
-# → /…/coframe/coframe/__init__.py    a path inside your checkout
+uv run python -c "import kitebase; print(kitebase.__file__)"
+# → /…/kitebase/kitebase/__init__.py    a path inside your checkout
 # → /…/.venv/…/site-packages/…        the published copy: the block is missing
 ```
 
@@ -177,8 +177,8 @@ application is born knowing only who logs into it. Then, at
 <http://localhost:8300/>, the server says what it is and what it hasn't got:
 
 ```json
-{"application": "myapp", "api": "coframe/",
- "client": "not built — run `coframe build-client`"}
+{"application": "myapp", "api": "kitebase/",
+ "client": "not built — run `kitebase build-client`"}
 ```
 
 **There is no page yet, and that is the right answer**: a client is compiled in
@@ -187,14 +187,14 @@ chapter 3. What is already complete is the API, and it answers.
 **Open a second terminal now and `cd` to the application** — the server holds
 the first one until Ctrl-C, and everything from here is typed in the second.
 Nothing to activate in it: `uv run` finds this application's environment on its
-own. In chapter 3, `coframe dev` takes the first terminal the same way.
+own. In chapter 3, `kitebase dev` takes the first terminal the same way.
 
 Log in as `admin` / `admin`, the user a generated application seeds for itself:
 
 ```bash
 curl -X POST -H 'Content-Type: application/json' \
      -d '{"username":"admin","password":"admin"}' \
-     http://localhost:8300/coframe/auth/login
+     http://localhost:8300/kitebase/auth/login
 # {"status": "success", "data": {"token": "eyJ..."}}
 ```
 
@@ -205,7 +205,7 @@ below assume `$TOKEN` holds it:
 ```bash
 TOKEN=$(curl -s -X POST -H 'Content-Type: application/json' \
         -d '{"username":"admin","password":"admin"}' \
-        http://localhost:8300/coframe/auth/login \
+        http://localhost:8300/kitebase/auth/login \
         | python3 -c 'import sys, json; print(json.load(sys.stdin)["data"]["token"])')
 
 echo "$TOKEN" | cut -c1-28        # eyJhbGciOiJIUzI1NiIsInR5cCI6
@@ -283,7 +283,7 @@ a token from `auth/login`:
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-     -d '{"id":"book_list"}' http://localhost:8300/coframe/endpoint/get_page
+     -d '{"id":"book_list"}' http://localhost:8300/kitebase/endpoint/get_page
 ```
 
 ```json
@@ -296,7 +296,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/jso
 **Nobody wrote that.** The client knows nothing about `Book`: it draws whatever
 the server hands it, and what the server hands it is the JSON above — a *page
 descriptor*, data rather than code. No page is declared under the id
-`book_list`, so coframe built one from the schema you had just written, and
+`book_list`, so kitebase built one from the schema you had just written, and
 marked it `_auto: true` so that you can tell which it is.
 
 Two ids answer for every table, `{table}_list` and `{table}_form`. The day the
@@ -323,7 +323,7 @@ hangs the item under the group the file already declares, and the icon is a
 
 ```bash
 curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-     -d '{}' http://localhost:8300/coframe/endpoint/get_menu
+     -d '{}' http://localhost:8300/kitebase/endpoint/get_menu
 ```
 
 ```json
@@ -346,21 +346,21 @@ An application does not own a client. It contributes interface through the
 compiles them in. **That is why the shell is the norm**: what makes an
 application look like itself travels in its plugins.
 
-Both commands look for the client repository next to your coframe checkout —
-`coframe-station/coframe-ui`, in the layout of chapter 1 — and take
-`COFRAME_UI=/path/to/coframe-ui` when it is somewhere else. `uv run` runs them
-from the application's own environment, where coframe is a dependency; with the
-workstation venv active, plain `coframe …` works too.
+Both commands look for the client repository next to your kitebase checkout —
+`kitebase-station/kitebase-ui`, in the layout of chapter 1 — and take
+`KITEBASE_UI=/path/to/kitebase-ui` when it is somewhere else. `uv run` runs them
+from the application's own environment, where kitebase is a dependency; with the
+workstation venv active, plain `kitebase …` works too.
 
 **In development** — two processes, two origins. **Stop the server of chapter 2
-first**: `coframe dev` starts one itself, and two cannot hold the same port —
+first**: `kitebase dev` starts one itself, and two cannot hold the same port —
 it checks, and says so, rather than letting uvicorn fail underneath. Then, in
 that same first terminal:
 
 ```bash
-uv run coframe dev
+uv run kitebase dev
 #   server  server_fastapi.py  →  http://localhost:8300
-#           against the library at /…/coframe
+#           against the library at /…/kitebase
 #   client  shell              ←  /…/myapp           http://localhost:5174
 ```
 
@@ -375,7 +375,7 @@ nothing. Which also means it is a development password, and until you replace it
 it is the whole security of this application.
 
 The client is served by vite on a port of its own, but the browser never sees
-two origins: vite proxies `/coframe/*` to the backend, on the port `config.yaml`
+two origins: vite proxies `/kitebase/*` to the backend, on the port `config.yaml`
 declares, so no server enables CORS — in development as in service. Ctrl-C stops
 both — and if either one dies, the other is stopped with it, because a client
 talking to nothing looks like a bug in the application.
@@ -385,11 +385,11 @@ talking to nothing looks like a bug in the application.
 > the warning is about something that exists a second later, and it does not
 > come back.
 
-**Compiled** — one process, one origin. Stop `coframe dev` first, for the same
+**Compiled** — one process, one origin. Stop `kitebase dev` first, for the same
 reason, then:
 
 ```bash
-uv run coframe build-client   # → static/, which this application's server serves
+uv run kitebase build-client   # → static/, which this application's server serves
 uv run server_flask.py        # http://localhost:8300 — client and API together
 ```
 
@@ -401,13 +401,13 @@ Served this way the application answers on the network too —
 `http://<this machine's address>:8300` from another machine — because the
 compiled client calls whatever origin served it, and no address is baked in.
 
-> A client of your own is possible — `coframe-ui/apps/devtest` is one, and it
+> A client of your own is possible — `kitebase-ui/apps/devtest` is one, and it
 > hosts the playground — but it is only needed for what plugins cannot
-> contribute. Today it lives inside the client repository: `@coframe/ui` is
+> contribute. Today it lives inside the client repository: `@kitebase/ui` is
 > consumed as a workspace package, so a client outside that checkout has no way
 > to depend on it.
 
-### What `coframe dev` does
+### What `kitebase dev` does
 
 One command, four decisions — worth knowing, because each of them is something
 you may want to make yourself:
@@ -419,7 +419,7 @@ you may want to make yourself:
    and layers the library checkout on top for the run only, which is what the
    second line of its output says.
 3. **It starts the shell** in the client repository, pointed here by
-   `COFRAME_APP_ROOT`.
+   `KITEBASE_APP_ROOT`.
 4. **It keeps the two together**, and takes both down when either one stops.
 
 The same thing by hand, in two terminals — no magic, and the way to run only one
@@ -430,15 +430,15 @@ half:
 uv run server_flask.py                         # or server_fastapi.py
 
 # terminal 2 — the client, told which application it serves
-cd ../coframe-ui
-COFRAME_APP_ROOT=/path/to/myapp pnpm --filter shell dev    # localhost:5174
+cd ../kitebase-ui
+KITEBASE_APP_ROOT=/path/to/myapp pnpm --filter shell dev    # localhost:5174
 ```
 
-`coframe dev --no-client` and `--no-server` run one half with the other left to
+`kitebase dev --no-client` and `--no-server` run one half with the other left to
 you. And the compiled build has a long form too:
 
 ```bash
-cd ../coframe-ui
+cd ../kitebase-ui
 pnpm build:app /path/to/myapp                              # → myapp/static/
 ```
 
@@ -446,13 +446,13 @@ pnpm build:app /path/to/myapp                              # → myapp/static/
 
 ## 4. Using what isn't yours: the shared plugins
 
-**Stop what is running first** — the server, or `coframe dev`. A plugin root is
+**Stop what is running first** — the server, or `kitebase dev`. A plugin root is
 read once, when a process starts: the backend builds its model from it, and the
 client build derives its aliases and its component globs from the same list. Add
 a root under a running process and neither notices; you get an application that
 looks unchanged and a client that cannot resolve what the server now sends.
 
-`coframe-commons` is not a Python dependency and is never installed. It is a
+`kitebase-commons` is not a Python dependency and is never installed. It is a
 **plugin root**, and an application reaches it by path — which is the whole
 integration. In `config.yaml`, **replace the `plugins: [plugins]` line** — the
 commented example above it says the same thing, but the path is only right when
@@ -461,13 +461,13 @@ the shared checkout sits where this manual put it:
 ```yaml
 # myapp/config.yaml
 plugins:
-  - path: ../coframe-commons/plugins
+  - path: ../kitebase-commons/plugins
     include: [common]
   - plugins
 ```
 
 That path is relative to `config.yaml`. An application somewhere else says so —
-`path: /home/you/src/coframe-commons/plugins` works just as well, and is what a
+`path: /home/you/src/kitebase-commons/plugins` works just as well, and is what a
 deployment usually writes.
 
 `include` is positive on purpose: what a shared root gains over time stays inert
@@ -539,16 +539,16 @@ directory you were standing in — has verified that session, not the workstatio
 Start from the workstation directory, and take the walk:
 
 ```bash
-cd coframe-station
+cd kitebase-station
 source .venv/bin/activate       # for pytest and the bench: both want the library
 
-cd coframe
+cd kitebase
 pytest                          # the library
 
-cd ../coframe-ui
+cd ../kitebase-ui
 pnpm test                       # the client library
 
-cd ../coframe/devtest
+cd ../kitebase/devtest
 python server_fastapi.py        # the bench — http://localhost:8300, Ctrl-C to stop
 
 cd ../..
@@ -557,7 +557,7 @@ cd ../..
 What you are looking for is **no failures** — the counts move with the code, and
 a number written here would be wrong within a month. The bench answers on 8300
 with the same info JSON as chapter 2, saying no client is built: `pnpm build` in
-`coframe-ui` compiles one into `coframe/devtest/static/` if you want to see it.
+`kitebase-ui` compiles one into `kitebase/devtest/static/` if you want to see it.
 
 And the proof worth twice the others, because no already-working machine can give
 it: **clone the three repositories into an empty directory on a machine that has
@@ -604,8 +604,8 @@ Nothing in this setup requires symbolic links, so Developer Mode is not needed.
 To see an application run without building a workstation, one command is enough:
 
 ```bash
-uvx --from "coframe @ git+https://github.com/claudiodriussi/coframe" \
-    coframe new hello
+uvx --from "kitebase @ git+https://github.com/kitebase/kitebase" \
+    kitebase new hello
 cd hello
 uv sync
 uv run app.py db-sync
@@ -613,7 +613,7 @@ uv run server_flask.py      # the API on http://localhost:8300
 ```
 
 What you get is the same application chapter 2 builds, with one difference that
-matters: it resolves coframe from the repository at `main`, not from a checkout,
+matters: it resolves kitebase from the repository at `main`, not from a checkout,
 so there is nothing on your disk to edit. uv downloads the library into its cache
 and into that application's environment; no copy of it is yours.
 
@@ -624,23 +624,23 @@ can change — start at [chapter 1](#1-the-workstation-three-repositories).
 
 ## Appendix C — without uv
 
-Everything except `coframe dev` works with a plain venv:
+Everything except `kitebase dev` works with a plain venv:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e "./coframe[dev]"
+pip install -e "./kitebase[dev]"
 ```
 
 Two things to know before choosing this road:
 
 1. **`[tool.uv.sources]` is silently ignored by pip.** An application generated
    from a checkout declares that its dependency is your working copy; pip does
-   not read that block, and resolves coframe from `git+…@main` instead. Nothing
+   not read that block, and resolves kitebase from `git+…@main` instead. Nothing
    warns you: you edit the library and nothing changes. Install the checkout into
-   the application's environment yourself — `pip install -e /path/to/coframe` —
-   and check it with the `import coframe; print(coframe.__file__)` line above.
-2. **`coframe dev` requires uv**, and says so, naming what to run instead:
+   the application's environment yourself — `pip install -e /path/to/kitebase` —
+   and check it with the `import kitebase; print(kitebase.__file__)` line above.
+2. **`kitebase dev` requires uv**, and says so, naming what to run instead:
    `.venv/bin/python server_flask.py`, alongside `pnpm --filter shell dev`.
 
 pnpm, on the other hand, is not optional: the client is a pnpm workspace whose
@@ -652,13 +652,13 @@ packages depend on each other with `workspace:*`, which npm cannot install.
 ## Appendix D — the two benches
 
 ```bash
-cd coframe/devtest      && python server_fastapi.py   # 8300 — the library's bench
-cd coframe-commons/demo && coframe dev --no-client    # 8302 — the shared plugins
-cd coframe-ui           && pnpm dev                   # 5173 — devtest client + playground
+cd kitebase/devtest      && python server_fastapi.py   # 8300 — the library's bench
+cd kitebase-commons/demo && kitebase dev --no-client    # 8302 — the shared plugins
+cd kitebase-ui           && pnpm dev                   # 5173 — devtest client + playground
 ```
 
 `devtest` exercises the library, and is where a feature is demonstrated first.
-`demo` has a venv of its own and declares coframe as a dependency: it is the
+`demo` has a venv of its own and declares kitebase as a dependency: it is the
 reference consumer of the shared plugins and behaves like an application outside
 the repository, because that is what it has to prove.
 

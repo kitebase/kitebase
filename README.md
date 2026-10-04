@@ -1,10 +1,10 @@
-# Coframe
+# Kitebase
 
-**Coframe** is a plugin-based and data-driven framework designed to generate SQLAlchemy model source code and provide server-side infrastructure for database applications. It bridges the gap between database schema definition and application development with a flexible, extensible architecture.
+**Kitebase** is a plugin-based and data-driven framework designed to generate SQLAlchemy model source code and provide server-side infrastructure for database applications. It bridges the gap between database schema definition and application development with a flexible, extensible architecture.
 
 ## Status
 
-**BETA SOFTWARE**: While functional for testing and development, Coframe is still under active development. API changes may occur, and comprehensive documentation is in progress.
+**BETA SOFTWARE**: While functional for testing and development, Kitebase is still under active development. API changes may occur, and comprehensive documentation is in progress.
 
 ## Key Features
 
@@ -34,34 +34,34 @@ The rest of this section is the short answer for those who only need the library
 
 ### As a dependency
 
-Coframe is installed, not copied. An application declares it and pins a
+Kitebase is installed, not copied. An application declares it and pins a
 version, so what is running is something the application states rather than
 whatever happened to be on the machine:
 
 ```bash
-uv add "coframe[flask] @ git+https://github.com/claudiodriussi/coframe@v0.5.0"
-# or: pip install "coframe[flask] @ git+https://github.com/claudiodriussi/coframe@v0.5.0"
+uv add "kitebase[flask] @ git+https://github.com/kitebase/kitebase@v0.5.0"
+# or: pip install "kitebase[flask] @ git+https://github.com/kitebase/kitebase@v0.5.0"
 ```
 
-The web framework is an extra — `[flask]` or `[fastapi]` — because coframe
+The web framework is an extra — `[flask]` or `[fastapi]` — because kitebase
 imports neither at module level: you install the one you serve with.
 
 Each application gets its own virtual environment. Starting one from nothing:
 
 ```bash
-coframe new myapp      # config.yaml, a plugin, the entry points
+kitebase new myapp      # config.yaml, a plugin, the entry points
 cd myapp && uv sync
 python app.py db-sync  # create the database from the YAML schema
 python server.py       # http://localhost:8300 — admin/admin
 ```
 
-### For working on coframe itself
+### For working on kitebase itself
 
 Clone it and install in editable mode, so the sources stay live:
 
 ```bash
-git clone https://github.com/claudiodriussi/coframe.git
-cd coframe
+git clone https://github.com/kitebase/kitebase.git
+cd kitebase
 uv venv && uv pip install -e ".[dev]"    # or: python -m venv .venv; pip install -e ".[dev]"
 pytest
 ```
@@ -94,7 +94,7 @@ The `devtest` directory contains examples to help you understand the framework:
    ```
 
 4. The querybuilder component is standalone and can work outside of
-   the coframe package. You can test it with:
+   the kitebase package. You can test it with:
    ```bash
    cd querybuilder
    python query_examples.py
@@ -103,7 +103,7 @@ The `devtest` directory contains examples to help you understand the framework:
 ### Building Your App
 
 ```bash
-coframe new myapp && cd myapp
+kitebase new myapp && cd myapp
 uv sync
 uv run app.py db-sync        # create the database from the YAML schema
 uv run server_flask.py       # http://localhost:8300 — admin/admin
@@ -115,7 +115,7 @@ shared plugins: [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md).
 
 ## Architecture
 
-Coframe consists of several key components:
+Kitebase consists of several key components:
 
 - **Plugin Manager**: Loads and organizes plugin modules
 - **DB Engine**: Manages SQLAlchemy models and database interactions
@@ -124,7 +124,7 @@ Coframe consists of several key components:
 - **Querybuilder**: Translates JSON query specifications to SQLAlchemy queries
 - **Flask Server**: Provides REST API access to the system
 
-## Extending Coframe
+## Extending Kitebase
 
 The system is designed to be extended through plugins. Each plugin can contain:
 
@@ -135,7 +135,7 @@ The system is designed to be extended through plugins. Each plugin can contain:
 
 ## Web Framework Support
 
-Currently, Coframe includes a Flask server integration. Future versions may support Django, FastAPI, and other Python web frameworks.
+Currently, Kitebase includes a Flask server integration. Future versions may support Django, FastAPI, and other Python web frameworks.
 
 ## License
 

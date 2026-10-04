@@ -17,10 +17,10 @@ import yaml
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, configure_mappers
 
-import coframe.utils
-from coframe.db import DB, Base
-from coframe.plugins import PluginsManager
-from coframe.source import Generator
+import kitebase.utils
+from kitebase.db import DB, Base
+from kitebase.plugins import PluginsManager
+from kitebase.source import Generator
 
 
 @pytest.fixture(autouse=True)
@@ -45,7 +45,7 @@ def generate(tmp_path, monkeypatch, tables, types=None):
 
     manager = PluginsManager()
     manager.load_config(str(cfg))
-    coframe.utils.register_standard_handlers(manager)
+    kitebase.utils.register_standard_handlers(manager)
     manager.load_plugins()
 
     db = DB()

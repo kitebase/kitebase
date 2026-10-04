@@ -1,4 +1,4 @@
-"""`coframe dev` — what it finds, and what it refuses to guess.
+"""`kitebase dev` — what it finds, and what it refuses to guess.
 
 The command exists to make three facts agree: which application is served,
 which library it runs against, and where the client is. Two of them it derives;
@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from coframe import dev
+from kitebase import dev
 
 
 def write_app(directory: Path, port: int = 8300, servers=("server_fastapi.py",),
@@ -39,8 +39,8 @@ def write_ui(directory: Path) -> Path:
 
 @pytest.fixture(autouse=True)
 def no_inherited_environment(monkeypatch):
-    """The developer's own COFRAME_* must not decide the outcome of a test."""
-    for name in ("COFRAME_SRC", "COFRAME_UI"):
+    """The developer's own KITEBASE_* must not decide the outcome of a test."""
+    for name in ("KITEBASE_SRC", "KITEBASE_UI"):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -76,7 +76,7 @@ def test_a_free_port_is_free(tmp_path):
 
 
 def test_a_port_someone_is_listening_on_is_in_use(tmp_path):
-    """The check that keeps `coframe dev` from starting a server that cannot bind.
+    """The check that keeps `kitebase dev` from starting a server that cannot bind.
 
     Without it the reason — one line from uvicorn — is buried between the
     client's startup and the death of both processes.
@@ -113,15 +113,15 @@ def test_asking_for_a_framework_that_is_not_there_says_so(tmp_path):
 # ── The library ──────────────────────────────────────────────────────────────
 
 def test_the_environment_names_the_checkout(tmp_path, monkeypatch):
-    checkout = tmp_path / "coframe"
+    checkout = tmp_path / "kitebase"
     checkout.mkdir()
-    (checkout / "pyproject.toml").write_text("[project]\nname='coframe'\n")
-    monkeypatch.setenv("COFRAME_SRC", str(checkout))
+    (checkout / "pyproject.toml").write_text("[project]\nname='kitebase'\n")
+    monkeypatch.setenv("KITEBASE_SRC", str(checkout))
     assert dev.find_source_checkout() == checkout
 
 
 def test_a_directory_that_is_not_a_checkout_is_refused(tmp_path):
-    with pytest.raises(dev.DevError, match="not a coframe checkout"):
+    with pytest.raises(dev.DevError, match="not a kitebase checkout"):
         dev.find_source_checkout(str(tmp_path))
 
 
@@ -134,21 +134,21 @@ def test_running_from_a_checkout_is_the_default(tmp_path):
 # ── The client ───────────────────────────────────────────────────────────────
 
 def test_the_environment_names_the_client(tmp_path, monkeypatch):
-    ui = write_ui(tmp_path / "coframe-ui")
-    monkeypatch.setenv("COFRAME_UI", str(ui))
+    ui = write_ui(tmp_path / "kitebase-ui")
+    monkeypatch.setenv("KITEBASE_UI", str(ui))
     assert dev.find_ui() == ui
 
 
 def test_the_workspace_layout_is_the_fallback(tmp_path):
-    """<ws>/coframe and <ws>/client/svelte — the layout the workspace holds."""
-    src = tmp_path / "coframe"
+    """<ws>/server and <ws>/client — the layout the workspace holds."""
+    src = tmp_path / "server"
     src.mkdir()
-    ui = write_ui(tmp_path / "client" / "svelte")
+    ui = write_ui(tmp_path / "client")
     assert dev.find_ui(app=write_app(tmp_path / "app"), src=src) == ui
 
 
 def test_a_client_beside_the_application_is_found(tmp_path):
-    ui = write_ui(tmp_path / "coframe-ui")
+    ui = write_ui(tmp_path / "kitebase-ui")
     app = write_app(tmp_path / "myapp")
     assert dev.find_ui(app=app) == ui
 
@@ -158,12 +158,12 @@ def test_not_finding_it_lists_where_it_looked(tmp_path):
     with pytest.raises(dev.DevError) as caught:
         dev.find_ui(app=app)
     message = str(caught.value)
-    assert "COFRAME_UI" in message and "--no-client" in message
-    assert str((tmp_path / "coframe-ui").resolve()) in message
+    assert "KITEBASE_UI" in message and "--no-client" in message
+    assert str((tmp_path / "kitebase-ui").resolve()) in message
 
 
 def test_a_directory_that_is_not_a_client_is_refused(tmp_path):
-    with pytest.raises(dev.DevError, match="not a coframe-ui checkout"):
+    with pytest.raises(dev.DevError, match="not a kitebase-ui checkout"):
         dev.find_ui(str(tmp_path))
 
 
@@ -178,7 +178,7 @@ def test_an_app_with_its_own_environment_runs_through_uv(tmp_path):
 
 def test_the_library_checkout_is_layered_on_for_the_run(tmp_path):
     app = write_app(tmp_path / "a", standalone=True)
-    src = tmp_path / "coframe"
+    src = tmp_path / "server"
     command = dev.backend_command(app, app / "server_fastapi.py", src)
     assert command[2:4] == ["--with-editable", str(src)]
 
@@ -186,7 +186,7 @@ def test_the_library_checkout_is_layered_on_for_the_run(tmp_path):
 def test_a_bench_inside_the_checkout_runs_with_this_interpreter(tmp_path):
     """No pyproject.toml: no environment of its own to step into."""
     app = write_app(tmp_path / "devtest")
-    command = dev.backend_command(app, app / "server_fastapi.py", tmp_path / "coframe")
+    command = dev.backend_command(app, app / "server_fastapi.py", tmp_path / "kitebase")
     assert command == [sys.executable, "server_fastapi.py"]
 
 

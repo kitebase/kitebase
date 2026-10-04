@@ -1,12 +1,12 @@
 # The Anatomy of an Application
 
-*What a Coframe application is made of: the files, the bootstrap sequence they
+*What a Kitebase application is made of: the files, the bootstrap sequence they
 share, and the servers. To walk the road instead — from an empty machine to an
 application with a compiled client — see
 [GETTING_STARTED.md](GETTING_STARTED.md); for how plugins declare the data model
 and the UI, [PLUGIN_MODEL.md](PLUGIN_MODEL.md).*
 
-> **The files below are written for you by `coframe new`.** This document
+> **The files below are written for you by `kitebase new`.** This document
 > explains what they are, and is worth reading when one of them has to change.
 
 *Last revised: 2026-07-12; re-framed 2026-09-02.*
@@ -15,7 +15,7 @@ and the UI, [PLUGIN_MODEL.md](PLUGIN_MODEL.md).*
 
 ## What an app is
 
-A Coframe **application** is a directory with three things you write, plus the
+A Kitebase **application** is a directory with three things you write, plus the
 plugins that carry the actual model and UI:
 
 ```
@@ -38,14 +38,14 @@ short bootstrap sequence (below).
 This is the heart of every entry point — CLI harness and server alike run it:
 
 ```python
-import coframe, coframe.plugins, coframe.utils, coframe.source
+import kitebase, kitebase.plugins, kitebase.utils, kitebase.source
 
-plugins = coframe.plugins.PluginsManager()
+plugins = kitebase.plugins.PluginsManager()
 plugins.load_config("config.yaml")             # read config.yaml
-coframe.utils.register_standard_handlers(plugins)  # smart-merge list handlers
+kitebase.utils.register_standard_handlers(plugins)  # smart-merge list handlers
 plugins.load_plugins()                         # discover + merge all plugin YAML
 
-app = coframe.utils.get_app()
+app = kitebase.utils.get_app()
 app.calc_db(plugins)                           # build the schema from merged data
 
 # Optional: commons query behaviors (e.g. Archivable) — the core stays agnostic
@@ -62,7 +62,7 @@ list merge handlers). `calc_db` turns the merged plugin data into SQLAlchemy
 models; `model.py` is regenerated from it (see below), so it is a build artifact,
 not source — keep it gitignored.
 
-> **Library path.** The app must be able to `import coframe`. In-tree apps add the
+> **Library path.** The app must be able to `import kitebase`. In-tree apps add the
 > library to `sys.path` (`sys.path.append("..")`); out-of-root apps reach it with
 > the matching relative depth (`sys.path.append("../..")`). Once done, plugin `.py`
 > files import by plain name because each plugin root is on the path too.
@@ -87,8 +87,8 @@ plugins: [../plugins/commons, plugins]
 db_engine: "sqlite:///myapp.sqlite"   # any SQLAlchemy URL
 
 api:
-  prefix: "coframe"          # all routes under /coframe/*
-  endpoint_prefix: "endpoint" # dispatcher → POST /coframe/endpoint/{op}
+  prefix: "kitebase"          # all routes under /kitebase/*
+  endpoint_prefix: "endpoint" # dispatcher → POST /kitebase/endpoint/{op}
   port: 8300
 
 locale: it                   # default 'en' = no translation
@@ -115,29 +115,29 @@ command is given, otherwise runs `main()`:
 
 ```python
 from pathlib import Path
-import coframe, coframe.plugins, coframe.utils, coframe.source
+import kitebase, kitebase.plugins, kitebase.utils, kitebase.source
 
 def setup_schema():
     """Load plugins + build schema. No DB engine — enough for CLI introspection."""
-    plugins = coframe.plugins.PluginsManager()
+    plugins = kitebase.plugins.PluginsManager()
     plugins.load_config("config.yaml")
-    coframe.utils.register_standard_handlers(plugins)
+    kitebase.utils.register_standard_handlers(plugins)
     plugins.load_plugins()
-    app = coframe.utils.get_app()
+    app = kitebase.utils.get_app()
     app.calc_db(plugins)
     return app
 
 def main():
     app = setup_schema()
     if app.pm.should_regenerate("model.py"):      # regenerate only when YAML changed
-        coframe.source.Generator(app).generate(filename="model.py")
+        kitebase.source.Generator(app).generate(filename="model.py")
     import model
     app.initialize_db(app.pm.config["db_engine"], model)
     app.pm.load_all_locales()
     # … your smoke test / seed data / run logic …
 
 if __name__ == "__main__":
-    from coframe.cli import make_parser, run_cli
+    from kitebase.cli import make_parser, run_cli
     args = make_parser().parse_args()
     if args.command:
         run_cli(setup_schema(), args, output_dir=Path("data"))
@@ -145,7 +145,7 @@ if __name__ == "__main__":
         main()
 ```
 
-CLI commands provided by `coframe.cli`:
+CLI commands provided by `kitebase.cli`:
 
 | Command | Purpose |
 |---------|---------|
@@ -171,9 +171,9 @@ python myapp.py dump-table Book -o -   # print Book's effective schema
 
 A server is just the bootstrap at module load, then routes. The reusable logic —
 JWT auth, request-context handling, the command dispatch — lives in
-`coframe.server_utils` (`AuthMiddleware`, `handle_generic_endpoint`), which is
+`kitebase.server_utils` (`AuthMiddleware`, `handle_generic_endpoint`), which is
 **framework-agnostic**. So each server file is thin route glue over the same core;
-only the web framework's syntax differs. Coframe ships two today, **FastAPI** and
+only the web framework's syntax differs. Kitebase ships two today, **FastAPI** and
 **Flask**.
 
 Whichever you pick, the shape is identical:
@@ -185,14 +185,14 @@ Whichever you pick, the shape is identical:
   `srv.handle_generic_endpoint`;
 - the built Svelte client, from `<app>/clientui/`, mounted by `srv.serve_client_flask`
   / `srv.serve_client_fastapi` where `client:` in config.yaml says — at the root
-  with `role: app` (coframe is the application), under `/admin/` with `role: admin`
-  (coframe is the admin of a host). One origin either way, and `static/` stays the
-  application's own. See `coframe/clientui.py`.
+  with `role: app` (kitebase is the application), under `/admin/` with `role: admin`
+  (kitebase is the admin of a host). One origin either way, and `static/` stays the
+  application's own. See `kitebase/clientui.py`.
 
 **FastAPI:**
 
 ```python
-import coframe.server_utils as srv
+import kitebase.server_utils as srv
 from fastapi import FastAPI, Request
 # … the bootstrap sequence (build plugins, calc_db, initialize_db) …
 auth = srv.AuthMiddleware(plugins.config, SECRET_KEY)
@@ -209,7 +209,7 @@ async def endpoint(operation: str, request: Request):
 **Flask** — same bootstrap, same `server_utils`, Flask glue instead:
 
 ```python
-import coframe.server_utils as srv
+import kitebase.server_utils as srv
 from flask import Flask, request, jsonify
 # … the same bootstrap sequence …
 auth = srv.AuthMiddleware(plugins.config, SECRET_KEY)
@@ -256,7 +256,7 @@ Because the core is exposed through `server_utils` and not tied to any web
 framework, adding a **third** backend is just new route glue — no change to the
 model, the endpoints, or the dispatch. **Django** is a natural next fit: it slots
 cleanly into the agnostic scheme, and could be used not only as a full server but
-as a way to **bolt a Coframe admin panel onto an existing structured Django app**,
+as a way to **bolt a Kitebase admin panel onto an existing structured Django app**,
 reusing its models/auth. *(Not implemented — a direction the architecture leaves
 open.)*
 
@@ -295,15 +295,15 @@ writes UI — the same data-driven principle as the backend.
 
 ```
 client/svelte/
-  packages/coframe-ui/   ← @coframe/ui — the reusable component library (thin)
+  packages/kitebase-ui/   ← @kitebase/ui — the reusable component library (thin)
   apps/devtest/          ← sandbox / demonstrator app
   apps/shell/            ← the Chrome shell app
 ```
 
 The library stays thin on purpose: full-stack plugins can ship their own `.svelte`
-components, so complexity lives in the plugins, not in `@coframe/ui`. A separate
+components, so complexity lives in the plugins, not in `@kitebase/ui`. A separate
 dev tool, `client/inspector/`, renders the effective merged state (`dump_app`) and
-is deliberately independent of `@coframe/ui`.
+is deliberately independent of `@kitebase/ui`.
 
 This layer is **under active development** — treat the specifics as moving; the
 stable contract is the API (the dispatcher + descriptors) it consumes.

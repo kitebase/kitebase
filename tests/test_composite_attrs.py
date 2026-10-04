@@ -14,9 +14,9 @@ address and reaches every part.
 import pytest
 import yaml
 
-import coframe.utils
-from coframe.db import DB, Base
-from coframe.plugins import PluginsManager
+import kitebase.utils
+from kitebase.db import DB, Base
+from kitebase.plugins import PluginsManager
 
 
 @pytest.fixture(autouse=True)
@@ -53,7 +53,7 @@ def build(tmp_path, monkeypatch, address_column):
 
     manager = PluginsManager()
     manager.load_config(str(cfg))
-    coframe.utils.register_standard_handlers(manager)
+    kitebase.utils.register_standard_handlers(manager)
     manager.load_plugins()
 
     db = DB()
@@ -68,7 +68,7 @@ def test_an_attribute_of_the_composite_reaches_every_part(tmp_path, monkeypatch)
 
     for part in ('address', 'city', 'country'):
         assert cols[part].attributes.get('editable') is False
-        # An attribute coframe knows nothing about travels the same way: this is
+        # An attribute kitebase knows nothing about travels the same way: this is
         # how an application says who writes a field.
         assert cols[part].attributes.get('owner') == 'legacy'
 

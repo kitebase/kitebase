@@ -13,7 +13,7 @@ plugins: [commons, plugins, plugins/libapp]
 # db engine for sqlalchemy
 db_engine: "sqlite:///devtest.sqlite"
 
-# Schema alignment (coframe.schema_sync). The server only ever looks: at startup
+# Schema alignment (kitebase.schema_sync). The server only ever looks: at startup
 # it compares the database with the schema the plugins describe and, on a
 # difference, stops ('error', the default), logs ('warn') or says nothing
 # ('off'). Changing the database is an explicit command:
@@ -25,11 +25,11 @@ migrations:
 
 # API configuration
 api:
-  prefix: "coframe"  # API prefix - all endpoints will be under /coframe/* (or use "api/v1" for /api/v1/*, etc.)
-  port: 8300         # Default Coframe server port (evocative: 8xxx HTTP-like, 3=C of Coframe)
+  prefix: "kitebase"  # API prefix - all endpoints will be under /kitebase/* (or use "api/v1" for /api/v1/*, etc.)
+  port: 8300         # Default Kitebase server port
 
-# What coframe is here: the application itself, so its client owns "/" and logs
-# people in (coframe.clientui). An admin of a host would say `role: admin`.
+# What kitebase is here: the application itself, so its client owns "/" and logs
+# people in (kitebase.clientui). An admin of a host would say `role: admin`.
 client:
   role: app
 

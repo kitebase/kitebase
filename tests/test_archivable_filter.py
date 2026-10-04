@@ -19,8 +19,8 @@ import pytest
 from sqlalchemy import Boolean, Column, Integer, String, create_engine
 from sqlalchemy.orm import Session, declarative_base
 
-import coframe.utils
-from coframe.querybuilder import DynamicQueryBuilder, filters_mention
+import kitebase.utils
+from kitebase.querybuilder import DynamicQueryBuilder, filters_mention
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 COMMON_MODEL = REPO_ROOT / 'devtest' / 'commons' / 'common' / 'model.py'
@@ -46,7 +46,7 @@ class AppStub:
 
 @pytest.fixture
 def session(monkeypatch):
-    monkeypatch.setattr(coframe.utils, 'get_app', lambda: AppStub(), raising=False)
+    monkeypatch.setattr(kitebase.utils, 'get_app', lambda: AppStub(), raising=False)
     engine = create_engine('sqlite://')
     Base.metadata.create_all(engine)
     with Session(engine) as s:

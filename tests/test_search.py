@@ -17,10 +17,10 @@ import yaml
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship
 
-import coframe.utils
-from coframe.db import DB
-from coframe.plugins import PluginsManager
-from coframe.querybuilder import DynamicQueryBuilder
+import kitebase.utils
+from kitebase.db import DB
+from kitebase.plugins import PluginsManager
+from kitebase.querybuilder import DynamicQueryBuilder
 
 
 # ── The cascade ────────────────────────────────────────────────────────────
@@ -40,7 +40,7 @@ def schema(tmp_path, monkeypatch, tables, app_config=None):
 
     manager = PluginsManager()
     manager.load_config(str(cfg))
-    coframe.utils.register_standard_handlers(manager)
+    kitebase.utils.register_standard_handlers(manager)
     manager.load_plugins()
 
     db = DB()
@@ -227,7 +227,7 @@ class AppStub:
 
 @pytest.fixture(autouse=True)
 def no_behaviors(monkeypatch):
-    monkeypatch.setattr(coframe.utils, 'get_app', lambda: AppStub(), raising=False)
+    monkeypatch.setattr(kitebase.utils, 'get_app', lambda: AppStub(), raising=False)
 
 
 MODELS = {'Partner': Partner, 'Country': Country, 'Ledger': Ledger,

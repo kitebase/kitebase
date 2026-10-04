@@ -1,5 +1,5 @@
-"""An application extends the coframe CLI with its own commands."""
-from coframe.cli import make_parser
+"""An application extends the kitebase CLI with its own commands."""
+from kitebase.cli import make_parser
 
 
 def test_application_adds_a_command():
@@ -10,6 +10,6 @@ def test_application_adds_a_command():
     args = parser.parse_args(['app-cmd', '--dry-run'])
     assert args.command == 'app-cmd' and args.dry_run
 
-    # the coframe commands are still there, next to it
+    # the kitebase commands are still there, next to it
     assert parser.parse_args(['db-check']).command == 'db-check'
     assert 'app-cmd' in parser.format_help()

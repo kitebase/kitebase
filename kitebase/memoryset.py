@@ -9,7 +9,7 @@ through a client (wizard preview → confirm pattern).
 from __future__ import annotations
 from typing import Any
 
-from coframe.types import PRIMITIVE_DEFAULTS
+from kitebase.types import PRIMITIVE_DEFAULTS
 
 
 class MemorySet:
@@ -31,8 +31,8 @@ class MemorySet:
     @classmethod
     def from_yaml(cls, schema_id: str) -> 'MemorySet':
         """Build from a schema declared in plugin YAML schemas: section."""
-        import coframe.utils
-        app = coframe.utils.get_app()
+        import kitebase.utils
+        app = kitebase.utils.get_app()
         registry = app.get_schema_registry()
         if schema_id not in registry:
             raise KeyError(f"MemorySet schema '{schema_id}' not found")
@@ -133,8 +133,8 @@ class MemorySet:
         Returns a list of error messages (empty = valid).
         Can be called on any dict, not just rows already in _rows.
         """
-        import coframe.utils
-        app = coframe.utils.get_app()
+        import kitebase.utils
+        app = kitebase.utils.get_app()
         errors: list[str] = []
 
         for field, info in self._schema.items():

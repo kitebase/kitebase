@@ -11,10 +11,10 @@ collisions), so derivation is the only way to extend one.
 import pytest
 import yaml
 
-import coframe.utils
-from coframe.db import DB, Base
-from coframe.plugins import PluginsManager
-from coframe.source import Generator
+import kitebase.utils
+from kitebase.db import DB, Base
+from kitebase.plugins import PluginsManager
+from kitebase.source import Generator
 
 
 @pytest.fixture(autouse=True)
@@ -46,7 +46,7 @@ def generate(tmp_path, monkeypatch, types, tables):
 
     manager = PluginsManager()
     manager.load_config(str(cfg))
-    coframe.utils.register_standard_handlers(manager)
+    kitebase.utils.register_standard_handlers(manager)
     manager.load_plugins()
 
     db = DB()

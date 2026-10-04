@@ -7,7 +7,7 @@ said. It is the same family as the `is not None` guard already covered in
 test_build_filters.py: there the shape was right and one condition was dropped,
 here the shape is wrong and all of them are.
 
-The mistake is easy to make because coframe has two filter dialects: the
+The mistake is easy to make because kitebase has two filter dialects: the
 endpoint `db` takes flat filters under `query` ({'field': value}), the endpoint
 `query` takes them under `filters.conditions`. Writing one where the other
 belongs used to answer with the whole table.
@@ -16,8 +16,8 @@ import pytest
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
-import coframe.utils
-from coframe.querybuilder import DynamicQueryBuilder
+import kitebase.utils
+from kitebase.querybuilder import DynamicQueryBuilder
 
 Base = declarative_base()
 
@@ -34,7 +34,7 @@ class AppStub:
 
 @pytest.fixture
 def builder(monkeypatch):
-    monkeypatch.setattr(coframe.utils, 'get_app', lambda: AppStub(), raising=False)
+    monkeypatch.setattr(kitebase.utils, 'get_app', lambda: AppStub(), raising=False)
     return DynamicQueryBuilder(session=None, models={'Book': Book})
 
 

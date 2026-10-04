@@ -11,7 +11,7 @@ failure means the merge semantics changed — decide intentionally.
 """
 import pytest
 
-from coframe.plugins import PluginsManager
+from kitebase.plugins import PluginsManager
 
 
 @pytest.fixture
@@ -324,7 +324,7 @@ def test_an_unkeyed_item_survives_a_merge_into_its_list(pm):
 # --------------------------------------------------------------------------- #
 
 def test_a_bare_string_in_a_fields_list_is_the_field_of_that_name():
-    from coframe.plugins import expand_shorthand
+    from kitebase.plugins import expand_shorthand
 
     data = expand_shorthand({"fields": ["kind", {"name": "roles", "width": "25%"}]})
 
@@ -332,7 +332,7 @@ def test_a_bare_string_in_a_fields_list_is_the_field_of_that_name():
 
 
 def test_the_shorthand_reaches_every_depth_and_leaves_other_lists_alone():
-    from coframe.plugins import expand_shorthand
+    from kitebase.plugins import expand_shorthand
 
     data = expand_shorthand({
         "pages": {"p": {"layout": [{"columns": [{"fields": ["a", {"filler": None}]}]}]}},
@@ -352,7 +352,7 @@ def test_a_field_written_short_is_still_addressable_by_the_merge(pm):
     The merge indexes a list by the identity of its items; a bare string carries
     none, so a form written short would be appended to instead of refined.
     """
-    from coframe.plugins import expand_shorthand
+    from kitebase.plugins import expand_shorthand
 
     pm.merge_dicts(expand_shorthand({"fields": ["title", "price"]}), "base")
     data = pm.merge_dicts({"fields": [{"name": "language", "$after": "title"}]}, "ext")

@@ -11,7 +11,7 @@ that moved, which no test over hand-written dicts can do.
 
 Regenerate deliberately, never to make the suite green:
 
-    COFRAME_GOLDEN_UPDATE=1 python -m pytest tests/test_merge_golden.py
+    KITEBASE_GOLDEN_UPDATE=1 python -m pytest tests/test_merge_golden.py
 
 then read `git diff` on the snapshot. That diff is the answer to "does this
 change anything we already wrote".
@@ -23,8 +23,8 @@ from typing import Any, Iterator
 
 import pytest
 
-import coframe.utils
-from coframe.plugins import PluginsManager
+import kitebase.utils
+from kitebase.plugins import PluginsManager
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GOLDEN_DIR = Path(__file__).parent / 'golden'
@@ -47,7 +47,7 @@ def merged_tree(app_dir: Path, monkeypatch) -> dict:
     monkeypatch.chdir(app_dir)
     pm = PluginsManager()
     pm.load_config('config.yaml')
-    coframe.utils.register_standard_handlers(pm)
+    kitebase.utils.register_standard_handlers(pm)
     pm.load_plugins()
     return pm.data
 
@@ -94,20 +94,20 @@ def test_the_merged_tree_is_what_it_was(app, monkeypatch):
     tree = merged_tree(APPS[app], monkeypatch)
     golden = GOLDEN_DIR / f'{app}.json'
 
-    if os.environ.get('COFRAME_GOLDEN_UPDATE'):
+    if os.environ.get('KITEBASE_GOLDEN_UPDATE'):
         GOLDEN_DIR.mkdir(exist_ok=True)
         golden.write_text(render(tree))
         pytest.skip(f'golden rewritten: {golden.relative_to(REPO_ROOT)} — read the diff')
 
     assert golden.exists(), (
-        f'No snapshot for {app}. Create it with COFRAME_GOLDEN_UPDATE=1 and commit it.')
+        f'No snapshot for {app}. Create it with KITEBASE_GOLDEN_UPDATE=1 and commit it.')
 
     found = list(differences(json.loads(golden.read_text()), json.loads(render(tree))))
     assert not found, (
         f'The merged tree of {app} moved in {len(found)} places:\n  '
         + '\n  '.join(found[:MAX_REPORTED])
         + ('\n  …' if len(found) > MAX_REPORTED else '')
-        + '\nIf the change is intended, regenerate with COFRAME_GOLDEN_UPDATE=1.')
+        + '\nIf the change is intended, regenerate with KITEBASE_GOLDEN_UPDATE=1.')
 
 
 def test_the_snapshot_covers_what_the_merge_composes():

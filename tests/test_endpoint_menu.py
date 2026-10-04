@@ -1,15 +1,15 @@
-"""Tests for coframe.endpoint_menu.get_menu — flat menu_items → rendered tree.
+"""Tests for kitebase.endpoint_menu.get_menu — flat menu_items → rendered tree.
 
 Uses a PluginsManager populated via merge_dicts (real $plugin attribution) and
-drives the endpoint through coframe.utils.get_app, monkeypatched to a FakeApp.
+drives the endpoint through kitebase.utils.get_app, monkeypatched to a FakeApp.
 Covers: default cascade (§4), tree building by parent, ordering, root selection,
 group convergence, orphan fallback, and internal-key stripping.
 """
 import pytest
 
-import coframe.utils
-from coframe.plugins import PluginsManager
-from coframe.endpoint_menu import get_menu
+import kitebase.utils
+from kitebase.plugins import PluginsManager
+from kitebase.endpoint_menu import get_menu
 
 
 class FakeApp:
@@ -26,9 +26,9 @@ def make_app(menus, menu_items, plugin='menuplugin', app_config=None):
 
 @pytest.fixture
 def patch_app(monkeypatch):
-    """Return a setter that points coframe.utils.get_app at a given app."""
+    """Return a setter that points kitebase.utils.get_app at a given app."""
     def _set(app):
-        monkeypatch.setattr(coframe.utils, 'get_app', lambda: app)
+        monkeypatch.setattr(kitebase.utils, 'get_app', lambda: app)
     return _set
 
 
@@ -126,7 +126,7 @@ def test_group_convergence_across_plugins(patch_app):
     pm.merge_dicts({'menu_items': {'wizards': {'label': 'Wizards', 'parent': 'catalog', 'order': 20}}},
                    'plugin_b')
     app = FakeApp(pm)
-    import coframe.utils as u
+    import kitebase.utils as u
     orig = u.get_app
     u.get_app = lambda: app
     try:
@@ -161,7 +161,7 @@ def test_plugin_default_cascade(patch_app):
     pm.plugins['contentplugin'] = PluginCfg()
 
     app = FakeApp(pm)
-    import coframe.utils as u
+    import kitebase.utils as u
     orig = u.get_app
     u.get_app = lambda: app
     try:

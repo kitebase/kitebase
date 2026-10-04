@@ -14,9 +14,6 @@ devtest/model*.py
 devtest/*.log
 *.sqlite
 
-# Client app-instances (deliverables, kept out of the framework git — see apps/<name>/PLAN.md)
-apps/
-
 # Virtual environments and ide
 .venv
 .vscode

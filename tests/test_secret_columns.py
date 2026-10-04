@@ -15,10 +15,10 @@ import pytest
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
-from coframe import transforms
-from coframe.endpoint_db import write_values, build_filters
-from coframe.querybuilder import SelectBuilder
-from coframe.utils import secret_columns, serialize_model
+from kitebase import transforms
+from kitebase.endpoint_db import write_values, build_filters
+from kitebase.querybuilder import SelectBuilder
+from kitebase.utils import secret_columns, serialize_model
 
 Base = declarative_base()
 
@@ -60,7 +60,7 @@ class User(Base):
 
     @classmethod
     def get_table_definition(cls):
-        """Stands in for the coframe model ↔ DbTable bridge."""
+        """Stands in for the kitebase model ↔ DbTable bridge."""
         return user_table()
 
 

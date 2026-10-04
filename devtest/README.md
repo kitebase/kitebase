@@ -1,14 +1,14 @@
-# Coframe Testing and Flask Server
+# Kitebase Testing and Flask Server
 
 Under the `devtest` directory you will find useful scripts written to test
-Coframe library.
+Kitebase library.
 
 ## Testing
 
-The `devtest.py` script, starts Coframe and if needed regenerate the source
+The `devtest.py` script, starts Kitebase and if needed regenerate the source
 code for `model.py` and the database `devtest.sqlite`.
 
-The perform some tests on the coframe system.
+The perform some tests on the kitebase system.
 
 ### Usage
 
@@ -19,13 +19,13 @@ python devtest.py
 ## Flask Server
 
 The `server_flask.py` script provides a Flask-based API server for interacting
-with Coframe.
+with Kitebase.
 
 Please read the main README.md file.
 
 ### Features
 
-- RESTful API for Coframe functionality
+- RESTful API for Kitebase functionality
 - Authentication with JWT tokens
 - CRUD operations for all database models
 - Dynamic query builder support
@@ -79,7 +79,7 @@ The server will start on port 5000 by default.
 
 #### Generic Endpoint
 
-- `POST /api/endpoint/<operation>`: Call any Coframe operation
+- `POST /api/endpoint/<operation>`: Call any Kitebase operation
 readmet user profile
 - `GET /api/users/me`: Alias for profile
 
@@ -102,7 +102,7 @@ The included Jupyter notebook (`server-test.ipynb`) demonstrates how to interact
 
 To add a new endpoint, update the Flask server (`flask_server.py`) with your new route.
 
-#### Adding Coframe Endpoints
+#### Adding Kitebase Endpoints
 
-To add new Coframe endpoints, create a Python file with the `@endpoint` decorator and place it in your plugins directory.
+To add new Kitebase endpoints, create a Python file with the `@endpoint` decorator and place it in your plugins directory.
 

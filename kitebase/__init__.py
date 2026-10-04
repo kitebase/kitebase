@@ -2,7 +2,7 @@
 __version__ = "0.5.0"
 
 # Import only autoimport for internal use
-# Other utilities available via coframe.utils
+# Other utilities available via kitebase.utils
 from .utils import autoimport
 
 # Auto-import internal modules

@@ -9,9 +9,9 @@ from contextlib import contextmanager, ExitStack
 import sqlalchemy.types
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session, Session
-from coframe.plugins import PluginsManager, Plugin
-from coframe.endpoints import CommandProcessor
-from coframe.utils import deep_merge
+from kitebase.plugins import PluginsManager, Plugin
+from kitebase.endpoints import CommandProcessor
+from kitebase.utils import deep_merge
 
 
 def merge_columns_by_name(base: List[Dict[str, Any]],
@@ -412,7 +412,7 @@ class DB:
 
     def get_schema_registry(self) -> Dict[str, Any]:
         """Return all declared schemas from plugin YAML as client-facing dicts."""
-        from coframe.types import get_schema_registry
+        from kitebase.types import get_schema_registry
         return get_schema_registry(self.pm.data)
 
     def get_table_schema(self) -> Dict[str, Any]:
@@ -496,7 +496,7 @@ class DB:
         database with the schema the plugins describe and, according to
         `migrations.on_startup` in config.yaml, stops the server ('error',
         the default), logs ('warn') or says nothing ('off').  See
-        coframe.schema_sync — the alignment itself is an explicit command.
+        kitebase.schema_sync — the alignment itself is an explicit command.
 
         Args:
             db_url: Database connection URL for SQLAlchemy
@@ -519,7 +519,7 @@ class DB:
         self.db_type = self.get_database_type()
 
         if check_schema:
-            from coframe.schema_sync import check_on_startup
+            from kitebase.schema_sync import check_on_startup
             policy = (self.pm.config.get('migrations') or {}).get('on_startup', 'error')
             check_on_startup(engine, Base.metadata, policy, logger=self.pm.logger)
 
@@ -1210,7 +1210,7 @@ class BaseApp:
     Context management supports both threading (Flask, CLI sync)
     and asyncio (FastAPI, CLI async) execution models.
     """
-    __coframe_app__: DB = DB()
+    __kitebase_app__: DB = DB()
 
     # Dual-mode context storage
     _context_local = threading.local()  # For threading-based execution (Flask, WSGI)
@@ -1295,7 +1295,7 @@ class BaseApp:
             'Utente'
         """
         table_name = cls.__name__
-        return cls.__coframe_app__.tables.get(table_name)
+        return cls.__kitebase_app__.tables.get(table_name)
 
     @classmethod
     def get_column_definition(cls, column_name: str):
@@ -1345,7 +1345,7 @@ class BaseApp:
             context = cls.get_context()
 
         model_name = cls.__name__
-        return cls.__coframe_app__.get_table_name(model_name, context)
+        return cls.__kitebase_app__.get_table_name(model_name, context)
 
     @classmethod
     def get_plugins(cls) -> list:

@@ -7,14 +7,14 @@ authenticates the dispatcher, which stays Bearer only: a cross-site POST to a
 generic dispatcher would otherwise leave authenticated.
 
 The host's session is a plain cookie here, read the same way by both
-frameworks: what is under test is coframe's side, not how a host keeps people in.
+frameworks: what is under test is kitebase's side, not how a host keeps people in.
 """
 import jwt
 import pytest
 
-import coframe.server_utils as srv
+import kitebase.server_utils as srv
 
-from test_server_routes import SECRET, coframe_app, plugins  # noqa: F401
+from test_server_routes import SECRET, kitebase_app, plugins  # noqa: F401
 
 USERS = {'s3cret': {'id': 7, 'username': 'coordinatore', 'email': 'c@example.org'}}
 
@@ -28,29 +28,29 @@ def broken_session(request):
     raise RuntimeError('session store unreachable')
 
 
-def _flask(coframe_app, plugins, session):
+def _flask(kitebase_app, plugins, session):
     from flask import Flask
 
     app = Flask(__name__)
-    srv.register_flask(app, coframe_app, plugins, SECRET, host_session=session)
+    srv.register_flask(app, kitebase_app, plugins, SECRET, host_session=session)
     return app.test_client()
 
 
-def _fastapi(coframe_app, plugins, session):
+def _fastapi(kitebase_app, plugins, session):
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
     app = FastAPI()
-    srv.register_fastapi(app, coframe_app, plugins, SECRET, host_session=session)
+    srv.register_fastapi(app, kitebase_app, plugins, SECRET, host_session=session)
     return TestClient(app)
 
 
 @pytest.fixture(params=['flask', 'fastapi'])
-def make(request, coframe_app, plugins):  # noqa: F811
+def make(request, kitebase_app, plugins):  # noqa: F811
     build = _flask if request.param == 'flask' else _fastapi
 
     def make_client(session=host_session, cookie=None):
-        client = build(coframe_app, plugins, session)
+        client = build(kitebase_app, plugins, session)
         if cookie is not None:
             if hasattr(client, 'set_cookie'):        # Flask
                 client.set_cookie('host_session', cookie)
@@ -66,7 +66,7 @@ def _json(res):
 
 
 def test_a_host_session_gets_a_token(make):
-    res = make(cookie='s3cret').post('/coframe/auth/token', json={})
+    res = make(cookie='s3cret').post('/kitebase/auth/token', json={})
 
     assert res.status_code == 200
     payload = jwt.decode(_json(res)['data']['token'], SECRET, algorithms=['HS256'])
@@ -79,9 +79,9 @@ def test_a_host_session_gets_a_token(make):
 
 def test_the_token_opens_the_dispatcher(make):
     client = make(cookie='s3cret')
-    token = _json(client.post('/coframe/auth/token', json={}))['data']['token']
+    token = _json(client.post('/kitebase/auth/token', json={}))['data']['token']
 
-    res = client.post('/coframe/endpoint/who', json={},
+    res = client.post('/kitebase/endpoint/who', json={},
                       headers={'Authorization': f'Bearer {token}'})
 
     assert res.status_code == 200
@@ -89,26 +89,26 @@ def test_the_token_opens_the_dispatcher(make):
 
 
 def test_without_a_host_session_it_is_a_401(make):
-    assert make().post('/coframe/auth/token', json={}).status_code == 401
-    assert make(cookie='forged').post('/coframe/auth/token', json={}).status_code == 401
+    assert make().post('/kitebase/auth/token', json={}).status_code == 401
+    assert make(cookie='forged').post('/kitebase/auth/token', json={}).status_code == 401
 
 
 def test_only_a_json_body_is_taken(make):
     """A cross-site form can post form data with the cookie; it cannot post JSON."""
-    res = make(cookie='s3cret').post('/coframe/auth/token',
+    res = make(cookie='s3cret').post('/kitebase/auth/token',
                                      data={'x': '1'})
 
     assert res.status_code == 415
 
 
 def test_the_cookie_never_opens_the_dispatcher(make):
-    res = make(cookie='s3cret').post('/coframe/endpoint/who', json={})
+    res = make(cookie='s3cret').post('/kitebase/endpoint/who', json={})
 
     assert res.status_code == 401
 
 
 def test_a_failing_host_session_is_a_500_not_a_token(make):
-    res = make(session=broken_session, cookie='s3cret').post('/coframe/auth/token',
+    res = make(session=broken_session, cookie='s3cret').post('/kitebase/auth/token',
                                                              json={})
 
     assert res.status_code == 500
@@ -116,16 +116,16 @@ def test_a_failing_host_session_is_a_500_not_a_token(make):
 
 
 @pytest.mark.parametrize('build', [_flask, _fastapi])
-def test_without_host_session_there_is_no_route(build, coframe_app, plugins):  # noqa: F811
-    client = build(coframe_app, plugins, None)
+def test_without_host_session_there_is_no_route(build, kitebase_app, plugins):  # noqa: F811
+    client = build(kitebase_app, plugins, None)
 
-    assert client.post('/coframe/auth/token', json={}).status_code in (404, 405)
+    assert client.post('/kitebase/auth/token', json={}).status_code in (404, 405)
 
 
 def test_info_tells_the_client_who_logs_in(make, plugins):  # noqa: F811
     plugins.config['client'] = {'role': 'admin', 'login': '/login', 'logout': '/logout'}
 
-    client = _json(make().get('/coframe/info'))['data']['client']
+    client = _json(make().get('/kitebase/info'))['data']['client']
 
     assert client == {'role': 'admin', 'base': '/admin',
                       'login': '/login', 'logout': '/logout'}

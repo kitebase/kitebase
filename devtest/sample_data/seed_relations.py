@@ -16,8 +16,8 @@ root_dir = devtest_dir.parent
 sys.path.insert(0, str(devtest_dir))
 sys.path.insert(0, str(root_dir))
 
-import coframe
-from coframe.utils import get_app
+import kitebase
+from kitebase.utils import get_app
 
 # model.py imports plugin submodules (e.g. `books.model`) that only become
 # importable once PluginsManager.load_plugins() has added the plugin roots to
@@ -46,10 +46,10 @@ COMMENTS = [
 
 def main():
     global model
-    print("Initializing Coframe...")
-    plugins = coframe.plugins.PluginsManager()
+    print("Initializing Kitebase...")
+    plugins = kitebase.plugins.PluginsManager()
     plugins.load_config("config.yaml")
-    coframe.utils.register_standard_handlers(plugins)
+    kitebase.utils.register_standard_handlers(plugins)
     plugins.load_plugins()
 
     import model  # noqa: E402 — after load_plugins() so plugin submodules resolve

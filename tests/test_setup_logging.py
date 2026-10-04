@@ -1,17 +1,17 @@
 """Listening is the application's choice, made once.
 
-The library speaks to the `coframe` logger and never installs a handler; an
+The library speaks to the `kitebase` logger and never installs a handler; an
 application that wants the lines calls `setup_logging` at startup. Stdout
 always (journald under systemd, the terminal by hand), a rotating file when
 asked, and a second call replaces the first instead of doubling every line.
 """
 import logging
 
-import coframe.server_utils as srv
+import kitebase.server_utils as srv
 
 
 def _ours():
-    return [h for h in logging.getLogger().handlers if getattr(h, '_coframe', False)]
+    return [h for h in logging.getLogger().handlers if getattr(h, '_kitebase', False)]
 
 
 def _teardown():
@@ -35,11 +35,11 @@ def test_a_file_is_added_when_asked_and_carries_the_time(tmp_path):
     log = tmp_path / 'app.log'
     try:
         srv.setup_logging('DEBUG', str(log))
-        logging.getLogger('coframe').info('hello')
+        logging.getLogger('kitebase').info('hello')
         for h in _ours():
             h.flush()
         text = log.read_text()
-        assert 'INFO coframe: hello' in text
+        assert 'INFO kitebase: hello' in text
         assert text[:4].isdigit()  # the timestamp: a file has no journald under it
         assert logging.getLogger().level == logging.DEBUG
     finally:
@@ -69,6 +69,6 @@ def test_third_parties_are_held_to_warning():
         srv.setup_logging('DEBUG')
         assert logging.getLogger('alembic').level == logging.WARNING
         assert logging.getLogger('sqlalchemy').level == logging.WARNING
-        assert logging.getLogger('coframe').getEffectiveLevel() == logging.DEBUG
+        assert logging.getLogger('kitebase').getEffectiveLevel() == logging.DEBUG
     finally:
         _teardown()

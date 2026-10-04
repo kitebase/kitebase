@@ -165,7 +165,7 @@ def email_validator(value, values) -> Optional[str]:
     Deliberately loose: the only proof that an address works is a message that
     arrives, and a stricter pattern refuses real addresses (`poller@localhost`).
     """
-    from coframe.i18n import _
+    from kitebase.i18n import _
     if not _EMAIL.match(str(value)):
         return _('Not a valid email address')
     return None

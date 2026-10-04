@@ -1,7 +1,7 @@
 """
-coframe.scaffold — write a new application that runs.
+kitebase.scaffold — write a new application that runs.
 
-`coframe new myapp` produces a directory that starts, logs in and serves its
+`kitebase new myapp` produces a directory that starts, logs in and serves its
 API before a single table of the domain exists. What it writes is the shape
 validated in the applications already in service, reduced to the minimum:
 
@@ -36,7 +36,7 @@ from typing import Optional
 # Placeholders are {{name}} and {{sources}}, replaced literally: the content is
 # YAML, TOML and Python, all of which use braces for their own purposes.
 
-CONFIG_YAML = '''# {{name}} — app-instance coframe.
+CONFIG_YAML = '''# {{name}} — app-instance kitebase.
 #
 # Every relative path below hangs from THIS file's directory, so the
 # application starts from anywhere: a service, a cron job, a command run from
@@ -54,7 +54,7 @@ description: ""
 # replacing the line below, e.g.
 #
 #   plugins:
-#     - path: /path/to/coframe-commons/plugins
+#     - path: /path/to/kitebase-commons/plugins
 #       include: [common, partners]
 #     - plugins
 #
@@ -85,13 +85,13 @@ authentication:
   context_fields: [id, username, email, is_active, is_admin]
 
 api:
-  prefix: "coframe"
+  prefix: "kitebase"
   port: 8300
 
-# What coframe is for this application. `app`: it IS the application, and its
+# What kitebase is for this application. `app`: it IS the application, and its
 # client owns "/" and logs people in. `admin`: it is the admin of a host that
 # has its own pages, mounted under /admin/; add `login: /login` when the host
-# logs people in (see coframe.clientui).
+# logs people in (see kitebase.clientui).
 client:
   role: app
 '''
@@ -114,10 +114,10 @@ taken by a WSGI server without going through a `main()`.
 import sys
 from pathlib import Path
 
-import coframe
-import coframe.plugins
-import coframe.source
-import coframe.utils
+import kitebase
+import kitebase.plugins
+import kitebase.source
+import kitebase.utils
 
 # Everything hangs from here, never from the current directory.
 APP_DIR = Path(__file__).resolve().parent
@@ -130,12 +130,12 @@ def setup_schema():
     Enough for the introspection commands, which look at what the application
     declares rather than at what the database holds.
     """
-    plugins = coframe.plugins.PluginsManager()
+    plugins = kitebase.plugins.PluginsManager()
     plugins.load_config(CONFIG)
-    coframe.utils.register_standard_handlers(plugins)
+    kitebase.utils.register_standard_handlers(plugins)
     plugins.load_plugins()
 
-    app = coframe.utils.get_app()
+    app = kitebase.utils.get_app()
     app.calc_db(plugins)
 
     # Query behaviours of the application go here, e.g. with the shared plugins:
@@ -151,7 +151,7 @@ def setup(generate: bool = True):
 
     if generate and app.pm.should_regenerate("model.py"):
         print("Generating model.py ...")
-        coframe.source.Generator(app).generate(filename="model.py")
+        kitebase.source.Generator(app).generate(filename="model.py")
 
     return app, app.pm
 
@@ -198,7 +198,7 @@ def seed_admin(app, model, username: str = "admin", password: str = "admin") -> 
 
 
 if __name__ == "__main__":
-    from coframe.cli import DB_COMMANDS, make_parser, run_cli
+    from kitebase.cli import DB_COMMANDS, make_parser, run_cli
 
     parser = make_parser()
     args = parser.parse_args()
@@ -224,7 +224,7 @@ SERVER_PY = '''"""{{name}} — the Flask process.
 rather than `app.run()` is about HTTP hardening, not load: `app.run()` is
 Werkzeug's development server and says so itself.
 
-Coframe is mounted as a **blueprint** even though the house is ours here. It
+Kitebase is mounted as a **blueprint** even though the house is ours here. It
 costs nothing today, and the day this process also serves something else —
 another API, server-rendered pages — that line does not change.
 """
@@ -232,7 +232,7 @@ import os
 
 from flask import Blueprint, Flask, jsonify
 
-import coframe.server_utils as srv
+import kitebase.server_utils as srv
 
 import app as application
 
@@ -244,8 +244,8 @@ srv.setup_logging(os.environ.get("LOG_LEVEL", "INFO"), os.environ.get("LOG_FILE"
 
 # ── Application ──────────────────────────────────────────────────────────────
 
-coframe_app, plugins, model = application.setup_db()
-application.seed_admin(coframe_app, model)
+kitebase_app, plugins, model = application.setup_db()
+application.seed_admin(kitebase_app, model)
 
 APP_DIR = application.APP_DIR
 
@@ -256,19 +256,19 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "development-secret-key-not-for-servic
 flask_app = Flask(__name__)
 flask_app.config["SECRET_KEY"] = SECRET_KEY
 
-# ── Coframe — /coframe/* ─────────────────────────────────────────────────────
+# ── Kitebase — /kitebase/* ─────────────────────────────────────────────────────
 #
 # `register_flask` touches nothing outside the blueprint: no CORS, no catch-all,
 # and the application's JSON provider stays as it is. It hands back the
 # AuthMiddleware, for whatever else in this process lets the same person in.
 
-coframe_bp = Blueprint("coframe", __name__)
-auth = srv.register_flask(coframe_bp, coframe_app, plugins, SECRET_KEY)
-flask_app.register_blueprint(coframe_bp)
+kitebase_bp = Blueprint("kitebase", __name__)
+auth = srv.register_flask(kitebase_bp, kitebase_app, plugins, SECRET_KEY)
+flask_app.register_blueprint(kitebase_bp)
 
 # ── The compiled client ──────────────────────────────────────────────────────
 #
-# Built into clientui/ by `coframe build-client`, and mounted where `client:` in
+# Built into clientui/ by `kitebase build-client`, and mounted where `client:` in
 # config.yaml says. `static/` is this application's own, on Flask's route.
 
 if not srv.serve_client_flask(flask_app, APP_DIR, plugins.config):
@@ -277,8 +277,8 @@ if not srv.serve_client_flask(flask_app, APP_DIR, plugins.config):
     def no_client():
         return jsonify({
             "application": plugins.config.get("name"),
-            "api": f"{plugins.config.get('api', {}).get('prefix', 'coframe')}/",
-            "client": "not built — run `coframe build-client`",
+            "api": f"{plugins.config.get('api', {}).get('prefix', 'kitebase')}/",
+            "client": "not built — run `kitebase build-client`",
         })
 
 
@@ -309,7 +309,7 @@ import os
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-import coframe.server_utils as srv
+import kitebase.server_utils as srv
 
 import app as application
 
@@ -321,8 +321,8 @@ srv.setup_logging(os.environ.get("LOG_LEVEL", "INFO"), os.environ.get("LOG_FILE"
 
 # ── Application ──────────────────────────────────────────────────────────────
 
-coframe_app, plugins, model = application.setup_db()
-application.seed_admin(coframe_app, model)
+kitebase_app, plugins, model = application.setup_db()
+application.seed_admin(kitebase_app, model)
 
 # From the environment in production: changing it invalidates the tokens
 # already issued, which is exactly what a key is for.
@@ -334,17 +334,17 @@ fastapi_app = FastAPI(
     version=plugins.config.get("version", "0.0.0"),
 )
 
-# ── Coframe — /coframe/* ─────────────────────────────────────────────────────
+# ── Kitebase — /kitebase/* ─────────────────────────────────────────────────────
 #
 # `register_fastapi` registers four routes and nothing application-wide: no
 # CORS, no exception handler, no encoder of its own. An APIRouter would do as
 # a target just as well, the day this process also serves something else.
 
-srv.register_fastapi(fastapi_app, coframe_app, plugins, SECRET_KEY)
+srv.register_fastapi(fastapi_app, kitebase_app, plugins, SECRET_KEY)
 
 # ── The compiled client ──────────────────────────────────────────────────────
 #
-# Built into clientui/ by `coframe build-client`, and mounted where `client:` in
+# Built into clientui/ by `kitebase build-client`, and mounted where `client:` in
 # config.yaml says. Last, so the API routes win.
 
 if not srv.serve_client_fastapi(fastapi_app, application.APP_DIR, plugins.config):
@@ -353,8 +353,8 @@ if not srv.serve_client_fastapi(fastapi_app, application.APP_DIR, plugins.config
     def no_client():
         return JSONResponse({
             "application": plugins.config.get("name"),
-            "api": f"{plugins.config.get('api', {}).get('prefix', 'coframe')}/",
-            "client": "not built — run `coframe build-client`",
+            "api": f"{plugins.config.get('api', {}).get('prefix', 'kitebase')}/",
+            "client": "not built — run `kitebase build-client`",
         })
 
 
@@ -374,7 +374,7 @@ PYPROJECT = '''# {{name}} — third-party dependencies, and its own virtual envi
 #   uv sync            create .venv and install
 #   uv run app.py ...  run inside it
 #
-# coframe is a dependency like any other, taken from its repository — there is
+# kitebase is a dependency like any other, taken from its repository — there is
 # no index to publish to yet, so the repository is where it comes from. `main`
 # follows the library; replace it with a tag or a commit the day an application
 # in service needs to stop moving.
@@ -397,10 +397,10 @@ GITIGNORE = '''# State: database, logs, exchanged files. Not versioned — and i
 data/*
 !data/.gitkeep
 
-# The compiled client: an artifact, rebuilt from the coframe workspace.
+# The compiled client: an artifact, rebuilt from the kitebase workspace.
 /clientui/
 
-# Generated by coframe from the plugin schema — ONLY the one at the root.
+# Generated by kitebase from the plugin schema — ONLY the one at the root.
 # Inside a plugin, model.py is real code (behaviour mixins) and is versioned.
 /model.py
 
@@ -412,7 +412,7 @@ __pycache__/
 
 PLUGIN_CONFIG = '''# The plugin of this application: its schema, and its domain operations.
 #
-# Coframe imports every .py in this directory and registers what it finds
+# Kitebase imports every .py in this directory and registers what it finds
 # decorated with `@endpoint`. That is where the operations of the domain go —
 # never in app.py, never in a page — because from here the same function is
 # reachable from the dispatcher, from another module in this process, and from
@@ -534,7 +534,7 @@ tables:
 
 README = '''# {{name}}
 
-Application built on [coframe](https://github.com/claudiodriussi/coframe).
+Application built on [kitebase](https://github.com/kitebase/kitebase).
 
 ## Running it
 
@@ -553,7 +553,7 @@ Application built on [coframe](https://github.com/claudiodriussi/coframe).
 | `model.py` | GENERATED — do not edit |
 
 The operations of the domain belong in the plugin, not in `app.py` and not in a
-page: coframe imports every `.py` of a plugin directory and registers what it
+page: kitebase imports every `.py` of a plugin directory and registers what it
 finds decorated with `@endpoint`, and from there the same function is reachable
 from the dispatcher, from anything else in this process, and from a command.
 
@@ -563,11 +563,11 @@ An application does not own a client: it contributes UI through the `.svelte`
 files of its plugins, and the generic shell — the only re-pointable client —
 builds them.
 
-    coframe dev              this server and the client, together, hot-reloaded
-    coframe build-client     the compiled client, into clientui/
+    kitebase dev              this server and the client, together, hot-reloaded
+    kitebase build-client     the compiled client, into clientui/
 
-Both need a checkout of the client repository: they look beside the coframe
-checkout, and take `$COFRAME_UI` when it is somewhere else.
+Both need a checkout of the client repository: they look beside the kitebase
+checkout, and take `$KITEBASE_UI` when it is somewhere else.
 
 The result lands in `clientui/`, which the server mounts where `client:` in
 config.yaml says: at the root with `role: app`, under /admin/ with `role: admin`.
@@ -637,41 +637,41 @@ FILES = [
 
 # ── Writing it out ────────────────────────────────────────────────────────────
 
-def _coframe_source() -> str:
-    """A `[tool.uv.sources]` block when coframe is running from a checkout.
+def _kitebase_source() -> str:
+    """A `[tool.uv.sources]` block when kitebase is running from a checkout.
 
-    `coframe new` knows where the coframe it ran from lives. If that is a source
+    `kitebase new` knows where the kitebase it ran from lives. If that is a source
     tree rather than an installed package, the generated project points at it in
     editable mode: the sources stay live, which is what a workstation developing
     both wants. Installed from a package, nothing is written and the dependency
     resolves normally.
     """
-    import coframe
+    import kitebase
 
-    repo = Path(coframe.__file__).resolve().parent.parent
+    repo = Path(kitebase.__file__).resolve().parent.parent
     if not (repo / "pyproject.toml").is_file():
         return ""
 
     return (
-        "\n# `coframe new` ran from a source checkout, so this points at it in\n"
+        "\n# `kitebase new` ran from a source checkout, so this points at it in\n"
         "# editable mode: edit the library and the application sees it at once.\n"
         "# Delete this block — or run `uv sync --no-sources` — to resolve the\n"
         "# dependency the way a machine without that checkout would.\n"
         "[tool.uv.sources]\n"
-        f'coframe = {{ path = "{repo}", editable = true }}\n'
+        f'kitebase = {{ path = "{repo}", editable = true }}\n'
     )
 
 
 def _dependencies(server: str) -> str:
     """The dependency list of a generated application.
 
-    coframe comes from its repository: there is no index to publish to yet, so
+    kitebase comes from its repository: there is no index to publish to yet, so
     naming the repository is the only way this file can state where the library
     comes from. The extras follow the servers written — an application installs
     the framework it serves with, and not the other one.
     """
-    lines = [f'    "coframe[{EXTRAS[server]}] @ '
-             f'git+https://github.com/claudiodriussi/coframe@main",']
+    lines = [f'    "kitebase[{EXTRAS[server]}] @ '
+             f'git+https://github.com/kitebase/kitebase@main",']
     if server in ("flask", "both"):
         lines += [
             "    # The WSGI server used in service. Not for throughput: `app.run()` is",
@@ -718,7 +718,7 @@ def create_app(name: str, directory: Optional[Path] = None,
 
     substitutions = {
         "{{name}}": name,
-        "{{sources}}": _coframe_source(),
+        "{{sources}}": _kitebase_source(),
         "{{dependencies}}": _dependencies(server),
         "{{run}}": RUN[server],
     }
@@ -753,6 +753,6 @@ Written: {target}
 The schema goes in plugins/{name}/model.yaml, the domain operations in
 plugins/{name}/*.py as @endpoint. See README.md.
 
-`coframe dev` runs this server and the admin client together; `coframe
+`kitebase dev` runs this server and the admin client together; `kitebase
 build-client` compiles the client into clientui/.
 """, file=sys.stderr)

@@ -19,10 +19,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, configure_mappers
 
-import coframe.utils
-from coframe.db import DB, Base
-from coframe.plugins import PluginsManager
-from coframe.source import Generator
+import kitebase.utils
+from kitebase.db import DB, Base
+from kitebase.plugins import PluginsManager
+from kitebase.source import Generator
 
 
 @pytest.fixture(autouse=True)
@@ -53,7 +53,7 @@ def build(tmp_path, monkeypatch, tables, source=None, config=None):
 
     manager = PluginsManager()
     manager.load_config(str(cfg))
-    coframe.utils.register_standard_handlers(manager)
+    kitebase.utils.register_standard_handlers(manager)
     manager.load_plugins()
 
     db = DB()
@@ -699,7 +699,7 @@ def test_a_foreign_key_that_says_nothing_carries_no_cascade(tmp_path, monkeypatc
     load(tmp_path, source)
 
 
-def test_owned_is_a_coframe_hint_and_never_reaches_ForeignKey(tmp_path, monkeypatch):
+def test_owned_is_a_kitebase_hint_and_never_reaches_ForeignKey(tmp_path, monkeypatch):
     """Forwarded as a kwarg it would be a TypeError at import of the model."""
     source = generate(tmp_path, monkeypatch, {
         'Book': table(name='books'),

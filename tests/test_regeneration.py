@@ -15,7 +15,7 @@ import os
 
 import yaml
 
-from coframe.plugins import PluginsManager, _core_timestamp
+from kitebase.plugins import PluginsManager, _core_timestamp
 
 
 def model_file(tmp_path, age: float):

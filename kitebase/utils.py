@@ -17,7 +17,7 @@ def autoimport(file: str, package: str) -> None:
     package_dir = Path(file).resolve().parent
 
     for file in package_dir.glob("*.py"):
-        # __main__ is what `python -m coframe` executes, not a module of the
+        # __main__ is what `python -m kitebase` executes, not a module of the
         # package: importing it here would load it twice under two names.
         if file.name in ("__init__.py", "__main__.py"):
             continue
@@ -60,8 +60,8 @@ def get_app():
         The current DB application instance
     """
     # Import here to avoid circular dependency
-    from coframe.db import Base
-    return Base.__coframe_app__
+    from kitebase.db import Base
+    return Base.__kitebase_app__
 
 
 def resolve_table_name(model_name: str, base_table_name: str) -> str:
@@ -96,7 +96,7 @@ def resolve_table_name(model_name: str, base_table_name: str) -> str:
         app = get_app()
         if app and hasattr(app, 'tables') and app.tables:
             # Import here to avoid circular dependency
-            from coframe.db import BaseApp
+            from kitebase.db import BaseApp
             context = BaseApp.get_context()
             result = app.get_table_name(model_name, context)
             if result:
@@ -118,7 +118,7 @@ def table_definition(model_class, db_table=None):
         db_table: Definition already at hand, returned as is
 
     Returns:
-        DbTable instance, or None outside a loaded coframe app
+        DbTable instance, or None outside a loaded kitebase app
     """
     if db_table is not None:
         return db_table
@@ -254,7 +254,7 @@ def search_info(db_table) -> dict:
     """
     What a text search on a table looks at — see DbTable.search_info.
 
-    Returns the empty cascade outside a loaded coframe app, so a caller working
+    Returns the empty cascade outside a loaded kitebase app, so a caller working
     with plain models is told the table is not searchable rather than crashing.
     """
     if db_table is None:

@@ -19,7 +19,7 @@ import copy
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from coframe.utils import deep_merge
+from kitebase.utils import deep_merge
 
 _JSON_SCALARS = (str, int, float, bool, type(None))
 

@@ -113,7 +113,7 @@ types:
     columns:
       # `$now` and not `datetime.now`: the same instant, read through the
       # timezone the app declares rather than the one the process happens to
-      # run in (coframe.apptime). It is also the single place that answers
+      # run in (kitebase.apptime). It is also the single place that answers
       # "when is now", so moving the storage to UTC one day is one function.
       - name: created_at
         type: DateTime

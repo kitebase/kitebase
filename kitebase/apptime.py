@@ -1,8 +1,8 @@
 """
-coframe.apptime — the timezone an application declares, and the clock read
+kitebase.apptime — the timezone an application declares, and the clock read
 through it.
 
-Coframe stores datetimes **naive**: what sits in the column is wall-clock time
+Kitebase stores datetimes **naive**: what sits in the column is wall-clock time
 with no offset. That is not a shortcoming of the storage, it is what the
 storage does — SQLite drops the offset even when given an aware value, and a
 naive column on PostgreSQL keeps the fields verbatim. So the meaning of those

@@ -15,8 +15,8 @@ import pytest
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship
 
-import coframe.utils
-from coframe.querybuilder import DynamicQueryBuilder
+import kitebase.utils
+from kitebase.querybuilder import DynamicQueryBuilder
 
 Base = declarative_base()
 
@@ -63,7 +63,7 @@ class AppStub:
 
 @pytest.fixture(autouse=True)
 def no_behaviors(monkeypatch):
-    monkeypatch.setattr(coframe.utils, 'get_app', lambda: AppStub(), raising=False)
+    monkeypatch.setattr(kitebase.utils, 'get_app', lambda: AppStub(), raising=False)
 
 
 MODELS = {'Author': Author, 'Book': Book, 'Publisher': Publisher}

@@ -2,9 +2,9 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 sys.path.append("..")
-import coframe  # noqa: E402
-import coframe.plugins  # noqa: E402
-from coframe.endpoints import endpoint  # noqa: E402
+import kitebase  # noqa: E402
+import kitebase.plugins  # noqa: E402
+from kitebase.endpoints import endpoint  # noqa: E402
 
 
 @endpoint('add')
@@ -13,7 +13,7 @@ def add_numbers(data):
     b = data.get("b", 0)
 
     # the context manager is working
-    print(coframe.db.BaseApp.get_context())
+    print(kitebase.db.BaseApp.get_context())
     return {
         "status": "success",
         "data": a + b
@@ -64,12 +64,12 @@ def setup_schema():
     Sufficient for introspection commands (dump-page, dump-tables, …).
     Returns the initialized app.
     """
-    plugins = coframe.plugins.PluginsManager()
+    plugins = kitebase.plugins.PluginsManager()
     plugins.load_config("config.yaml")
-    coframe.utils.register_standard_handlers(plugins)
+    kitebase.utils.register_standard_handlers(plugins)
     plugins.load_plugins()
 
-    app = coframe.utils.get_app()
+    app = kitebase.utils.get_app()
     app.calc_db(plugins)
 
     from common.model import Archivable
@@ -93,7 +93,7 @@ def setup(generate: bool = True):
         model_file = "model.py"
         if app.pm.should_regenerate(model_file):
             print("Generating model.py ...")
-            coframe.source.Generator(app).generate(filename=model_file)
+            kitebase.source.Generator(app).generate(filename=model_file)
         else:
             print("model.py up to date.")
 
@@ -139,7 +139,7 @@ def main():
     result = cp.send(command)
     print(result)
     # the context manager works within the command thread
-    print(coframe.db.BaseApp.get_context())
+    print(kitebase.db.BaseApp.get_context())
 
     command = {
         "operation": "sayhello",
@@ -238,7 +238,7 @@ def main():
     }
     result = cp.send(command)
     print(result)
-    print(coframe.db.BaseApp.get_context())
+    print(kitebase.db.BaseApp.get_context())
 
     # get id from just created book
     book_id = result['data']['id']
@@ -383,7 +383,7 @@ def seed(app, model=None):
 # ── CLI entry point ────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    from coframe.cli import DB_COMMANDS, make_parser, run_cli
+    from kitebase.cli import DB_COMMANDS, make_parser, run_cli
 
     args = make_parser().parse_args()
 

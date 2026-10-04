@@ -1,5 +1,5 @@
 """
-coframe.diagnostics — post-load validation and effective-state dump.
+kitebase.diagnostics — post-load validation and effective-state dump.
 
 Two entry points (run_checks is pure; dump_app reads the plugin source files
 to embed them; neither uses argparse):
@@ -62,7 +62,7 @@ def run_checks(app: Any) -> List[Dict[str, Any]]:
     Validate the merged descriptor data of a fully loaded app.
 
     Args:
-        app: Initialized coframe app (setup_schema() is sufficient —
+        app: Initialized kitebase app (setup_schema() is sufficient —
              needs app.pm and app.tables, no DB engine)
 
     Returns:
@@ -319,7 +319,7 @@ def _check_validators(app: Any, issues: List[Dict[str, Any]]) -> None:
 
     Checked after the plugins are loaded, which is when their validators register.
     """
-    from coframe.transforms import validator_names
+    from kitebase.transforms import validator_names
 
     known = validator_names()
     for t_name, table in (getattr(app, 'tables', None) or {}).items():
@@ -341,7 +341,7 @@ def _check_client(app: Any, issues: List[Dict[str, Any]]) -> None:
     unused, which is worth knowing but breaks nothing. So is a host login
     without a logout: leaving would not end the host's session.
     """
-    from coframe.clientui import client_settings
+    from kitebase.clientui import client_settings
 
     try:
         settings = client_settings(app.pm.config)
@@ -351,7 +351,7 @@ def _check_client(app: Any, issues: List[Dict[str, Any]]) -> None:
     if settings.role == 'app' and settings.login:
         issues.append(make_issue(
             'warning', 'client-login-without-host', 'config.client.login',
-            "client.login names a host login page, but with role 'app' coframe "
+            "client.login names a host login page, but with role 'app' kitebase "
             "is the application and logs people in itself"))
     elif settings.login and not settings.logout:
         issues.append(make_issue(
@@ -367,7 +367,7 @@ def _check_auto_pages(app: Any, issues: List[Dict[str, Any]]) -> None:
     Checked here and not only when the page is opened: the page carries no
     `source` of its own, so nothing else in the walk would notice.
     """
-    from coframe.pages import AUTO, resolve_auto_page
+    from kitebase.pages import AUTO, resolve_auto_page
 
     for page_id, page in (app.pm.data.get('pages') or {}).items():
         if not isinstance(page, dict) or not page.get(AUTO):
@@ -390,7 +390,7 @@ def _check_push_target(app: Any, action: Dict[str, Any], path: str,
     if target in pages:
         return
 
-    from coframe.pages import resolve_auto_page
+    from kitebase.pages import resolve_auto_page
     if resolve_auto_page(app, target) is None:
         issues.append(make_issue(
             'error', 'panel-missing', f'{path}.panel',
@@ -407,8 +407,8 @@ def dump_app(app: Any) -> Dict[str, Any]:
     Everything is JSON-serializable (write with json.dumps(..., default=str)
     to be safe with dates or other stray objects).
     """
-    from coframe.cli import _table_dict
-    from coframe.endpoints import _ENDPOINTS
+    from kitebase.cli import _table_dict
+    from kitebase.endpoints import _ENDPOINTS
 
     pm = app.pm
 

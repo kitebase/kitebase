@@ -21,7 +21,7 @@ from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import ClauseElement
 from sqlalchemy.ext.declarative import DeclarativeMeta
 
-from coframe.utils import coerce_temporal, search_info, secret_columns, table_definition, temporal_condition
+from kitebase.utils import coerce_temporal, search_info, secret_columns, table_definition, temporal_condition
 
 # The escape character LIKE patterns are built with. Postgres already reads a
 # backslash this way; stating it makes every backend agree, and makes the
@@ -372,10 +372,10 @@ class DynamicQueryBuilder:
         # behavior must start being told apart.
         main_model = self.models[main_table]
         if not query_def.get('resolve'):
-            # Lazy import: keeps querybuilder usable standalone without coframe stack
+            # Lazy import: keeps querybuilder usable standalone without kitebase stack
             try:
-                import coframe.utils
-                behaviors = coframe.utils.get_app().query_behaviors
+                import kitebase.utils
+                behaviors = kitebase.utils.get_app().query_behaviors
             except Exception:
                 behaviors = []
             for behavior in behaviors:

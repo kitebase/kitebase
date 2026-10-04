@@ -1,9 +1,9 @@
-import coframe
-import coframe.server_utils as server_utils
-import coframe.transforms
-from coframe.endpoints import endpoint
-from coframe.querybuilder import DynamicQueryBuilder
-from coframe.i18n import _, _f
+import kitebase
+import kitebase.server_utils as server_utils
+import kitebase.transforms
+from kitebase.endpoints import endpoint
+from kitebase.querybuilder import DynamicQueryBuilder
+from kitebase.i18n import _, _f
 from typing import Dict, Any, Optional
 from sqlalchemy import and_, or_, desc, asc
 from sqlalchemy import Date, DateTime, Integer, inspect as sa_inspect
@@ -38,7 +38,7 @@ def db_operations(data: Dict[str, Any]) -> Dict[str, Any]:
             return {"status": "error", "message": _('Table name is required'), "code": 400}
 
         # Get database app and model class
-        app = coframe.utils.get_app()
+        app = kitebase.utils.get_app()
         model_class = app.find_model_class(table_name)
 
         if not model_class:
@@ -76,7 +76,7 @@ def write_values(db_table, record_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Prepare incoming values for storage, following what the columns declare.
 
-    Three rules, all from `coframe.transforms`:
+    Three rules, all from `kitebase.transforms`:
     - a `secret` column arriving empty is dropped — it is never read back, so a
       client cannot echo it, and an empty value means "leave it alone" rather
       than "clear it";
@@ -104,7 +104,7 @@ def write_values(db_table, record_data: Dict[str, Any]) -> Dict[str, Any]:
 
         validator_name = attrs.get('validate')
         if validator_name and not is_empty:
-            validator = coframe.transforms.get_validator(validator_name)
+            validator = kitebase.transforms.get_validator(validator_name)
             if validator is None:
                 raise ValueError(
                     f"Column '{key}' names an unknown validator: '{validator_name}'")
@@ -115,7 +115,7 @@ def write_values(db_table, record_data: Dict[str, Any]) -> Dict[str, Any]:
 
         transform_name = attrs.get('on_write')
         if transform_name and not is_empty:
-            transform = coframe.transforms.get_write_transform(transform_name)
+            transform = kitebase.transforms.get_write_transform(transform_name)
             if transform is None:
                 raise ValueError(
                     f"Column '{key}' names an unknown write transform: '{transform_name}'")
@@ -124,7 +124,7 @@ def write_values(db_table, record_data: Dict[str, Any]) -> Dict[str, Any]:
         result[key] = value
 
     if errors:
-        raise coframe.transforms.ValidationError(errors)
+        raise kitebase.transforms.ValidationError(errors)
 
     return result
 
@@ -147,7 +147,7 @@ def handle_get(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[
 
             return {
                 "status": "success",
-                "data": coframe.utils.serialize_model(record, db_table=db_table),
+                "data": kitebase.utils.serialize_model(record, db_table=db_table),
                 "code": 200
             }
         else:
@@ -179,7 +179,7 @@ def handle_get(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[
 
             # Execute query and serialize results
             records = query.all()
-            result = [coframe.utils.serialize_model(record, db_table=db_table) for record in records]
+            result = [kitebase.utils.serialize_model(record, db_table=db_table) for record in records]
 
             return {
                 "status": "success",
@@ -242,11 +242,11 @@ def handle_create(app, model_class, params: Dict[str, Any], db_table=None) -> Di
 
             return {
                 "status": "success",
-                "data": coframe.utils.serialize_model(new_record, db_table=db_table),
+                "data": kitebase.utils.serialize_model(new_record, db_table=db_table),
                 "message": _('Record created successfully'),
                 "code": 201
             }
-    except coframe.transforms.ValidationError as e:
+    except kitebase.transforms.ValidationError as e:
         return _invalid(e)
     except Exception as e:
         return {"status": "error", "message": f"Creation failed: {str(e)}", "code": 400}
@@ -264,7 +264,7 @@ def handle_update(app, model_class, params: Dict[str, Any], db_table=None) -> Di
 
     try:
         record_data = write_values(db_table, record_data)
-    except coframe.transforms.ValidationError as e:
+    except kitebase.transforms.ValidationError as e:
         return _invalid(e)
 
     with app.get_session() as session:
@@ -285,7 +285,7 @@ def handle_update(app, model_class, params: Dict[str, Any], db_table=None) -> Di
             session.commit()
             return {
                 "status": "success",
-                "data": coframe.utils.serialize_model(record, db_table=db_table),
+                "data": kitebase.utils.serialize_model(record, db_table=db_table),
                 "message": _('Record updated successfully'),
                 "code": 200
             }
@@ -354,7 +354,7 @@ def build_filters(model_class, query_filters: Dict[str, Any]) -> Optional[Any]:
 
     # A column the table never sends is not filterable either: an equality
     # filter on one is a way of guessing the value it would not return.
-    secrets = coframe.utils.secret_columns(coframe.utils.table_definition(model_class))
+    secrets = kitebase.utils.secret_columns(kitebase.utils.table_definition(model_class))
 
     conditions = []
 
@@ -397,12 +397,12 @@ def build_filters(model_class, query_filters: Dict[str, Any]) -> Optional[Any]:
             raise ValueError(f"Column '{field}' is not filterable")
 
         column = getattr(model_class, field)
-        period = coframe.utils.temporal_condition(
+        period = kitebase.utils.temporal_condition(
             column, _PERIOD_OPS.get(operator, operator), value)
         if period is not None:
             conditions.append(period)
             continue
-        value = coframe.utils.coerce_temporal(column, value)
+        value = kitebase.utils.coerce_temporal(column, value)
 
         if operator == 'eq':
             conditions.append(column == value)
@@ -462,7 +462,7 @@ def db_query(data: Dict[str, Any]) -> Dict[str, Any]:
         query_def = {**query_def, 'offset': data['offset']}
 
     try:
-        app = coframe.utils.get_app()
+        app = kitebase.utils.get_app()
         with app.get_session() as session:
             builder = DynamicQueryBuilder(session, app.models)
             records = builder.execute_query(query_def, result_format=fmt)
@@ -511,7 +511,7 @@ def authenticate(data: Dict[str, Any]) -> Dict[str, Any]:
             }
 
         # Get authentication configuration
-        app = coframe.utils.get_app()
+        app = kitebase.utils.get_app()
         config = app.pm.config.get('authentication', {})
         user_table = config.get('user_table', 'User')
         name_field = config.get('username_field', 'username')
@@ -519,7 +519,7 @@ def authenticate(data: Dict[str, Any]) -> Dict[str, Any]:
         context_fields = config.get('context_fields', ['id'])
 
         # Find the user
-        user = coframe.utils.seek(user_table, {name_field: username})
+        user = kitebase.utils.seek(user_table, {name_field: username})
 
         if not user:
             return {
@@ -530,8 +530,8 @@ def authenticate(data: Dict[str, Any]) -> Dict[str, Any]:
 
         # Verify the password against its stored form. A value still stored the
         # old way is accepted and left alone: hashing happens when a password is
-        # written, never behind the back of a login (see coframe.transforms).
-        if not coframe.transforms.verify_password(password, getattr(user, pass_field, None)):
+        # written, never behind the back of a login (see kitebase.transforms).
+        if not kitebase.transforms.verify_password(password, getattr(user, pass_field, None)):
             return {
                 "status": "error",
                 "message": _('Invalid credentials'),
@@ -591,7 +591,7 @@ def update_context(data):
     """
     try:
         # Get current context
-        current_context = coframe.db.BaseApp.get_context()
+        current_context = kitebase.db.BaseApp.get_context()
 
         # Verify user is authenticated
         if not current_context or 'id' not in current_context:
@@ -605,7 +605,7 @@ def update_context(data):
         # app's custom context fields. Identity columns stay server-authoritative.
         # Same allowlist as the /auth/update_context route, and the same None
         # = remove the field.
-        app = coframe.utils.get_app()
+        app = kitebase.utils.get_app()
         allowed = set(server_utils.FRAMEWORK_UPDATABLE_FIELDS) | set(
             server_utils.custom_context_fields(app.pm.config)
         )
@@ -618,7 +618,7 @@ def update_context(data):
                 current_context[field] = data[field]
 
         # Update the context in the current thread
-        coframe.db.BaseApp.set_context(current_context)
+        kitebase.db.BaseApp.set_context(current_context)
 
         return {
             "status": "success",
@@ -660,7 +660,7 @@ def get_server_config(data: Dict[str, Any]) -> Dict[str, Any]:
     Field-level attrs from view descriptors override type-level defaults (client-side).
     """
     try:
-        app = coframe.utils.get_app()
+        app = kitebase.utils.get_app()
         include_builtin = bool(data.get('include_builtin', False))
         return {
             'status': 'success',

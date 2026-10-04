@@ -1,5 +1,5 @@
 """
-coframe.endpoint_menu — the `get_menu` endpoint (symmetric to `get_page`).
+kitebase.endpoint_menu — the `get_menu` endpoint (symmetric to `get_page`).
 
 The plugin loader composes the flat `menus:` (roots) and `menu_items:` sections
 via deep_merge (multi-plugin). This endpoint turns that flat, layout-agnostic
@@ -22,8 +22,8 @@ that the devtest walking skeleton exercises (§9).
 """
 from typing import Any, Dict, List, Optional
 
-import coframe.utils
-from coframe.endpoints import endpoint
+import kitebase.utils
+from kitebase.endpoints import endpoint
 
 # Merge metadata (`$plugin`) plus keys consumed server-side (`parent`/`root` drive
 # tree/cascade; `access` gates visibility) — none of these are sent to the client.
@@ -36,8 +36,8 @@ _ORDER_LAST = 1_000_000
 def _current_context() -> Optional[Dict[str, Any]]:
     """The active request context (JWT-derived), or None outside a request."""
     try:
-        import coframe.db
-        return coframe.db.BaseApp.get_context()
+        import kitebase.db
+        return kitebase.db.BaseApp.get_context()
     except Exception:
         return None
 
@@ -103,7 +103,7 @@ def get_menu(data: Dict[str, Any]) -> Dict[str, Any]:
         and a `children` list when it is a group with descendants. Internal keys
         ($plugin, parent, root, access) are stripped.
     """
-    app = coframe.utils.get_app()
+    app = kitebase.utils.get_app()
 
     # Skip merge-metadata keys ($plugin and any future $-prefixed convention),
     # matching how the rest of the codebase iterates a merged section

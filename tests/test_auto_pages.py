@@ -6,9 +6,9 @@ what differs, and the rest keeps following the schema.
 """
 import pytest
 
-from coframe.diagnostics import run_checks
-from coframe.pages import load_page, strip_meta
-from coframe.plugins import PluginsManager
+from kitebase.diagnostics import run_checks
+from kitebase.pages import load_page, strip_meta
+from kitebase.plugins import PluginsManager
 
 
 class FakeColumn:

@@ -1,4 +1,4 @@
-"""Golden / characterization tests for coframe.utils.deep_merge.
+"""Golden / characterization tests for kitebase.utils.deep_merge.
 
 deep_merge is the SIMPLE recursive merge (dict-only): it mutates `a` in place,
 returns None, recurses into nested dicts, and REPLACES everything else (scalars,
@@ -8,7 +8,7 @@ semantics — that lives in PluginsManager (see test_plugin_merge.py).
 These tests pin current behaviour so future refactors are safe. If one fails,
 the merge semantics changed — decide intentionally, don't just update the golden.
 """
-from coframe.utils import deep_merge
+from kitebase.utils import deep_merge
 
 
 def test_returns_none_and_mutates_a_in_place():

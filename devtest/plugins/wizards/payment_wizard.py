@@ -1,7 +1,7 @@
 import random
 from datetime import date, timedelta
-from coframe.endpoints import endpoint
-from coframe.memoryset import MemorySet
+from kitebase.endpoints import endpoint
+from kitebase.memoryset import MemorySet
 
 
 _CUSTOMERS = [
@@ -22,8 +22,8 @@ class PaymentWizardSet(MemorySet):
     SCHEMA_ID = 'payment_wizard_data'
 
     def __init__(self):
-        import coframe.utils
-        schema = coframe.utils.get_app().get_schema_registry()[self.SCHEMA_ID]
+        import kitebase.utils
+        schema = kitebase.utils.get_app().get_schema_registry()[self.SCHEMA_ID]
         super().__init__(schema)
 
     # ── Build (step: preview) ─────────────────────────────────────────────────

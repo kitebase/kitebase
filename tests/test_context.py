@@ -1,15 +1,15 @@
 """Context scoping: BaseApp.context() and the context handling of get_session().
 
-The case these cover is the one that stays invisible while coframe owns the
+The case these cover is the one that stays invisible while kitebase owns the
 process: a session opened with a context where no context was set before must
-not leave that context behind. It bites as soon as coframe is a guest —
+not leave that context behind. It bites as soon as kitebase is a guest —
 a background thread, or a host route that reuses the same worker thread for the
 next request and would inherit an identity nobody chose.
 """
 import pytest
 from sqlalchemy import create_engine
 
-from coframe.db import DB, BaseApp
+from kitebase.db import DB, BaseApp
 
 
 @pytest.fixture(autouse=True)

@@ -1,4 +1,4 @@
-"""Tests for the `resolve` flag in coframe.querybuilder.DynamicQueryBuilder.
+"""Tests for the `resolve` flag in kitebase.querybuilder.DynamicQueryBuilder.
 
 Registered query behaviors (Archivable and friends) filter every query built by
 the builder, including a lookup by primary key. That is right for a picklist
@@ -14,8 +14,8 @@ import pytest
 from sqlalchemy import Column, Integer, String, Boolean
 from sqlalchemy.orm import declarative_base
 
-import coframe.utils
-from coframe.querybuilder import DynamicQueryBuilder
+import kitebase.utils
+from kitebase.querybuilder import DynamicQueryBuilder
 
 Base = declarative_base()
 
@@ -49,7 +49,7 @@ class AppStub:
 @pytest.fixture
 def builder(monkeypatch):
     """DynamicQueryBuilder with ArchivableStub registered, no session or database."""
-    monkeypatch.setattr(coframe.utils, 'get_app',
+    monkeypatch.setattr(kitebase.utils, 'get_app',
                         lambda: AppStub([ArchivableStub]), raising=False)
     return DynamicQueryBuilder(session=None, models={'Partner': Partner})
 

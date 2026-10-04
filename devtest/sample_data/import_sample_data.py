@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Import sample data into Coframe database.
+Import sample data into Kitebase database.
 
 Usage:
     python sample_data/import_sample_data.py
@@ -23,13 +23,13 @@ from sqlalchemy import text
 
 # Add directories to path
 devtest_dir = Path(__file__).parent.parent  # devtest/
-root_dir = devtest_dir.parent  # coframe/ (root)
+root_dir = devtest_dir.parent  # kitebase/ (root)
 
 sys.path.insert(0, str(devtest_dir))  # For model.py
-sys.path.insert(0, str(root_dir))     # For coframe package
+sys.path.insert(0, str(root_dir))     # For kitebase package
 
-import coframe
-from coframe.utils import get_app
+import kitebase
+from kitebase.utils import get_app
 
 # model.py imports plugin submodules (e.g. `books.model`) that only become
 # importable once PluginsManager.load_plugins() has added the plugin roots to
@@ -213,14 +213,14 @@ def main():
     """Main import function."""
     global model
     print("=" * 60)
-    print("🚀 Coframe Sample Data Import (Replace Mode)")
+    print("🚀 Kitebase Sample Data Import (Replace Mode)")
     print("=" * 60)
 
-    # Initialize Coframe
-    print("\n⚙️  Initializing Coframe...")
-    plugins = coframe.plugins.PluginsManager()
+    # Initialize Kitebase
+    print("\n⚙️  Initializing Kitebase...")
+    plugins = kitebase.plugins.PluginsManager()
     plugins.load_config("config.yaml")
-    coframe.utils.register_standard_handlers(plugins)
+    kitebase.utils.register_standard_handlers(plugins)
     plugins.load_plugins()
 
     import model  # noqa: E402 — after load_plugins() so plugin submodules resolve

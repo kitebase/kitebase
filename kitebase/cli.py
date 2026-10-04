@@ -1,12 +1,12 @@
 """
-coframe.cli — introspection and management utilities.
+kitebase.cli — introspection and management utilities.
 
 Two layers:
 
   dump_*()          Pure functions: receive an app, return (yaml_text, label).
                     No file I/O, no argparse — fully testable in isolation.
 
-  make_parser()     Build and return the ArgumentParser for the coframe CLI.
+  make_parser()     Build and return the ArgumentParser for the kitebase CLI.
                     An application adds its own commands through
                     `parser.commands` and handles them before run_cli().
 
@@ -20,13 +20,13 @@ for the rest.
 
 Planned sections:
   dump_*     — read-only introspection (pages, tables, types, plugins, endpoints)
-  db_*       — schema alignment (coframe.schema_sync)
+  db_*       — schema alignment (kitebase.schema_sync)
   [future]   — dump-endpoints: catalog of registered endpoints with metadata
   [future]   — backup / restore
   [future]   — db engine migration
 
 Future standalone entry-point (pyproject.toml scripts):
-  coframe --config config.yaml dump-page author_list
+  kitebase --config config.yaml dump-page author_list
 """
 
 import argparse
@@ -60,7 +60,7 @@ def dump_page(app: Any, page_id: str, auto: bool = False, raw: bool = False) -> 
       2. Auto-generated fallback from table schema
 
     Args:
-        app:     Initialized coframe app (setup_schema() is sufficient — no DB engine needed)
+        app:     Initialized kitebase app (setup_schema() is sufficient — no DB engine needed)
         page_id: Page identifier (e.g. 'author_list', 'book_with_reviews')
         auto:    Force auto-generation from table schema, ignoring any explicit YAML
         raw:     Skip $ref resolution — output the raw descriptor as declared in YAML
@@ -73,7 +73,7 @@ def dump_page(app: Any, page_id: str, auto: bool = False, raw: bool = False) -> 
     Raises:
         ValueError: if the page cannot be found or auto-generated
     """
-    from coframe.pages import load_page, resolve_auto_page, strip_meta
+    from kitebase.pages import load_page, resolve_auto_page, strip_meta
 
     descriptor = None
     source_label = ''
@@ -178,7 +178,7 @@ def dump_table(app: Any, table_names: Optional[List[str]] = None) -> Tuple[str, 
     columns, with all resolved attributes (nullable, unique, FK target, …).
 
     Args:
-        app:         Initialized coframe app (setup_schema() is sufficient)
+        app:         Initialized kitebase app (setup_schema() is sufficient)
         table_names: List of table names to dump; None = all tables
 
     Returns:
@@ -265,7 +265,7 @@ def dump_types(app: Any, include_builtin: bool = False) -> Tuple[str, str]:
                          Shown flat with their full column list.
 
     Args:
-        app:             Initialized coframe app
+        app:             Initialized kitebase app
         include_builtin: If True, also include builtin SQLAlchemy types as
                          explicit root nodes even when they have no custom children.
 
@@ -346,8 +346,8 @@ def db_check(app: Any) -> Tuple[str, bool]:
     Returns:
         (report, aligned) — read-only, nothing is written.
     """
-    from coframe.db import Base
-    from coframe.schema_sync import diff_schema, format_diff
+    from kitebase.db import Base
+    from kitebase.schema_sync import diff_schema, format_diff
 
     diff = diff_schema(app.engine, Base.metadata)
     return format_diff(diff), diff.is_aligned
@@ -373,13 +373,13 @@ def db_sync(app: Any, dry_run: bool = False, force: bool = False,
     widened types, relaxed NOT NULLs, strings shortened where every value fits.
     With `force`, also the forceable refusals (drops, truncating strings),
     after `confirm(changes)` returns True when given. The rest is reported and
-    left alone — see coframe.schema_sync for why.
+    left alone — see kitebase.schema_sync for why.
 
     Returns:
         (report, aligned_after) — with dry_run, the DDL that would run.
     """
-    from coframe.db import Base
-    from coframe.schema_sync import apply_diff, diff_schema, format_diff, plan_sql
+    from kitebase.db import Base
+    from kitebase.schema_sync import apply_diff, diff_schema, format_diff, plan_sql
 
     diff = diff_schema(app.engine, Base.metadata)
 
@@ -452,7 +452,7 @@ def db_backup(app: Any, dest: Optional[str] = None) -> Tuple[str, str]:
 
 def make_parser() -> argparse.ArgumentParser:
     """
-    Build and return the coframe CLI argument parser.
+    Build and return the kitebase CLI argument parser.
 
     Add new subparsers here as new commands are implemented.
     The parser is intentionally separate from run_cli() so callers
@@ -463,8 +463,8 @@ def make_parser() -> argparse.ArgumentParser:
     before handing the rest to run_cli().
     """
     parser = argparse.ArgumentParser(
-        prog='coframe',
-        description='Coframe CLI — introspection and management',
+        prog='kitebase',
+        description='Kitebase CLI — introspection and management',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 examples:
@@ -562,11 +562,11 @@ examples:
                    help='Target file or directory (default: next to the database, timestamped)')
 
     # ── new ────────────────────────────────────────────────────────────────────
-    # The one command that runs without an application, hence from the `coframe`
+    # The one command that runs without an application, hence from the `kitebase`
     # console script rather than from an application's entry point.
     p = sub.add_parser(
         'new',
-        help='Write a new application that runs (use the `coframe` command)',
+        help='Write a new application that runs (use the `kitebase` command)',
     )
     p.add_argument('name', help='Application name — also the name of its plugin')
     p.add_argument('--directory', metavar='PATH',
@@ -590,10 +590,10 @@ examples:
     p.add_argument('--fastapi', dest='framework', action='store_const', const='fastapi',
                    help='Run the FastAPI entry point')
     p.add_argument('--src', metavar='PATH',
-                   help='Library checkout to run against (default: $COFRAME_SRC, '
+                   help='Library checkout to run against (default: $KITEBASE_SRC, '
                         'or the one this command was imported from)')
     p.add_argument('--ui', metavar='PATH',
-                   help='Client checkout (default: $COFRAME_UI, or the workspace layout)')
+                   help='Client checkout (default: $KITEBASE_UI, or the workspace layout)')
     p.add_argument('--no-server', action='store_true', help='Client only')
     p.add_argument('--no-client', action='store_true', help='Server only')
 
@@ -605,7 +605,7 @@ examples:
     p.add_argument('app', nargs='?', metavar='APP',
                    help='Application directory (default: the current one)')
     p.add_argument('--ui', metavar='PATH',
-                   help='Client checkout (default: $COFRAME_UI, or the workspace layout)')
+                   help='Client checkout (default: $KITEBASE_UI, or the workspace layout)')
 
     return parser
 
@@ -655,7 +655,7 @@ def run_cli(app: Any, args: argparse.Namespace, output_dir: Path = Path('.')) ->
     Dispatch parsed CLI args to the appropriate dump_* function.
 
     Args:
-        app:        Initialized coframe app (setup_schema() is sufficient)
+        app:        Initialized kitebase app (setup_schema() is sufficient)
         args:       Parsed argparse.Namespace
         output_dir: Base directory for default output paths.
                     devtest uses Path('data'), a standalone CLI would use Path('.')
@@ -690,7 +690,7 @@ def run_cli(app: Any, args: argparse.Namespace, output_dir: Path = Path('.')) ->
 
     elif args.command == 'check':
         import json
-        from coframe.diagnostics import run_checks, dump_app
+        from kitebase.diagnostics import run_checks, dump_app
 
         issues = run_checks(app)
         n_errors = print_issues(issues)
@@ -727,7 +727,7 @@ def run_cli(app: Any, args: argparse.Namespace, output_dir: Path = Path('.')) ->
 
     elif args.command == 'new':
         print('`new` writes a fresh application, so it does not run from one: '
-              'use the `coframe` command.', file=sys.stderr)
+              'use the `kitebase` command.', file=sys.stderr)
         sys.exit(1)
 
     else:
@@ -739,7 +739,7 @@ def run_cli(app: Any, args: argparse.Namespace, output_dir: Path = Path('.')) ->
 
 def main(argv: Optional[List[str]] = None) -> None:
     """
-    Entry point of the `coframe` command.
+    Entry point of the `kitebase` command.
 
     It carries what can be done **without** an application — `new`, `dev`,
     `build-client`. Every
@@ -752,7 +752,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     args = parser.parse_args(argv)
 
     if args.command == 'new':
-        from coframe.scaffold import create_app, print_next_steps
+        from kitebase.scaffold import create_app, print_next_steps
         try:
             target = create_app(args.name,
                                 Path(args.directory) if args.directory else None,
@@ -764,7 +764,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         return
 
     if args.command in ('dev', 'build-client'):
-        from coframe import dev
+        from kitebase import dev
         try:
             if args.command == 'dev':
                 sys.exit(dev.run(app=args.app, framework=args.framework,

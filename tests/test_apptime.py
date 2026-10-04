@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 import pytest
 import yaml
 
-from coframe import apptime
+from kitebase import apptime
 
 
 @pytest.fixture(autouse=True)
@@ -117,7 +117,7 @@ def _app(tmp_path, config):
 
 
 def test_loading_a_config_declares_its_timezone(tmp_path):
-    from coframe.plugins import PluginsManager
+    from kitebase.plugins import PluginsManager
 
     here = _local_zone_name()
     PluginsManager().load_config(_app(tmp_path, {'name': 'x', 'timezone': here}))
@@ -128,7 +128,7 @@ def test_loading_a_config_declares_its_timezone(tmp_path):
 def test_loading_a_config_in_the_wrong_zone_fails_there(tmp_path):
     """The check runs where every entry point already passes — servers, tests,
     CLI, a host application — so none of them has to remember it."""
-    from coframe.plugins import PluginsManager
+    from kitebase.plugins import PluginsManager
 
     with pytest.raises(RuntimeError, match='Timezone mismatch'):
         PluginsManager().load_config(
@@ -136,7 +136,7 @@ def test_loading_a_config_in_the_wrong_zone_fails_there(tmp_path):
 
 
 def test_a_config_without_a_timezone_leaves_it_undeclared(tmp_path):
-    from coframe.plugins import PluginsManager
+    from kitebase.plugins import PluginsManager
 
     apptime.set_app_timezone('Asia/Tokyo')
     PluginsManager().load_config(_app(tmp_path, {'name': 'x'}))
@@ -147,7 +147,7 @@ def test_a_config_without_a_timezone_leaves_it_undeclared(tmp_path):
 # ── $now, the system default ─────────────────────────────────────────────────
 
 def test_now_is_registered_as_a_system_default():
-    from coframe import defaults
+    from kitebase import defaults
 
     assert 'now' in defaults.default_names()
     assert defaults.get_default('now') is defaults.now
@@ -156,7 +156,7 @@ def test_now_is_registered_as_a_system_default():
 def test_the_stamp_follows_the_declared_zone():
     """`default: $now` is the reason the module has a consumer: a column
     stamped through the app's timezone rather than the machine's."""
-    from coframe import defaults
+    from kitebase import defaults
 
     apptime.set_app_timezone('Asia/Tokyo')
     expected = datetime.now(ZoneInfo('Asia/Tokyo')).replace(tzinfo=None)
@@ -171,8 +171,8 @@ def test_op_date_falls_back_to_the_organisations_today(monkeypatch):
     today's document."""
     from datetime import date as date_type
 
-    from coframe import defaults
-    from coframe.db import BaseApp
+    from kitebase import defaults
+    from kitebase.db import BaseApp
 
     BaseApp.set_context(None)
     monkeypatch.setattr(apptime, 'today', lambda: date_type(1999, 12, 31))
@@ -181,8 +181,8 @@ def test_op_date_falls_back_to_the_organisations_today(monkeypatch):
 
 
 def test_an_explicit_op_date_still_wins():
-    from coframe import defaults
-    from coframe.db import BaseApp
+    from kitebase import defaults
+    from kitebase.db import BaseApp
 
     apptime.set_app_timezone('Asia/Tokyo')
     with BaseApp.context({'op_date': '2026-03-15'}):

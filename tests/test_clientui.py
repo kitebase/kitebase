@@ -1,6 +1,6 @@
 """The compiled client: where it is mounted, and how it is served.
 
-`client:` in config.yaml says what coframe is for an application — the
+`client:` in config.yaml says what kitebase is for an application — the
 application itself (`role: app`, at "/") or the admin of a host (`role: admin`,
 under /admin/) — and the two adapters serve `<app>/clientui/` there, handing
 index.html to any path that is a page of the single-page application rather
@@ -10,9 +10,9 @@ from types import SimpleNamespace
 
 import pytest
 
-import coframe.server_utils as srv
-from coframe.diagnostics import _check_client
-from coframe.clientui import client_settings
+import kitebase.server_utils as srv
+from kitebase.diagnostics import _check_client
+from kitebase.clientui import client_settings
 
 
 # -- The rule -----------------------------------------------------------------------

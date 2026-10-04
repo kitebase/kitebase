@@ -1,7 +1,7 @@
 """`$uuid`: a key minted on the server, for tables whose key no form fills."""
 import re
 
-from coframe import defaults
+from kitebase import defaults
 
 CANONICAL = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')
 
