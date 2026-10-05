@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`KITEBASE_*`) and the repository (`github.com/kitebase/kitebase`). Tags up
   to v0.5.0 are coframe releases.
 
+## [0.5.0] - 2026-02-11
+### Added
+- FastAPI support: async endpoints next to the sync ones, with a dual-mode
+  context that works under both Flask and FastAPI; a FastAPI server example in
+  devtest.
+- `read_file` endpoint.
+- Authentication extended, with `update_context`.
+### Changed
+- Package restructured; `PluginsManager` merges lists through handlers.
+
 ## [0.4.0] - 2025-03-31
 ### Added
 - Querybuilder from endpoint
