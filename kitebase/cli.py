@@ -751,6 +751,18 @@ def main(argv: Optional[List[str]] = None) -> None:
     environment (`cli:` in config.yaml names it, when it is not `kite.py`).
     """
     parser = make_parser()
+    argv = sys.argv[1:] if argv is None else list(argv)
+
+    # A command this parser does not know may be one the application adds to
+    # its own (`parser.commands.add_parser` in kite.py): the script decides.
+    if argv and not argv[0].startswith('-') and argv[0] not in parser.commands.choices:
+        from kitebase import dev
+        try:
+            sys.exit(dev.delegate(argv))
+        except dev.DevError as e:
+            print(f'Error: {e}', file=sys.stderr)
+            sys.exit(1)
+
     args = parser.parse_args(argv)
 
     if args.command == 'new':
@@ -780,7 +792,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     if args.command:
         from kitebase import dev
         try:
-            sys.exit(dev.delegate(sys.argv[1:] if argv is None else argv))
+            sys.exit(dev.delegate(argv))
         except dev.DevError as e:
             print(f'Error: {e}', file=sys.stderr)
             sys.exit(1)

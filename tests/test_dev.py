@@ -232,6 +232,18 @@ def test_a_command_is_handed_to_the_app_script(tmp_path, monkeypatch):
     assert ran["argv"][1] == "run"
 
 
+def test_a_command_only_the_app_knows_is_handed_over_too(tmp_path, monkeypatch):
+    from kitebase import cli
+    app = write_app(tmp_path / "a", servers=("kite.py",), standalone=True)
+    monkeypatch.chdir(app)
+    ran = {}
+    monkeypatch.setattr(dev, "delegate", lambda argv, src=None: ran.update(argv=argv) or 0)
+    with pytest.raises(SystemExit) as done:
+        cli.main(["generate-terminals", "--dry-run"])
+    assert done.value.code == 0
+    assert ran["argv"] == ["generate-terminals", "--dry-run"]
+
+
 def test_running_nothing_is_refused(tmp_path, monkeypatch):
     monkeypatch.chdir(write_app(tmp_path / "a"))
     with pytest.raises(dev.DevError, match="Nothing to run"):
