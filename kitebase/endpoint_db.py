@@ -141,7 +141,7 @@ def handle_get(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[
     with app.get_session() as session:
         if record_id:
             # Get single record
-            record = session.query(model_class).get(record_id)
+            record = session.get(model_class, record_id)
             if not record:
                 return {"status": "error", "message": _f('Record with id {id} not found', id=record_id), "code": 404}
 
@@ -269,7 +269,7 @@ def handle_update(app, model_class, params: Dict[str, Any], db_table=None) -> Di
 
     with app.get_session() as session:
         # Find the record
-        record = session.query(model_class).get(record_id)
+        record = session.get(model_class, record_id)
         if not record:
             return {"status": "error", "message": f"Record with id {record_id} not found", "code": 404}
 
@@ -302,7 +302,7 @@ def handle_delete(app, model_class, params: Dict[str, Any], db_table=None) -> Di
 
     with app.get_session() as session:
         # Find the record
-        record = session.query(model_class).get(record_id)
+        record = session.get(model_class, record_id)
         if not record:
             return {"status": "error", "message": f"Record with id {record_id} not found", "code": 404}
 

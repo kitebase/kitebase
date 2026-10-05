@@ -85,7 +85,16 @@ def _flask(app_dir, config):
         return 'the host'
 
     served = srv.serve_client_flask(app, app_dir, config)
-    return served, app.test_client()
+    return served, _buffered_client(app)
+
+
+def _buffered_client(app):
+    """A Flask test client that reads each response whole, closing the file a
+    static route opened: unbuffered, it stays open until the response is."""
+    client = app.test_client()
+    open_ = client.open
+    client.open = lambda *args, **kwargs: open_(*args, buffered=True, **kwargs)
+    return client
 
 
 def _fastapi(app_dir, config):
@@ -126,7 +135,7 @@ def test_the_application_itself_is_served_at_the_root(app_dir):
     flask = pytest.importorskip('flask')
     app = flask.Flask(__name__)
     assert srv.serve_client_flask(app, app_dir, {})
-    client = app.test_client()
+    client = _buffered_client(app)
     assert 'the client' in client.get('/').text
     assert 'the client' in client.get('/login').text
 

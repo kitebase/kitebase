@@ -38,6 +38,6 @@ def get_page(data: Dict[str, Any]) -> Dict[str, Any]:
         return {'status': 'error', 'message': str(e), 'code': 400}
 
     if page is None:
-        return {'status': 'error', 'message': f"Panel not found: '{page_id}'", 'code': 404}
+        return {'status': 'error', 'message': f"Page not found: '{page_id}'", 'code': 404}
 
     return {'status': 'success', 'data': strip_meta(page), 'code': 200}

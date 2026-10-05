@@ -8,7 +8,7 @@ import jwt
 
 from kitebase import server_utils
 
-SECRET = 'test-secret'
+SECRET = 'test-secret-long-enough-for-hs256-signing'
 
 
 class _Processor:

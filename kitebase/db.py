@@ -7,7 +7,7 @@ from typing import Dict, List, Any, Optional, Union, Iterator
 from types import ModuleType
 from contextlib import contextmanager, ExitStack
 import sqlalchemy.types
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session, Session
 from kitebase.plugins import PluginsManager, Plugin
 from kitebase.endpoints import CommandProcessor

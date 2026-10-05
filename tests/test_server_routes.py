@@ -23,7 +23,7 @@ import kitebase.server_utils as srv
 from kitebase.db import BaseApp
 from kitebase.endpoints import CommandProcessor, _ENDPOINTS
 
-SECRET = 'test-secret-key'
+SECRET = 'test-secret-key-long-enough-for-hs256'
 
 CONFIG = {
     'name': 'routes-test',
