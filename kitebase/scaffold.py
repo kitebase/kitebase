@@ -73,7 +73,7 @@ db_engine: "sqlite:///data/{{name}}.sqlite"
 # The server only ever looks: if the schema the plugins describe differs from
 # the database, it stops. Changing the database is an explicit command:
 #   uv run kitebase db-check   what differs (read-only)
-#   uv run kitebase db-sync    apply it (additions only, never a drop)
+#   uv run kitebase db-sync    apply what loses no data (--force: drops too)
 migrations:
   on_startup: error
 
@@ -102,11 +102,13 @@ Two files, and the division is not cosmetic: the commands must be able to look
 at the database **without** starting a server, and in service the process is
 taken by a WSGI server without going through a `main()`.
 
-    python kite.py db-check     what differs between schema and database
-    python kite.py db-sync      apply it (additions only, never a drop)
-    python kite.py check        validate the plugin descriptors
-    python kite.py dump-table   the schema as it comes out of the merge
-    python server_flask.py      start the process (development)
+    uv run kitebase db-check     what differs between schema and database
+    uv run kitebase db-sync      apply what loses no data (--force: drops too)
+    uv run kitebase check        validate the plugin descriptors
+    uv run kitebase dump-table   the schema as it comes out of the merge
+    uv run server_flask.py       start the process (development)
+
+`kitebase` hands these to this file; `uv run kite.py <command>` is the same.
 
 `model.py` is GENERATED from the YAML schema: do not edit it. Inside a plugin,
 `model.py` is real code — the behaviour mixins — and is versioned.
@@ -218,7 +220,7 @@ if __name__ == "__main__":
 SERVER_PY = '''"""{{name}} — the Flask process.
 
     waitress-serve --port=8300 server_flask:app     (service)
-    python server_flask.py                          (development)
+    uv run server_flask.py                          (development)
 
 `app` is at module level, so a WSGI server takes it as it is. A WSGI server
 rather than `app.run()` is about HTTP hardening, not load: `app.run()` is
@@ -293,7 +295,7 @@ if __name__ == "__main__":
 FASTAPI_SERVER_PY = '''"""{{name}} — the FastAPI process.
 
     uvicorn server_fastapi:app --port 8300     (service)
-    python server_fastapi.py                   (development)
+    uv run server_fastapi.py                   (development)
 
 `app` is at module level, so an ASGI server takes it as it is. The twin of
 `server_flask.py`: same four routes, registered by the same call on the other

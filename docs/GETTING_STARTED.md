@@ -182,7 +182,8 @@ uv run server_flask.py      # the API on http://localhost:8300
 `kitebase db-sync`, like every command that needs the application loaded, is
 handed to the application's own script — `kite.py`, which `kitebase new` wrote —
 and run in its environment: `uv run kite.py db-sync` is the same thing, spelled
-out.
+out. What each generated file is for, and why it is split that way, is in
+[APPLICATION.md](APPLICATION.md).
 
 `db-sync` prints the SQL it ran — one `CREATE TABLE users`, because an
 application is born knowing only who logs into it. Then, at
@@ -705,5 +706,5 @@ the repository, because that is what it has to prove.
 
 *Where to go next: [PLUGIN_MODEL.md](PLUGIN_MODEL.md) — how plugins declare the
 data model, the UI and the menu, and how the merge composes them.
-[SCAFFOLDING.md](SCAFFOLDING.md) — the anatomy of an application: the bootstrap
-sequence, the entry points, the two servers.*
+[APPLICATION.md](APPLICATION.md) — the anatomy of an application: the files
+`kitebase new` writes, the bootstrap, the commands, the two servers.*

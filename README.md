@@ -91,7 +91,7 @@ GETTING_STARTED § 1 explains the layout, and § 5 how a workstation is verified
   application with its client and the shared plugins.
 - [docs/PLUGIN_MODEL.md](docs/PLUGIN_MODEL.md): how plugins declare the data
   model, the interface and the menu, and how the merge composes them.
-- [docs/SCAFFOLDING.md](docs/SCAFFOLDING.md): the anatomy of an application,
+- [docs/APPLICATION.md](docs/APPLICATION.md): the anatomy of an application,
   its bootstrap, entry points and servers.
 - [CHANGELOG.md](CHANGELOG.md): one entry per release.
 
