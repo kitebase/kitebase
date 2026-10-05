@@ -72,8 +72,8 @@ db_engine: "sqlite:///data/{{name}}.sqlite"
 
 # The server only ever looks: if the schema the plugins describe differs from
 # the database, it stops. Changing the database is an explicit command:
-#   python kite.py db-check    what differs (read-only)
-#   python kite.py db-sync     apply it (additions only, never a drop)
+#   uv run kitebase db-check   what differs (read-only)
+#   uv run kitebase db-sync    apply it (additions only, never a drop)
 migrations:
   on_startup: error
 
@@ -539,7 +539,7 @@ Application built on [kitebase](https://github.com/kitebase/kitebase).
 ## Running it
 
     uv sync                     create .venv and install the dependencies
-    uv run kite.py db-sync      create the database from the YAML schema
+    uv run kitebase db-sync     create the database from the YAML schema
 {{run}}
 
 ## Where things go
@@ -747,7 +747,7 @@ Written: {target}
 
     cd {where}
     uv sync                     create .venv and install
-    uv run kite.py db-sync      create the database from the YAML schema
+    uv run kitebase db-sync     create the database from the YAML schema
 {run}
 
 The schema goes in plugins/{name}/model.yaml, the domain operations in

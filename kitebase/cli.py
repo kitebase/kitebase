@@ -486,7 +486,7 @@ examples:
   db-backup /mnt/backup/                a directory, or a file path
   dev                                   run this app and its client, together
   dev /path/to/app --no-client          just the server, on another app
-  build-client                          compile this app's client into static/
+  build-client                          compile this app's client into clientui/
         """,
     )
 
@@ -600,7 +600,7 @@ examples:
     # ── build-client ───────────────────────────────────────────────────────────
     p = sub.add_parser(
         'build-client',
-        help="Compile the admin client into the application's static/",
+        help="Compile the admin client into the application's clientui/",
     )
     p.add_argument('app', nargs='?', metavar='APP',
                    help='Application directory (default: the current one)')
