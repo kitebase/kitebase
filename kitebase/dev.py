@@ -337,6 +337,21 @@ def run(app: Optional[str] = None, framework: Optional[str] = None,
 
     print("Ctrl-C stops both.\n", flush=True)
 
+    # Ctrl-C is not the only way a session ends: a closed terminal (SIGHUP) or
+    # a `kill` (SIGTERM) must take the children down too, or the server stays
+    # behind, holding the port. Only the first signal interrupts: the ones that
+    # follow it (uv forwards what it receives) must not cut the cleanup short.
+    stopping: List[int] = []
+
+    def interrupt(signum, frame):
+        if not stopping:
+            stopping.append(signum)
+            raise KeyboardInterrupt
+
+    caught = [s for s in (getattr(signal, n, None)
+                          for n in ("SIGINT", "SIGTERM", "SIGHUP")) if s]
+    previous = {sig: signal.signal(sig, interrupt) for sig in caught}
+
     status = 0
     try:
         while True:
@@ -349,6 +364,7 @@ def run(app: Optional[str] = None, framework: Optional[str] = None,
     except (KeyboardInterrupt, _Finished):
         pass
     finally:
+        stopping.append(0)  # from here on, every signal waits for the cleanup
         for process in processes:
             _signal_group(process, signal.SIGTERM)
         for process in processes:
@@ -357,6 +373,8 @@ def run(app: Optional[str] = None, framework: Optional[str] = None,
             except subprocess.TimeoutExpired:
                 _signal_group(process, signal.SIGKILL)
                 process.wait()
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
 
     return status
 
