@@ -7,7 +7,7 @@ validated in the applications already in service, reduced to the minimum:
 
     myapp/
       config.yaml          plugin roots, database, api, authentication
-      app.py               loads the application, and carries the commands
+      kite.py              loads the application, and carries the commands
       server_flask.py      the Flask process — `app` at module level
       server_fastapi.py    its twin — same routes, the other framework
       pyproject.toml       dependencies, and its own virtual environment
@@ -72,8 +72,8 @@ db_engine: "sqlite:///data/{{name}}.sqlite"
 
 # The server only ever looks: if the schema the plugins describe differs from
 # the database, it stops. Changing the database is an explicit command:
-#   python app.py db-check     what differs (read-only)
-#   python app.py db-sync      apply it (additions only, never a drop)
+#   python kite.py db-check    what differs (read-only)
+#   python kite.py db-sync     apply it (additions only, never a drop)
 migrations:
   on_startup: error
 
@@ -96,16 +96,16 @@ client:
   role: app
 '''
 
-APP_PY = '''"""{{name}} — loads the application, and carries the commands.
+KITE_PY = '''"""{{name}} — loads the application, and carries the commands.
 
 Two files, and the division is not cosmetic: the commands must be able to look
 at the database **without** starting a server, and in service the process is
 taken by a WSGI server without going through a `main()`.
 
-    python app.py db-check      what differs between schema and database
-    python app.py db-sync       apply it (additions only, never a drop)
-    python app.py check         validate the plugin descriptors
-    python app.py dump-table    the schema as it comes out of the merge
+    python kite.py db-check     what differs between schema and database
+    python kite.py db-sync      apply it (additions only, never a drop)
+    python kite.py check        validate the plugin descriptors
+    python kite.py dump-table   the schema as it comes out of the merge
     python server_flask.py      start the process (development)
 
 `model.py` is GENERATED from the YAML schema: do not edit it. Inside a plugin,
@@ -234,7 +234,7 @@ from flask import Blueprint, Flask, jsonify
 
 import kitebase.server_utils as srv
 
-import app as application
+import kite
 
 # ── Log ──────────────────────────────────────────────────────────────────────
 # The library speaks (one line per request, the traceback on a failure); the
@@ -244,10 +244,10 @@ srv.setup_logging(os.environ.get("LOG_LEVEL", "INFO"), os.environ.get("LOG_FILE"
 
 # ── Application ──────────────────────────────────────────────────────────────
 
-kitebase_app, plugins, model = application.setup_db()
-application.seed_admin(kitebase_app, model)
+kitebase_app, plugins, model = kite.setup_db()
+kite.seed_admin(kitebase_app, model)
 
-APP_DIR = application.APP_DIR
+APP_DIR = kite.APP_DIR
 
 # From the environment in production: changing it invalidates the tokens
 # already issued, which is exactly what a key is for.
@@ -301,7 +301,7 @@ framework, and answering byte for byte the same. Keeping the pair is what makes
 double support a property that is checked rather than an intention — delete the
 one you do not serve with, and drop its extra from pyproject.toml.
 
-The bootstrap is not here: `app.py` composes the application, so a server, a
+The bootstrap is not here: `kite.py` composes the application, so a server, a
 command and a test all load the same thing.
 """
 import os
@@ -311,7 +311,7 @@ from fastapi.responses import JSONResponse
 
 import kitebase.server_utils as srv
 
-import app as application
+import kite
 
 # ── Log ──────────────────────────────────────────────────────────────────────
 # The library speaks (one line per request, the traceback on a failure); the
@@ -321,8 +321,8 @@ srv.setup_logging(os.environ.get("LOG_LEVEL", "INFO"), os.environ.get("LOG_FILE"
 
 # ── Application ──────────────────────────────────────────────────────────────
 
-kitebase_app, plugins, model = application.setup_db()
-application.seed_admin(kitebase_app, model)
+kitebase_app, plugins, model = kite.setup_db()
+kite.seed_admin(kitebase_app, model)
 
 # From the environment in production: changing it invalidates the tokens
 # already issued, which is exactly what a key is for.
@@ -347,7 +347,7 @@ srv.register_fastapi(fastapi_app, kitebase_app, plugins, SECRET_KEY)
 # Built into clientui/ by `kitebase build-client`, and mounted where `client:` in
 # config.yaml says. Last, so the API routes win.
 
-if not srv.serve_client_fastapi(fastapi_app, application.APP_DIR, plugins.config):
+if not srv.serve_client_fastapi(fastapi_app, kite.APP_DIR, plugins.config):
 
     @fastapi_app.get("/")
     def no_client():
@@ -372,7 +372,7 @@ if __name__ == "__main__":
 PYPROJECT = '''# {{name}} — third-party dependencies, and its own virtual environment.
 #
 #   uv sync            create .venv and install
-#   uv run app.py ...  run inside it
+#   uv run kite.py ...  run inside it
 #
 # kitebase is a dependency like any other, taken from its repository — there is
 # no index to publish to yet, so the repository is where it comes from. `main`
@@ -414,7 +414,7 @@ PLUGIN_CONFIG = '''# The plugin of this application: its schema, and its domain 
 #
 # Kitebase imports every .py in this directory and registers what it finds
 # decorated with `@endpoint`. That is where the operations of the domain go —
-# never in app.py, never in a page — because from here the same function is
+# never in kite.py, never in a page — because from here the same function is
 # reachable from the dispatcher, from another module in this process, and from
 # a command, without a line of wiring.
 name: {{name}}
@@ -539,7 +539,7 @@ Application built on [kitebase](https://github.com/kitebase/kitebase).
 ## Running it
 
     uv sync                     create .venv and install the dependencies
-    uv run app.py db-sync       create the database from the YAML schema
+    uv run kite.py db-sync      create the database from the YAML schema
 {{run}}
 
 ## Where things go
@@ -548,11 +548,11 @@ Application built on [kitebase](https://github.com/kitebase/kitebase).
 |---|---|
 | `plugins/{{name}}/model.yaml` | the schema — the only definition there is |
 | `plugins/{{name}}/*.py` | the domain operations, as `@endpoint` |
-| `app.py` | loads the application, carries the commands |
+| `kite.py` | loads the application, carries the commands |
 | `server_flask.py`, `server_fastapi.py` | compose the process — keep the one you serve with |
 | `model.py` | GENERATED — do not edit |
 
-The operations of the domain belong in the plugin, not in `app.py` and not in a
+The operations of the domain belong in the plugin, not in `kite.py` and not in a
 page: kitebase imports every `.py` of a plugin directory and registers what it
 finds decorated with `@endpoint`, and from there the same function is reachable
 from the dispatcher, from anything else in this process, and from a command.
@@ -622,7 +622,7 @@ RUN = {
 
 FILES = [
     ("config.yaml", CONFIG_YAML),
-    ("app.py", APP_PY),
+    ("kite.py", KITE_PY),
     ("pyproject.toml", PYPROJECT),
     (".gitignore", GITIGNORE),
     ("README.md", README),
@@ -747,7 +747,7 @@ Written: {target}
 
     cd {where}
     uv sync                     create .venv and install
-    uv run app.py db-sync       create the database from the YAML schema
+    uv run kite.py db-sync      create the database from the YAML schema
 {run}
 
 The schema goes in plugins/{name}/model.yaml, the domain operations in

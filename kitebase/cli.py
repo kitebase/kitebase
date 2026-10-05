@@ -744,9 +744,11 @@ def main(argv: Optional[List[str]] = None) -> None:
     It carries what can be done **without** an application — `new`, `dev`,
     `build-client`. Every
     other command needs the application loaded, and loading it is the
-    application's own business: its `app.py` composes the sequence, registers
+    application's own business: its `kite.py` composes the sequence, registers
     its query behaviours and then calls `run_cli`. Two sequences for the same
-    job would answer differently the day one of them forgot a step.
+    job would answer differently the day one of them forgot a step — so here
+    those commands are handed to that script, run in the application's own
+    environment (`cli:` in config.yaml names it, when it is not `kite.py`).
     """
     parser = make_parser()
     args = parser.parse_args(argv)
@@ -776,9 +778,11 @@ def main(argv: Optional[List[str]] = None) -> None:
             sys.exit(1)
 
     if args.command:
-        print(f'`{args.command}` needs the application loaded: run it from the '
-              f'application directory, e.g. `python app.py {args.command}`.',
-              file=sys.stderr)
-        sys.exit(1)
+        from kitebase import dev
+        try:
+            sys.exit(dev.delegate(sys.argv[1:] if argv is None else argv))
+        except dev.DevError as e:
+            print(f'Error: {e}', file=sys.stderr)
+            sys.exit(1)
 
     parser.print_help()

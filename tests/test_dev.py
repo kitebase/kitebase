@@ -183,11 +183,53 @@ def test_the_library_checkout_is_layered_on_for_the_run(tmp_path):
     assert command[2:4] == ["--with-editable", str(src)]
 
 
-def test_a_bench_inside_the_checkout_runs_with_this_interpreter(tmp_path):
-    """No pyproject.toml: no environment of its own to step into."""
+def test_outside_any_project_it_runs_with_this_interpreter(tmp_path):
+    """No pyproject.toml here or above: no environment to step into."""
     app = write_app(tmp_path / "devtest")
     command = dev.backend_command(app, app / "server_fastapi.py", tmp_path / "kitebase")
     assert command == [sys.executable, "server_fastapi.py"]
+
+
+def test_a_bench_inside_the_checkout_runs_in_the_checkout_environment(tmp_path):
+    """devtest has no pyproject.toml of its own: the checkout's is its project,
+    and the checkout is not layered on itself."""
+    checkout = tmp_path / "server"
+    checkout.mkdir()
+    (checkout / "pyproject.toml").write_text("[project]\nname='kitebase'\n")
+    app = write_app(checkout / "devtest")
+    command = dev.backend_command(app, app / "devtest.py", checkout, ["check"])
+    assert command[1:] == ["run", "devtest.py", "check"]
+
+
+# ── Commands that need the application loaded ────────────────────────────────
+
+def test_the_cli_script_defaults_to_kite_py(tmp_path):
+    app = write_app(tmp_path / "a", servers=("kite.py",))
+    assert dev.find_cli(app) == app / "kite.py"
+
+
+def test_the_cli_script_is_the_one_config_names(tmp_path):
+    app = write_app(tmp_path / "a", servers=("devtest.py",))
+    config = yaml.safe_load((app / "config.yaml").read_text())
+    (app / "config.yaml").write_text(yaml.safe_dump({**config, "cli": "devtest.py"}))
+    assert dev.find_cli(app) == app / "devtest.py"
+
+
+def test_without_a_cli_script_the_error_says_how_to_name_one(tmp_path):
+    app = write_app(tmp_path / "a")
+    with pytest.raises(dev.DevError, match="cli: myapp.py"):
+        dev.find_cli(app)
+
+
+def test_a_command_is_handed_to_the_app_script(tmp_path, monkeypatch):
+    app = write_app(tmp_path / "a", servers=("kite.py",), standalone=True)
+    monkeypatch.chdir(app)
+    ran = {}
+    monkeypatch.setattr(dev.os, "execv", lambda path, argv: ran.update(argv=argv))
+    monkeypatch.setattr(dev.subprocess, "call", lambda argv, cwd: ran.update(argv=argv) or 0)
+    dev.delegate(["db-check"], src=None)
+    assert ran["argv"][-2:] == ["kite.py", "db-check"]
+    assert ran["argv"][1] == "run"
 
 
 def test_running_nothing_is_refused(tmp_path, monkeypatch):
@@ -203,3 +245,9 @@ def test_the_build_names_the_application_it_is_for(tmp_path):
     command = dev.build_command(app)
     assert command[1:] == ["build:app", str(app)]
     assert command[0].endswith("pnpm")
+
+
+def test_a_command_outside_an_application_says_where_to_run_it(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(dev.DevError, match="`db-check` needs an application"):
+        dev.delegate(["db-check"])

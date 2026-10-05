@@ -10,6 +10,10 @@ author: "Claudio Driussi"
 # app-specific `plugins` root — this exercises the multi-root composition.
 plugins: [commons, plugins, plugins/libapp]
 
+# the script that loads the app and carries its commands: `kitebase db-check`
+# here runs `devtest.py db-check` (default: kite.py)
+cli: devtest.py
+
 # db engine for sqlalchemy
 db_engine: "sqlite:///devtest.sqlite"
 

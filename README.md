@@ -51,7 +51,7 @@ Each application gets its own virtual environment. Starting one from nothing:
 ```bash
 kitebase new myapp      # config.yaml, a plugin, the entry points
 cd myapp && uv sync
-python app.py db-sync  # create the database from the YAML schema
+python kite.py db-sync  # create the database from the YAML schema
 python server.py       # http://localhost:8300 — admin/admin
 ```
 
@@ -105,7 +105,7 @@ The `devtest` directory contains examples to help you understand the framework:
 ```bash
 kitebase new myapp && cd myapp
 uv sync
-uv run app.py db-sync        # create the database from the YAML schema
+uv run kite.py db-sync       # create the database from the YAML schema
 uv run server_flask.py       # http://localhost:8300 — admin/admin
 ```
 

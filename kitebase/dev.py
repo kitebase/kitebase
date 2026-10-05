@@ -32,7 +32,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 import yaml
 
@@ -54,6 +54,11 @@ SERVERS = {
     None: ["server_fastapi.py", "server_flask.py",
            "fastapi-server.py", "flask-server.py", "server.py"],
 }
+
+
+# The script that loads an application, when config.yaml names none: what
+# `kitebase new` writes.
+CLI_DEFAULT = "kite.py"
 
 
 class DevError(Exception):
@@ -90,8 +95,7 @@ def port_in_use(port: int, host: str = "127.0.0.1") -> bool:
 
 def read_api_port(app: Path, default: int = 8300) -> int:
     """The port the application serves on, as its own config declares it."""
-    config = yaml.safe_load((app / "config.yaml").read_text(encoding="utf-8")) or {}
-    return (config.get("api") or {}).get("port", default)
+    return (read_config(app).get("api") or {}).get("port", default)
 
 
 def find_source_checkout(given: Optional[str] = None) -> Optional[Path]:
@@ -160,28 +164,85 @@ def pick_server(app: Path, framework: Optional[str] = None) -> Path:
         + (f" — it has no {framework} server." if framework else ""))
 
 
+def read_config(app: Path) -> dict:
+    """The application's config.yaml, as a mapping."""
+    return yaml.safe_load((app / "config.yaml").read_text(encoding="utf-8")) or {}
+
+
+def find_cli(app: Path) -> Path:
+    """The script that loads this application and carries its commands.
+
+    Loading the application is its own business — the script composes the
+    plugins, registers its query behaviours, then hands the commands to
+    `kitebase.cli.run_cli`. `cli:` in config.yaml names it; `kite.py`, what
+    `kitebase new` writes, needs no naming.
+    """
+    name = read_config(app).get("cli") or CLI_DEFAULT
+    script = app / name
+    if not script.is_file():
+        raise DevError(
+            f"{app} has no {name}, the script that loads it and carries its "
+            f"commands.\nName yours in config.yaml, e.g. `cli: myapp.py`; it "
+            f"ends by calling kitebase.cli.run_cli.")
+    return script
+
+
+def delegate(argv: Sequence[str], src: Optional[str] = None) -> int:
+    """Run a command that needs the application loaded, through its own script.
+
+    `kitebase db-check` in an application directory is `uv run kite.py db-check`
+    there: one way of loading the application, reached from one command.
+    """
+    app = Path.cwd()
+    if not (app / "config.yaml").is_file():
+        raise DevError(
+            f"`{argv[0]}` needs an application: run it from a directory holding "
+            f"a config.yaml.")
+    command = backend_command(app, find_cli(app), find_source_checkout(src), argv)
+    if os.name == "posix":
+        # Replaced, not spawned: Ctrl-C and the exit status are the script's own.
+        os.execv(command[0], command)
+    return subprocess.call(command, cwd=str(app))
+
+
 # ── What to run ──────────────────────────────────────────────────────────────
 
-def backend_command(app: Path, server: Path, src: Optional[Path] = None) -> List[str]:
-    """How this application starts.
+def project_of(app: Path) -> Optional[Path]:
+    """The Python project an application runs in: its own, or the one above it.
 
-    An application with a `pyproject.toml` has an environment of its own, and
-    `uv` is what puts it there; the library checkout, when there is one, is
-    layered on top for the run only — nothing is left installed afterwards.
-    An application without one (the benches inside the library checkout) runs
-    with the interpreter that is already here.
+    The benches inside the library checkout (devtest) have no `pyproject.toml`
+    of their own: they belong to the checkout, as `uv` itself would conclude
+    looking upwards from their directory.
     """
-    if not (app / "pyproject.toml").is_file():
-        return [sys.executable, server.name]
+    for directory in (app, *app.parents):
+        if (directory / "pyproject.toml").is_file():
+            return directory
+    return None
 
+
+def backend_command(app: Path, script: Path, src: Optional[Path] = None,
+                    args: Sequence[str] = ()) -> List[str]:
+    """How a script of this application runs: its server, or its CLI.
+
+    The project the application belongs to has an environment of its own, and
+    `uv` is what puts it there, whatever virtual environment is active; the
+    library checkout, when there is one and it is not that project already, is
+    layered on top for the run only — nothing is left installed afterwards.
+    Outside any project, or without `uv`, it runs with the interpreter that is
+    already here.
+    """
+    project = project_of(app)
     uv = shutil.which("uv")
-    if not uv:
-        raise DevError(
-            f"{app} declares its own environment but uv is not installed.\n"
-            f"Install uv, or run it yourself: .venv/bin/python {server.name}")
+    if not project or not uv:
+        if project == app:
+            raise DevError(
+                f"{app} declares its own environment but uv is not installed.\n"
+                f"Install uv, or run it yourself: .venv/bin/python {script.name}")
+        return [sys.executable, script.name, *args]
 
-    editable = ["--with-editable", str(src)] if src else []
-    return [uv, "run", *editable, server.name]
+    layered = src and src.resolve() != project.resolve()
+    editable = ["--with-editable", str(src)] if layered else []
+    return [uv, "run", *editable, script.name, *args]
 
 
 def client_command() -> List[str]:

@@ -168,7 +168,7 @@ which is what to run before believing an application is portable.
 ### It runs
 
 ```bash
-uv run app.py db-sync       # creates the database from the YAML schema
+uv run kite.py db-sync      # creates the database from the YAML schema
 uv run server_flask.py      # the API on http://localhost:8300
 ```
 
@@ -263,8 +263,8 @@ tables:
 ```
 
 ```bash
-uv run app.py db-check      # what differs, read-only
-uv run app.py db-sync       # apply it: whatever loses no data, never a drop
+uv run kite.py db-check     # what differs, read-only
+uv run kite.py db-sync      # apply it: whatever loses no data, never a drop
 ```
 
 **What you should see.** `db-sync` names the change before making it:
@@ -504,7 +504,7 @@ one place:
 ```
 
 ```
-$ uv run app.py db-check
+$ uv run kite.py db-check
 Applicable automatically (3):
   + configs                                  new table (6 columns)
   + books.isbn                               type VARCHAR(20) -> VARCHAR(32)
@@ -608,7 +608,7 @@ uvx --from "kitebase @ git+https://github.com/kitebase/kitebase" \
     kitebase new hello
 cd hello
 uv sync
-uv run app.py db-sync
+uv run kite.py db-sync
 uv run server_flask.py      # the API on http://localhost:8300
 ```
 
