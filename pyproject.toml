@@ -4,7 +4,7 @@
 # dependency and pins a version, so what is running is a fact the application
 # states rather than whatever happened to be on the machine.
 #
-#   uv add "kitebase @ git+https://github.com/kitebase/kitebase@v0.5.0"
+#   uv add "kitebase @ git+https://github.com/kitebase/kitebase@v0.6.0"
 #   uv add "kitebase @ git+file:///path/to/kitebase"        # a local checkout
 #   uv pip install -e ../kitebase                          # editable, for dev
 #
