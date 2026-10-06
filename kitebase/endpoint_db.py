@@ -648,6 +648,8 @@ def get_server_config(data: Dict[str, Any]) -> Dict[str, Any]:
         {
           config: {
             page_size: int,           # global DataView page size default
+            locale: str,              # config.yaml `locale`
+            app_title: str | None,    # config.yaml `title`, the name the chrome shows
             # (future) page_size_by_type: { reference, master, transaction, log }
             # Any other client-relevant keys from config.yaml dataview section
           },
@@ -668,6 +670,7 @@ def get_server_config(data: Dict[str, Any]) -> Dict[str, Any]:
                 'config': {
                     **app.pm.config.get('dataview', {}),
                     'locale': app.pm.config.get('locale', 'en'),
+                    'app_title': app.pm.config.get('title'),
                 },
                 'types': app.get_type_schema(include_builtin),
                 'tables': app.get_table_schema(),
