@@ -2055,7 +2055,7 @@
     {
      "field": "id",
      "width": 60,
-     "hozAlign": "right",
+     "align": "right",
      "$plugin": "panels"
     },
     {
@@ -2073,7 +2073,7 @@
      "field": "birth_date",
      "title": "Born",
      "width": 110,
-     "hozAlign": "center",
+     "align": "center",
      "$plugin": "panels"
     }
    ],
@@ -2106,7 +2106,7 @@
     {
      "field": "id",
      "width": 60,
-     "hozAlign": "right",
+     "align": "right",
      "$plugin": "panels"
     },
     {
@@ -2128,14 +2128,14 @@
      "field": "price",
      "title": "Price",
      "width": 90,
-     "hozAlign": "right",
+     "align": "right",
      "$plugin": "panels"
     },
     {
      "field": "language",
      "title": "Lang",
      "width": 60,
-     "hozAlign": "center",
+     "align": "center",
      "$plugin": "panels"
     }
    ],
@@ -2178,7 +2178,7 @@
     {
      "field": "id",
      "width": 60,
-     "hozAlign": "right",
+     "align": "right",
      "$plugin": "panels"
     },
     {
@@ -2205,7 +2205,7 @@
      "field": "price",
      "title": "Price",
      "width": 90,
-     "hozAlign": "right",
+     "align": "right",
      "$plugin": "panels"
     }
    ],
