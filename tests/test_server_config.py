@@ -31,3 +31,15 @@ def test_the_title_is_the_one_config_declares(monkeypatch):
 
 def test_without_a_title_the_client_chooses(monkeypatch):
     assert config_for(monkeypatch, {})['app_title'] is None
+
+
+def test_a_column_s_granularity_reaches_the_client(tmp_path, monkeypatch):
+    """`granularity: second` on a datetime is what lists and forms both read."""
+    from tests.test_codegen_relations import build, table
+    db = build(tmp_path, monkeypatch, {'Visit': table(
+        {'name': 'arrived', 'type': 'DateTime', 'granularity': 'second'},
+        {'name': 'left', 'type': 'DateTime'},
+        name='visits')})
+    columns = {c['name']: c for c in db.get_table_schema()['Visit']['columns']}
+    assert columns['arrived']['granularity'] == 'second'
+    assert 'granularity' not in columns['left']

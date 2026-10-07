@@ -439,7 +439,8 @@ class DB:
             for col in table.effective_columns:
                 col_dict = {'name': col.name}
                 for attr in ('type', 'label', 'virtual', 'editable', 'nullable', 'secret',
-                             'default', 'deferred', 'index', 'unique', 'query_rank'):
+                             'default', 'deferred', 'index', 'unique', 'query_rank',
+                             'granularity'):
                     if attr in col.attributes:
                         col_dict[attr] = col.attributes[attr]
                     elif hasattr(col, 'db_type') and col.db_type and attr == 'type':
