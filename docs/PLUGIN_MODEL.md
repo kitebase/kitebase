@@ -3,7 +3,7 @@
 *This manual describes how plugins define, extend, and override data models in Kitebase.
 It is written for application developers building on top of the framework.*
 
-*Last revised: 2026-10-03; names checked against 0.6.0 on 2026-10-05. Living document: sections marked* (planned) *or* (future) *are not yet implemented.*
+*Last revised: 2026-10-07; names checked against 0.6.0 on 2026-10-05. Living document: sections marked* (planned) *or* (future) *are not yet implemented.*
 
 Kitebase is designed around a single workflow: **configure, build, deploy**.
 An application developer starts from a skeleton project, writes plugins that declare
@@ -20,7 +20,7 @@ framework merges them into a coherent whole at startup.
 ## Table of Contents
 
 1. [How the Plugin System Works](#1-how-the-plugin-system-works)
-2. [The Merge Algorithm](#2-the-merge-algorithm) — identity keys, smart merge, leaving a hook, the `$` metadata convention
+2. [The Merge Algorithm](#2-the-merge-algorithm) — identity keys, smart merge, leaving a hook, the `$` metadata convention, an application's own keys and the vocabulary
 3. [Types](#3-types) — primitive, inheritance, case, composite/mixin, virtual columns, secret columns, query behaviors
 4. [Tables](#4-tables)
 5. [Pages and Panels](#5-pages-and-panels)
@@ -449,6 +449,61 @@ request arrives, family C is resolved when a row is inserted. None of them ever
 reaches the frontend as a literal `$` key: attribution is stripped, refs are
 expanded, directives are consumed, placeholders are substituted, defaults are
 compiled into the generated model.
+
+### 2.7 An Application's Own Keys, and the Vocabulary
+
+A key the core does not know is not refused: it travels with the node, and
+whatever reads it (the application's own code, a sync, a command) finds it
+there. That is how an application annotates the model for itself. It is also
+how a typo goes unnoticed: `nulable: false` is a key nobody reads, so the
+column stays nullable and nothing says so.
+
+Two rules keep the two cases apart.
+
+**A key of the application has a dot in its name.** `myapp.owner: legacy` says
+which system writes a column, for the application's own sync; the core never defines a key
+with a dot, so the day it adds one of its own it cannot take the application's
+meaning away. The prefix is whatever the application chooses, usually its
+name. An underscore prefix is not the convention: `_plugin` was retired in
+favour of `$plugin` (§ 2.6), and `_` would read as framework metadata.
+
+**The core's keys are listed, path by path, in a vocabulary.**
+`kitebase/vocabulary.yaml` maps a normalized path of the merged tree (names
+become `*`, list items `[]`) to the keys allowed there:
+
+```yaml
+tables.*.columns[]: [default, help, label, name, nullable, type, ...]
+pages.*.content.source: [defaults, joins, model, order_by, ...]
+pages.*.content.source.defaults: '*'     # an open map: its keys are column names
+```
+
+`kitebase check` warns about a key outside it, with the nearest known one,
+and so does every server start, in the log:
+
+```
+warning  key-unknown  tables.Loan.columns[1].nulable
+         'nulable' is not a known key here (did you mean 'nullable'?) ...
+```
+
+A warning, never an error: a new key of the core that no application has used
+yet looks the same as a typo, and the answer is a person's. An open map
+(`'*'`) holds data, not vocabulary (`defaults`, `prefill`, `filters`, the names
+in `joins`, `props`): its keys are not checked, while the maps beneath it
+are again. Keys with a dot, and `$` keys, are never checked.
+
+The vocabulary is made from the applications we run (devtest, the commons
+demo, an application in service) and reviewed like the golden of the merged tree. A key of the core
+used for the first time enters it with the change that introduces it:
+
+```
+KITEBASE_VOCABULARY_UPDATE=1 uv run kitebase check
+```
+
+adds what the application uses and the file lacks (from an application in
+the workspace it writes the core's file, through the editable install), and
+never removes anything, since the file is the union of several applications.
+A key the core stops reading is taken out by hand. Read the diff, then commit
+it with the core.
 
 ---
 
@@ -954,12 +1009,13 @@ hybrid carries an SQL expression. A table that declares nothing searchable
 | `on_write` | string | Registered transform applied before the value is stored (§ 3.6) |
 | `editable` | bool | Client hint: the column is not writable in generated forms |
 | `label` | string | UI label (overrides type-level label) |
-| `help` | string | UI tooltip |
+| `help` | string | What the field is for: shown on request in a form, by the `?` beside the label or F1 on the field |
 | `widget` | string | UI widget override |
 | `searchable` | bool | Adds the column to what a text search matches (§ 4.3) |
 | `query_rank` | string | Where the column stands when a query is built — the query editor's fields and its order combo: `top`, `normal` (default), `low`, `more` (behind "Show more"), `none` (never offered). Within a rank the declaration order holds, so a derived plugin moves a field by ranking it, without reordering the base's columns. A value off the scale is an error in `check` |
 | `prefix` | string | Column name prefix when expanding a composite type |
 | `foreign_key` | dict | FK definition: `target`, `relation`, `backref`, `ondelete`, `onupdate`, `constraint` (hard/soft), `owned` (§ 4.5) |
+| `granularity` | string | On a `DateTime`: what lists and forms show, `minute` by default (the value keeps its seconds); `second` shows them too |
 | `length` | int | String length (for String-based types) |
 | `precision` / `scale` | int | Numeric precision |
 
@@ -1808,9 +1864,37 @@ views:
 | `field` | Field name — identity key for merge. Use `Model.field` for joined fields |
 | `title` | Column header (overrides type-level label) |
 | `align` | Text alignment: `left`, `center`, `right` |
-| `formatter` | Frontend formatter id for custom cell rendering |
+| `formatter` | Frontend formatter id for custom cell rendering; `datetime,second` adds the seconds |
+| `formatter_params` | Parameters for the formatter |
 | `width` | Column width in pixels |
+| `min_width` / `max_width` | Bounds of the column width, in pixels |
 | `sortable` | Whether the column is sortable (default: true) |
+
+Keys are lowercase with underscores, like every other key; the grid's own
+names (`hozAlign`, `minWidth`) stay inside it. Without `align` and `formatter`
+a column takes them from the **declared type** of the column it shows, a
+column of the main table or `Table.col as alias` through a join: numbers to
+the right, dates and datetimes formatted, a datetime to the minute unless the
+column says `granularity: second`. Guessing from the values is left for views
+without a table behind them.
+
+**Rules the view opens with.** `rules:` on a view are conditions the user sees
+in the filter panel and can change or remove: a starting point, not a limit
+like `source.filters`. With `$ref` they turn a list into a second page without
+repeating it:
+
+```yaml
+pages:
+  open_loans:
+    title: Open loans
+    content:
+      $ref: pages.loan_list.content
+      rules:
+        - {field: returned_on, op: empty}
+```
+
+What the view remembers across an accidental reload (its rules, its search) is
+kept per page, so two pages over the same table do not hand each other theirs.
 
 ### 7.3 Actions
 
@@ -2089,8 +2173,9 @@ menus:
 ```
 
 An entry belongs to a root via its `root` attribute (defaulted by the cascade,
-§ 9.5). A root may declare a `home_page` (opened by default when the menu is
-shown). Authorisation *(planned)* is an **orthogonal** filter applied over
+§ 9.5). A root may declare a `home_page`: the page the work area shows when
+nothing else is open, under the stack. It need not be an entry of the menu; the
+logo and the application's title (`title:` in `config.yaml`) lead back to it. Authorisation *(planned)* is an **orthogonal** filter applied over
 whichever root is requested — "restrict the app for a different task" is simply
 `get_menu('production')`, not a separate mechanism.
 
