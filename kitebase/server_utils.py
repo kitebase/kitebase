@@ -734,6 +734,32 @@ def _prefixes(plugins_config: Dict[str, Any],
     return prefix.rstrip('/'), endpoint_prefix.strip('/')
 
 
+def report_checks(kitebase_app) -> None:
+    """The warnings and errors of `kitebase check`, in the log, at startup.
+
+    A typo in a YAML key (`nulable`) is dropped without a word by whatever was
+    meant to read it; `check` names it, but only for whoever runs it. Here every
+    start runs it too: in development the line is in the terminal of `kitebase
+    dev` as soon as the server restarts, in service it is in the journal. It
+    never stops the start: a warning is a question, not a refusal. The info
+    lines (a title a plugin overrides) stay in `check`, where they are asked
+    for. It costs a few milliseconds.
+    """
+    import logging
+    from kitebase.diagnostics import run_checks
+
+    log = logging.getLogger('kitebase')
+    try:
+        issues = [i for i in run_checks(kitebase_app) if i['severity'] in ('error', 'warning')]
+    except Exception:
+        log.exception('the startup checks failed; `kitebase check` tells more')
+        return
+    for i in issues:
+        log.warning('check %s %s %s: %s', i['severity'], i['code'], i['path'], i['message'])
+    if issues:
+        log.warning('check: %d to look at, `kitebase check` for the details', len(issues))
+
+
 def register_flask(target, kitebase_app, plugins, secret_key: str, *,
                    prefix: Optional[str] = None,
                    endpoint_prefix: Optional[str] = None,
@@ -776,6 +802,7 @@ def register_flask(target, kitebase_app, plugins, secret_key: str, *,
     config = plugins.config
     prefix, endpoint_prefix = _prefixes(config, prefix, endpoint_prefix)
     auth = auth or AuthMiddleware(config, secret_key)
+    report_checks(kitebase_app)
     command_processor = kitebase_app.cp
 
     def reply(result: Dict[str, Any], status_code: Optional[int] = None) -> Any:
@@ -896,6 +923,7 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
     config = plugins.config
     prefix, endpoint_prefix = _prefixes(config, prefix, endpoint_prefix)
     auth = auth or AuthMiddleware(config, secret_key)
+    report_checks(kitebase_app)
     command_processor = kitebase_app.cp
 
     def reply(result: Dict[str, Any], status_code: Optional[int] = None,

@@ -1,0 +1,93 @@
+# The keys the merged YAML may use, path by path (kitebase/vocabulary.py).
+# Generated, then reviewed: KITEBASE_VOCABULARY_UPDATE=1 kitebase check
+# adds, never removes. '*' is an open map: its keys are data.
+menu_items.*: [action, confirm, icon, label, op, order, panel, parent]
+menus.*: [home_page, label]
+pages.*: [breadcrumb, confirm_on_leave, content, panels, title]
+pages.*.content: [actions, columns, component, fields, layout, navigator, policy, props, rules, source, type]
+pages.*.content.actions: [toolbar]
+pages.*.content.columns[]: [field, formatter, title, width]
+pages.*.content.fields[]: [help, label, name, type, widget]
+pages.*.content.layout[]: [children, columns, id, label, pages, type]
+pages.*.content.layout[].children[]: [id, layout, type]
+pages.*.content.layout[].children[].layout[]: [count, endpoint, icon, label, opens, pass, type]
+pages.*.content.layout[].children[].layout[].opens: [fk, id, model, page, type, view]
+pages.*.content.layout[].children[].layout[].opens.view: [columns, type]
+pages.*.content.layout[].children[].layout[].opens.view.columns[]: [field, title]
+pages.*.content.layout[].children[].layout[].pass: '*'
+pages.*.content.layout[].columns[]: [fields, id]
+pages.*.content.layout[].columns[].fields[]: [choices, filler, foreign_key, label, lookup, name, widget, width]
+pages.*.content.layout[].columns[].fields[].choices[]: [label, value]
+pages.*.content.layout[].columns[].fields[].foreign_key: [field, target]
+pages.*.content.layout[].columns[].fields[].lookup: [filters]
+pages.*.content.layout[].columns[].fields[].lookup.filters: '*'
+pages.*.content.layout[].pages[]: [count, id, label, layout]
+pages.*.content.layout[].pages[].layout[]: [defaults, domain, fk, form, id, model, prefill, type, view]
+pages.*.content.layout[].pages[].layout[].defaults: '*'
+pages.*.content.layout[].pages[].layout[].domain[]: '*'
+pages.*.content.layout[].pages[].layout[].prefill: '*'
+pages.*.content.layout[].pages[].layout[].view: [columns, source, type]
+pages.*.content.layout[].pages[].layout[].view.columns[]: [field, title, width]
+pages.*.content.layout[].pages[].layout[].view.source: [order_by]
+pages.*.content.navigator: [commands]
+pages.*.content.navigator.commands[]: [endpoint, id, key, label, scope]
+pages.*.content.policy: [button_style, editable]
+pages.*.content.props: '*'
+pages.*.content.rules[]: [field, op]
+pages.*.content.source: [defaults, domain, endpoint, id, joins, model, order_by, save_endpoint]
+pages.*.content.source.defaults: '*'
+pages.*.content.source.domain[]: '*'
+pages.*.content.source.joins[]: '*'
+pages.*.content.source.joins[].*: ['on', type]
+pages.*.panels[]: [collapsed, component, content, height, id, panels, pos, props, tabs, trigger, type, width]
+pages.*.panels[].content: [component, props, type]
+pages.*.panels[].content.props: '*'
+pages.*.panels[].panels[]: [component, height, id, pos, props, type, width]
+pages.*.panels[].panels[].props: '*'
+pages.*.panels[].props: '*'
+pages.*.panels[].tabs[]: [id, label]
+pages.*.panels[].trigger: [event, from, pass]
+schemas.*: '*'
+schemas.*.*: [scale, type]
+tables.*: [columns, display_field, help, indexes, label, many_to_many, mixins, name, search_fields, tags]
+tables.*.columns[]: [autoincrement, base, case, columns, default, deferred, description, editable, foreign_key, help, index, label, length, name, nullable, plugin, precision, prefix, primary_key, query_rank, scale, type, unique, validate, virtual, widget]
+tables.*.columns[].columns[]: [base, length, name, nullable, type]
+tables.*.columns[].foreign_key: [backref, constraint, id, onupdate, owned, relation, table, target]
+tables.*.indexes[]: [columns, description, name, unique]
+tables.*.many_to_many: [target1, target2]
+tables.*.many_to_many.target1: [column, db_type, id, table]
+tables.*.many_to_many.target2: [column, db_type, id, table]
+types.*: [autoincrement, base, case, columns, default, deferred, editable, help, index, label, length, nullable, on_write, precision, primary_key, scale, secret, unique, validate, widget]
+types.*.columns[]: [base, default, deferred, granularity, help, label, length, name, nullable, on_write, onupdate, query_rank, secret, type, unique, validate, widget]
+views.*: [actions, columns, component, data_schema, fields, layout, navigator, policy, props, source, type]
+views.*.actions: [row, toolbar]
+views.*.actions.row[]: [action, confirm, id, op, panel, params, pass]
+views.*.actions.row[].params: '*'
+views.*.columns[]: [align, field, formatter, title, width]
+views.*.fields[]: [fields, group, name, widget]
+views.*.fields[].fields[]: [name, widget]
+views.*.layout[]: [border, columns, fields, label, pages, style, text, type]
+views.*.layout[].columns[]: [fields]
+views.*.layout[].columns[].fields[]: [choices, filler, label, name, readonly, required, type, widget, widget_props, width]
+views.*.layout[].columns[].fields[].choices[]: [label, value]
+views.*.layout[].columns[].fields[].widget_props: '*'
+views.*.layout[].fields[]: [help, label, name, type, widget]
+views.*.layout[].pages[]: [label, layout]
+views.*.layout[].pages[].layout[]: [border, children, columns, label, style, text, type]
+views.*.layout[].pages[].layout[].children[]: [layout, type, weight]
+views.*.layout[].pages[].layout[].children[].layout[]: [columns, label, type]
+views.*.layout[].pages[].layout[].children[].layout[].columns[]: [fields]
+views.*.layout[].pages[].layout[].children[].layout[].columns[].fields[]: [choices, label, name, type, widget]
+views.*.layout[].pages[].layout[].children[].layout[].columns[].fields[].choices[]: [label, value]
+views.*.layout[].pages[].layout[].columns[]: [fields]
+views.*.layout[].pages[].layout[].columns[].fields[]: [filler, label, name, type, widget, width]
+views.*.navigator: [commands, form_id, hide, mode]
+views.*.navigator.commands[]: [endpoint, id, key, label, scope]
+views.*.policy: [editable, selection]
+views.*.props: '*'
+views.*.source: [autofocus, data, filters, group_by, id, joins, model, order_by]
+views.*.source.data: '*'
+views.*.source.filters: [conditions]
+views.*.source.filters.conditions[]: '*'
+views.*.source.joins[]: '*'
+views.*.source.joins[].*: ['on', type]

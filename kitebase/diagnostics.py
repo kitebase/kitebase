@@ -86,6 +86,7 @@ def run_checks(app: Any) -> List[Dict[str, Any]]:
     _check_query_ranks(app, issues)
     _check_client(app, issues)
     _check_validators(app, issues)
+    _check_vocabulary(app, issues)
 
     # Orphan views: defined but never targeted by a $ref
     views = pm.data.get('views') or {}
@@ -330,6 +331,24 @@ def _check_validators(app: Any, issues: List[Dict[str, Any]]) -> None:
                     'error', 'validator-unknown', f'tables.{t_name}.{col.name}',
                     f"validate '{name}' is not a registered validator "
                     f"(known: {', '.join(sorted(known))})"))
+
+
+def _check_vocabulary(app: Any, issues: List[Dict[str, Any]]) -> None:
+    """Keys the merged YAML uses where the core has never used them: a typo,
+    or a key of the core that is new and goes into its vocabulary.
+
+    With KITEBASE_VOCABULARY_UPDATE=1 the vocabulary takes them in instead:
+    run it on the applications that show the new key, then read the diff.
+    """
+    import os
+    from kitebase import vocabulary
+
+    if os.environ.get('KITEBASE_VOCABULARY_UPDATE') == '1':
+        added = vocabulary.update(app.pm.data)
+        issues.append(make_issue('info', 'vocabulary-updated', str(vocabulary.VOCABULARY_FILE),
+                                 f'{added} keys added to the vocabulary'))
+        return
+    issues.extend(vocabulary.check(app.pm.data, vocabulary.load()))
 
 
 def _check_client(app: Any, issues: List[Dict[str, Any]]) -> None:
