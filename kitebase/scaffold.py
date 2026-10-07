@@ -96,7 +96,7 @@ client:
   role: app
 '''
 
-KITE_PY = '''"""{{name}} — loads the application, and carries the commands.
+KITE_PY = '''"""{{name}}: loads the application, and carries the commands.
 
 Two files, and the division is not cosmetic: the commands must be able to look
 at the database **without** starting a server, and in service the process is
@@ -206,8 +206,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.command in DB_COMMANDS:
-        # These look at the database as it is: no create_all, no startup check
-        # — reporting the difference is the whole point.
+        # These look at the database as it is: no create_all, no startup check:
+        # reporting the difference is the whole point.
         app, plugins, model = setup_db(create_all=False, check_schema=False)
         run_cli(app, args, output_dir=APP_DIR / "data")
     elif args.command:
@@ -416,7 +416,7 @@ PLUGIN_CONFIG = '''# The plugin of this application: its schema, and its domain 
 #
 # Kitebase imports every .py in this directory and registers what it finds
 # decorated with `@endpoint`. That is where the operations of the domain go —
-# never in kite.py, never in a page — because from here the same function is
+# never in kite.py, never in a page, because from here the same function is
 # reachable from the dispatcher, from another module in this process, and from
 # a command, without a line of wiring.
 name: {{name}}

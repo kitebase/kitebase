@@ -746,7 +746,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     other command needs the application loaded, and loading it is the
     application's own business: its `kite.py` composes the sequence, registers
     its query behaviours and then calls `run_cli`. Two sequences for the same
-    job would answer differently the day one of them forgot a step — so here
+    job would answer differently the day one of them forgot a step, so here
     those commands are handed to that script, run in the application's own
     environment (`cli:` in config.yaml names it, when it is not `kite.py`).
     """

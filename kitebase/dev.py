@@ -172,7 +172,7 @@ def read_config(app: Path) -> dict:
 def find_cli(app: Path) -> Path:
     """The script that loads this application and carries its commands.
 
-    Loading the application is its own business — the script composes the
+    Loading the application is its own business: the script composes the
     plugins, registers its query behaviours, then hands the commands to
     `kitebase.cli.run_cli`. `cli:` in config.yaml names it; `kite.py`, what
     `kitebase new` writes, needs no naming.
@@ -227,7 +227,7 @@ def backend_command(app: Path, script: Path, src: Optional[Path] = None,
     The project the application belongs to has an environment of its own, and
     `uv` is what puts it there, whatever virtual environment is active; the
     library checkout, when there is one and it is not that project already, is
-    layered on top for the run only — nothing is left installed afterwards.
+    layered on top for the run only, and nothing is left installed afterwards.
     Outside any project, or without `uv`, it runs with the interpreter that is
     already here.
     """

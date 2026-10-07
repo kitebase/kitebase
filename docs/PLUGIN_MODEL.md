@@ -3,7 +3,7 @@
 *This manual describes how plugins define, extend, and override data models in Kitebase.
 It is written for application developers building on top of the framework.*
 
-*Last revised: 2026-10-03; names checked against 0.6.0 on 2026-10-05. Living document — sections marked* (planned) *or* (future) *are not yet implemented.*
+*Last revised: 2026-10-03; names checked against 0.6.0 on 2026-10-05. Living document: sections marked* (planned) *or* (future) *are not yet implemented.*
 
 Kitebase is designed around a single workflow: **configure, build, deploy**.
 An application developer starts from a skeleton project, writes plugins that declare

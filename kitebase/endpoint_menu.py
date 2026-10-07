@@ -14,7 +14,7 @@ data into a rendered tree for one named root:
     5. Resolve $ref    — expand refs embedded in item props
 
 The client (Chrome sidebar) receives a composed, filtered, ordered tree and does
-not know how it was built — identical to the `get_page` contract.
+not know how it was built, like the `get_page` contract.
 
 Cross-root placement of the *same* item in multiple roots (§7, `menus.<id>.items`
 with `$ref`) is a follow-up: this first slice implements the flat `parent` model

@@ -39,7 +39,7 @@ road before leaving it.
 
 ## 1. The workstation: three repositories
 
-Make a directory to hold them — `kitebase` here, the name is yours — and clone
+Make a directory to hold them (`kitebase` here, the name is yours) and clone
 the three into it, each under the name of its role:
 
 ```bash
@@ -84,7 +84,7 @@ kitebase/
 **Nothing in the framework depends on that arrangement.** Three conveniences do:
 the client finds the `devtest` bench by looking for `server/devtest` up to three
 levels above itself, `kitebase dev` finds the client beside the library, and an
-application that declares a shared plugin root writes the path to it — which is
+application that declares a shared plugin root writes the path to it, which is
 short when they are close. Your applications say where they are, and can live
 anywhere.
 
@@ -126,7 +126,7 @@ kitebase --help              # without the venv activated: .venv/bin/kitebase --
 ## 2. Your first application
 
 From `kitebase/`, into an `apps/` directory beside the three repositories.
-**An application is free to live anywhere** — nothing looks for it, and it is
+**An application is free to live anywhere**: nothing looks for it, and it is
 the one that says where things are: the library comes from its own environment,
 and the shared plugins from a path it writes in chapter 4, relative to itself or
 absolute. `apps/` here only keeps that path short and the tree easy to read.
@@ -180,7 +180,7 @@ uv run server_flask.py      # the API on http://localhost:8300
 ```
 
 `kitebase db-sync`, like every command that needs the application loaded, is
-handed to the application's own script — `kite.py`, which `kitebase new` wrote —
+handed to the application's own script (`kite.py`, which `kitebase new` wrote)
 and run in its environment: `uv run kite.py db-sync` is the same thing, spelled
 out. What each generated file is for, and why it is split that way, is in
 [APPLICATION.md](APPLICATION.md).
@@ -364,8 +364,8 @@ An application does not own a client. It contributes interface through the
 compiles them in. **That is why the shell is the norm**: what makes an
 application look like itself travels in its plugins.
 
-Both commands look for the client repository next to your kitebase checkout —
-`kitebase/client`, in the layout of chapter 1 — and take
+Both commands look for the client repository next to your kitebase checkout
+(`kitebase/client`, in the layout of chapter 1) and take
 `KITEBASE_UI=/path/to/client` when it is somewhere else. `uv run` runs them
 from the application's own environment, where kitebase is a dependency; with the
 workstation venv active, plain `kitebase …` works too.
@@ -419,8 +419,8 @@ Served this way the application answers on the network too —
 `http://<this machine's address>:8300` from another machine — because the
 compiled client calls whatever origin served it, and no address is baked in.
 
-> A client of your own is possible — `client/apps/playground` is one, bound to
-> the devtest bench — but it is only needed for what plugins cannot
+> A client of your own is possible (`client/apps/playground` is one, bound to
+> the devtest bench), but it is only needed for what plugins cannot
 > contribute. Today it lives inside the client repository: `@kitebase/ui` is
 > consumed as a workspace package, so a client outside that checkout has no way
 > to depend on it.
@@ -470,10 +470,10 @@ client build derives its aliases and its component globs from the same list. Add
 a root under a running process and neither notices; you get an application that
 looks unchanged and a client that cannot resolve what the server now sends.
 
-`commons` — the `kitebase-commons` repository — is not a Python dependency and
+`commons`, the `kitebase-commons` repository, is not a Python dependency and
 is never installed. It is a
-**plugin root**, and an application reaches it by path — which is the whole
-integration. In `config.yaml`, **replace the `plugins: [plugins]` line** — the
+**plugin root**, and an application reaches it by path, which is the whole
+integration. In `config.yaml`, **replace the `plugins: [plugins]` line**: the
 commented example above it says the same thing, but the path is only right when
 the shared checkout sits where this manual put it:
 
@@ -507,7 +507,7 @@ Mostly a **vocabulary of types**. The generated application spells a column out:
 
 With `common` a column says what it *is*, and how it is stored is one line, in
 one place. In `plugins/myapp/model.yaml`, **replace the first four columns of
-`Book`** with these — the properties they had (`primary_key`, `length`,
+`Book`** with these: the properties they had (`primary_key`, `length`,
 `nullable`, `unique`) go away, because the type carries them; `published_on`
 stays as it is:
 
@@ -545,7 +545,7 @@ width the vocabulary declares.
 chapter 3 is still there.
 
 The interface follows in the same move. Start the server again and ask for the
-form of that table: what the types know is already in it — with no UI written
+form of that table: what the types know is already in it, with no UI written
 anywhere.
 
 ```bash
@@ -654,8 +654,8 @@ matters: it resolves kitebase from the repository at `main`, not from a checkout
 so there is nothing on your disk to edit. uv downloads the library into its cache
 and into that application's environment; no copy of it is yours.
 
-Good for a look. For anything else — a client, the shared plugins, a library you
-can change — start at [chapter 1](#1-the-workstation-three-repositories). The
+Good for a look. For anything else (a client, the shared plugins, a library you
+can change) start at [chapter 1](#1-the-workstation-three-repositories). The
 steps `kitebase new` prints mention `kitebase dev` and `kitebase build-client`:
 both need the client repository, which only the workstation has, and without it
 they say so.
@@ -692,9 +692,9 @@ packages depend on each other with `workspace:*`, which npm cannot install.
 ## Appendix D — the two benches
 
 ```bash
-cd server/devtest  && python server_fastapi.py           # 8300 — the library's bench
-cd commons/demo    && uv run kitebase dev --no-client    # 8302 — the shared plugins
-cd client          && pnpm dev                           # 5173 — playground, on devtest
+cd server/devtest  && python server_fastapi.py           # 8300, the library's bench
+cd commons/demo    && uv run kitebase dev --no-client    # 8302, the shared plugins
+cd client          && pnpm dev                           # 5173, playground, on devtest
 ```
 
 `devtest` exercises the library, and is where a feature is demonstrated first.
@@ -704,7 +704,7 @@ the repository, because that is what it has to prove.
 
 ---
 
-*Where to go next: [PLUGIN_MODEL.md](PLUGIN_MODEL.md) — how plugins declare the
+*Where to go next: [PLUGIN_MODEL.md](PLUGIN_MODEL.md): how plugins declare the
 data model, the UI and the menu, and how the merge composes them.
-[APPLICATION.md](APPLICATION.md) — the anatomy of an application: the files
+[APPLICATION.md](APPLICATION.md): the anatomy of an application, the files
 `kitebase new` writes, the bootstrap, the commands, the two servers.*
