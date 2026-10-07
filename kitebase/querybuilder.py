@@ -13,7 +13,7 @@ import decimal
 from uuid import UUID
 from typing import Any, Dict, List, Union, Optional, Type
 
-from sqlalchemy import and_, or_, desc, asc, false, select, func, text, TextClause, literal_column, inspect
+from sqlalchemy import and_, or_, desc, asc, false, select, func, text, TextClause, literal_column, inspect, String
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import Session
@@ -342,7 +342,8 @@ class DynamicQueryBuilder:
         select_builder = SelectBuilder(self.models, main_table, self.engine)
         join_builder = JoinBuilder(self.models)
         filter_builder = FilterBuilder(self.models, select_builder)
-        order_builder = OrderBuilder(self.models, select_builder)
+        order_builder = OrderBuilder(self.models, select_builder,
+                                     dialect=self.engine.dialect.name if self.engine else None)
 
         # Determine the columns to select - if 'select' is absent, pass None or [] to use default behavior
         select_def = query_def.get('select')
@@ -1784,17 +1785,20 @@ class OrderBuilder:
     and handling of aliased columns and expressions.
     """
 
-    def __init__(self, models: Dict[str, Type[DeclarativeMeta]], select_builder: SelectBuilder) -> None:
+    def __init__(self, models: Dict[str, Type[DeclarativeMeta]], select_builder: SelectBuilder,
+                 dialect: Optional[str] = None) -> None:
         """
         Initialize the OrderBuilder.
 
         Args:
             models: Dictionary of table name to model class mappings
             select_builder: SelectBuilder instance for column and alias handling
+            dialect: The engine's dialect name, for what ordering text needs on it
         """
         self.models = models
         self.select_builder = select_builder
         self.main_table = select_builder.main_table
+        self.dialect = dialect
 
     def apply_ordering(self, query: Select, order_def: List[Any]) -> Select:
         """
@@ -1952,6 +1956,15 @@ class OrderBuilder:
         """
         Apply ordering direction.
 
+        Text is ordered the way a person reads it, whatever the case: SQLite
+        compares bytes, so `BIANCHI` would come before `Bellini`, and data
+        that mixes upper and mixed case (a legacy import) reads as two lists.
+        Only the ORDER BY changes: equality, filters and `unique` still tell
+        `Rossi` from `ROSSI`. Only SQLite needs it: MariaDB's default
+        collations are case-insensitive, and so is PostgreSQL with a locale
+        collation. NOCASE folds ASCII only, which leaves accented capitals
+        where they are.
+
         Args:
             query: SQLAlchemy query object
             column: Column to order by
@@ -1960,6 +1973,8 @@ class OrderBuilder:
         Returns:
             Modified query with ordering applied
         """
+        if self.dialect == 'sqlite' and isinstance(getattr(column, 'type', None), String):
+            column = column.collate('NOCASE')
         if direction == 'desc':
             return query.order_by(desc(column))
         else:  # direction == 'asc'
