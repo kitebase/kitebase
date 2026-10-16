@@ -52,6 +52,8 @@ dependencies = [
     # by default. Only the comparison is borrowed — no revision files, no
     # migration history: the YAML is the truth (see kitebase/schema_sync.py).
     "alembic",
+    # Export to XLSX, and reading one back for the import. Pure Python.
+    "openpyxl",
 ]
 
 # The web frameworks are imported inside the registration functions, never at

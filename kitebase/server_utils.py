@@ -16,7 +16,9 @@ import logging.handlers
 import sys
 import traceback as _traceback
 import jwt
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple, Union
+
+from kitebase.endpoints import FileResult
 
 
 def _error_response(message: str, status_code: int = 500,
@@ -527,6 +529,10 @@ def handle_generic_endpoint(
         result = command_processor.send(command)
 
         if result.get('status') == 'success':
+            if isinstance(result.get('data'), FileResult):
+                return _error_response(
+                    f"Operation '{operation}' returns a file: call it through the download route",
+                    status_code=400, request_id=result.get('request_id'))
             response = {'status': 'success', 'data': result.get('data'), 'status_code': 200}
             # What the endpoint had to say about what it did: an operation called
             # from a button reports in one line, and the envelope carries it.
@@ -538,6 +544,59 @@ def handle_generic_endpoint(
 
     except Exception as e:
         return _error_from_exc(e)
+
+
+def handle_download(
+    command_processor,
+    operation: str,
+    data: Dict[str, Any],
+    context: Optional[Dict[str, Any]] = None
+) -> Union[FileResult, Dict[str, Any]]:
+    """
+    Framework-agnostic handler of the download route.
+
+    Same command processor as the dispatcher, so an operation is the same
+    endpoint with the same context; only the answer differs. Returns the
+    FileResult to send as bytes, or an error dict to send as JSON - which
+    includes an operation that answered with data instead of a file.
+    """
+    try:
+        command = {"operation": operation, "parameters": data}
+        if context:
+            command["context"] = context
+
+        result = command_processor.send(command)
+
+        if result.get('status') != 'success':
+            return _error_from_result(result, 'Operation failed')
+        if not isinstance(result.get('data'), FileResult):
+            return _error_response(
+                f"Operation '{operation}' does not return a file",
+                status_code=400, request_id=result.get('request_id'))
+        return result['data']
+
+    except Exception as e:
+        return _error_from_exc(e)
+
+
+def file_headers(file: FileResult) -> Dict[str, str]:
+    """
+    The headers a file leaves with, the same for both frameworks.
+
+    The name goes twice: `filename*` in UTF-8 for the browsers (all of them
+    today), `filename` in ASCII for whatever does not read the first. An
+    export is the user's data of the moment, never something to keep in a
+    cache.
+    """
+    from urllib.parse import quote
+
+    ascii_name = file.filename.encode('ascii', 'replace').decode('ascii')
+    ascii_name = ascii_name.replace('?', '_').replace('"', '_').replace('\\', '_')
+    return {
+        'Content-Disposition': (f'{file.disposition}; filename="{ascii_name}"; '
+                                f"filename*=UTF-8''{quote(file.filename, safe='')}"),
+        'Cache-Control': 'no-store',
+    }
 
 
 # ============================================
@@ -890,6 +949,16 @@ def register_flask(target, kitebase_app, plugins, secret_key: str, *,
         return reply(handle_generic_endpoint(
             command_processor, operation, request.json, context=g.user_context))
 
+    @target.route(f'{prefix}/download/<operation>', methods=['POST'])
+    @authenticated
+    def kitebase_download(operation: str):
+        """An operation whose answer is a file (FileResult): the bytes, not JSON."""
+        result = handle_download(command_processor, operation, request.json,
+                                 context=g.user_context)
+        if not isinstance(result, FileResult):
+            return reply(result)
+        return Response(result.content, mimetype=result.mime, headers=file_headers(result))
+
     return auth
 
 
@@ -1008,6 +1077,20 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
         return reply(
             handle_generic_endpoint(command_processor, operation, data, context=user),
             new_token=new_token)
+
+    @target.post(f'{prefix}/download/{{operation}}', dependencies=cleanup)
+    def kitebase_download(operation: str, data: dict, request: Request):
+        """An operation whose answer is a file (FileResult): the bytes, not JSON."""
+        user, refused, new_token = identify(request)
+        if refused is not None:
+            return refused
+        result = handle_download(command_processor, operation, data, context=user)
+        if not isinstance(result, FileResult):
+            return reply(result, new_token=new_token)
+        headers = file_headers(result)
+        if new_token:
+            headers['X-New-Token'] = new_token
+        return Response(content=result.content, media_type=result.mime, headers=headers)
 
     return auth
 

@@ -21,7 +21,7 @@ import pytest
 
 import kitebase.server_utils as srv
 from kitebase.db import BaseApp
-from kitebase.endpoints import CommandProcessor, _ENDPOINTS
+from kitebase.endpoints import CommandProcessor, FileResult, _ENDPOINTS
 
 SECRET = 'test-secret-key-long-enough-for-hs256'
 
@@ -53,6 +53,10 @@ def kitebase_app():
     register('refuse', lambda params: {
         'status': 'error', 'code': 400, 'message': 'not changed',
         'data': {'errors': {'confirm': 'the two do not match'}}})
+    # A file, with a name that is not ASCII: the header has to carry it.
+    register('a_file', lambda params: FileResult(b'a;b\r\n1;2\r\n', 'città.csv', 'text/csv'))
+    register('a_pdf', lambda params: FileResult(b'%PDF-1.7', 'invoice.pdf',
+                                                'application/pdf', disposition='inline'))
 
     cp = CommandProcessor()
     cp.endpoints = dict(_ENDPOINTS)
@@ -460,3 +464,86 @@ def test_fastapi_still_refreshes_a_token_on_a_response_it_builds(fastapi_client)
                               headers=bearer(last_refresh=0))
 
     assert 'X-New-Token' in res.headers
+
+
+# ── Files: the download route ─────────────────────────────────────────────────
+
+def test_a_file_leaves_as_its_bytes(flask_client):
+    res = flask_client.post('/kitebase/download/a_file', json={}, headers=bearer())
+
+    assert res.status_code == 200
+    assert res.data == b'a;b\r\n1;2\r\n'
+    assert res.mimetype == 'text/csv'
+    assert res.headers['Cache-Control'] == 'no-store'
+
+
+def test_the_name_travels_in_utf8_and_in_ascii(flask_client):
+    res = flask_client.post('/kitebase/download/a_file', json={}, headers=bearer())
+
+    disposition = res.headers['Content-Disposition']
+    assert disposition.startswith('attachment;')
+    assert 'filename="citt_.csv"' in disposition
+    assert "filename*=UTF-8''citt%C3%A0.csv" in disposition
+
+
+def test_a_file_to_preview_opens_inline(flask_client):
+    res = flask_client.post('/kitebase/download/a_pdf', json={}, headers=bearer())
+
+    assert res.headers['Content-Disposition'].startswith('inline;')
+
+
+def test_the_dispatcher_refuses_a_file(flask_client):
+    """JSON only: a FileResult through it would fail in the encoder."""
+    res = flask_client.post('/kitebase/endpoint/a_file', json={}, headers=bearer())
+
+    assert res.status_code == 400
+    assert 'download route' in res.get_json()['message']
+
+
+def test_the_download_route_refuses_data(flask_client):
+    res = flask_client.post('/kitebase/download/echo', json={}, headers=bearer())
+
+    assert res.status_code == 400
+    assert res.get_json()['message'] == "Operation 'echo' does not return a file"
+
+
+def test_a_download_without_a_token_is_refused(flask_client):
+    res = flask_client.post('/kitebase/download/a_file', json={})
+
+    assert res.status_code == 401
+    assert res.get_json()['status'] == 'error'
+
+
+def test_a_failing_download_answers_in_json(flask_client):
+    res = flask_client.post('/kitebase/download/boom', json={}, headers=bearer())
+
+    assert res.status_code >= 400
+    assert res.get_json()['status'] == 'error'
+
+
+def test_a_download_refreshes_a_stale_token(flask_client, fastapi_client):
+    for res in (flask_client.post('/kitebase/download/a_file', json={},
+                                  headers=bearer(last_refresh=0)),
+                fastapi_client.post('/kitebase/download/a_file', json={},
+                                    headers=bearer(last_refresh=0))):
+        assert 'X-New-Token' in res.headers
+
+
+def test_both_frameworks_send_the_same_file(flask_client, fastapi_client):
+    flask_res = flask_client.post('/kitebase/download/a_file', json={}, headers=bearer())
+    fastapi_res = fastapi_client.post('/kitebase/download/a_file', json={},
+                                      headers=bearer())
+
+    assert flask_res.data == fastapi_res.content
+    for header in ('Content-Disposition', 'Cache-Control'):
+        assert flask_res.headers[header] == fastapi_res.headers[header]
+    assert flask_res.mimetype == fastapi_res.headers['content-type'].split(';')[0]
+
+
+def test_both_frameworks_refuse_the_same_download(flask_client, fastapi_client):
+    for path in ('/kitebase/download/echo', '/kitebase/endpoint/a_file'):
+        flask_res = flask_client.post(path, json={}, headers=bearer())
+        fastapi_res = fastapi_client.post(path, json={}, headers=bearer())
+
+        assert flask_res.status_code == fastapi_res.status_code == 400
+        assert flask_res.get_json()['message'] == fastapi_res.json()['message']

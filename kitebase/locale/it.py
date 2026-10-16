@@ -17,6 +17,17 @@ register_translations('it', {
     'Record deleted successfully':      'Record eliminato con successo',
     'Query not defined':                'Query non definita',
 
+    # export
+    'Export':                           'Esporta',
+    '{n} rows':                         '{n} righe',
+    '1 row':                            '1 riga',
+    'No rows to export':                'Nessuna riga da esportare',
+    'No columns to export':             'Nessuna colonna da esportare',
+    '{n} rows are more than the {limit} an export can hold: narrow the selection':
+        "{n} righe sono più delle {limit} che un'esportazione può contenere: restringi la selezione",
+    "Unknown export format: '{format}'": "Formato di esportazione sconosciuto: '{format}'",
+    'Text, tab separated (.txt)':       'Testo separato da tabulazioni (.txt)',
+
     # auth
     'Username and password are required': 'Username e password obbligatori',
     'Invalid credentials':              'Credenziali non valide',

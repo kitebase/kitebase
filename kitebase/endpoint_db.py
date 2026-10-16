@@ -648,6 +648,7 @@ def get_server_config(data: Dict[str, Any]) -> Dict[str, Any]:
         {
           config: {
             page_size: int,           # global DataView page size default
+            export_max_rows: int,     # ceiling of an export (dataview.export_max_rows)
             locale: str,              # config.yaml `locale`
             app_title: str | None,    # config.yaml `title`, the name the chrome shows
             # (future) page_size_by_type: { reference, master, transaction, log }
@@ -662,6 +663,7 @@ def get_server_config(data: Dict[str, Any]) -> Dict[str, Any]:
     Field-level attrs from view descriptors override type-level defaults (client-side).
     """
     try:
+        from kitebase.endpoint_export import max_rows
         app = kitebase.utils.get_app()
         include_builtin = bool(data.get('include_builtin', False))
         return {
@@ -669,6 +671,9 @@ def get_server_config(data: Dict[str, Any]) -> Dict[str, Any]:
             'data': {
                 'config': {
                     **app.pm.config.get('dataview', {}),
+                    # Always there, default included: the client refuses before
+                    # loading every row, the server would refuse after.
+                    'export_max_rows': max_rows(),
                     'locale': app.pm.config.get('locale', 'en'),
                     'app_title': app.pm.config.get('title'),
                 },

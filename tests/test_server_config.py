@@ -26,7 +26,12 @@ def config_for(monkeypatch, config):
 
 def test_the_title_is_the_one_config_declares(monkeypatch):
     assert config_for(monkeypatch, {'title': 'My App', 'locale': 'it'}) == {
-        'locale': 'it', 'app_title': 'My App'}
+        'locale': 'it', 'app_title': 'My App', 'export_max_rows': 50_000}
+
+
+def test_the_export_ceiling_reaches_the_client(monkeypatch):
+    """Default included: the client refuses before loading every row."""
+    assert config_for(monkeypatch, {'dataview': {'export_max_rows': 2000}})['export_max_rows'] == 2000
 
 
 def test_without_a_title_the_client_chooses(monkeypatch):

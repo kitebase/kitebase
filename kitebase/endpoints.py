@@ -36,6 +36,32 @@ def endpoint(name: str) -> Callable[[Callable], Callable]:
     return decorator
 
 
+class FileResult:
+    """
+    What an endpoint returns when its answer is a file rather than data.
+
+    It leaves through `{prefix}/download/{op}`, as the bytes themselves; the
+    dispatcher answers JSON only and refuses it, so an endpoint is called by
+    one route or the other, never both.
+
+    Args:
+        content:     the bytes of the file
+        filename:    the name the browser saves it under
+        mime:        its media type
+        disposition: 'attachment' to save it, 'inline' to open it (a PDF to
+                     preview)
+    """
+    def __init__(self, content: bytes, filename: str,
+                 mime: str = 'application/octet-stream',
+                 disposition: str = 'attachment') -> None:
+        if disposition not in ('attachment', 'inline'):
+            raise ValueError(f"disposition must be 'attachment' or 'inline', not {disposition!r}")
+        self.content = content
+        self.filename = filename
+        self.mime = mime
+        self.disposition = disposition
+
+
 class CommandResult:
     """
     Class to represent the result of a command execution.
