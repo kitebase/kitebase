@@ -1,3 +1,4 @@
+import re
 import sys
 import os
 import importlib
@@ -18,6 +19,53 @@ AFTER = '$after'
 BEFORE = '$before'
 
 _CORE_TIMESTAMP: Optional[float] = None
+
+# A requirement as pip writes it: the name, then optional [extras], then
+# whatever follows (a version, a marker), which is not checked here.
+_REQUIREMENT = re.compile(r'^\s*([A-Za-z0-9][A-Za-z0-9._-]*)\s*(?:\[([^\]]*)\])?')
+
+
+def _normalized(name: str) -> str:
+    return re.sub(r'[-_.]+', '-', name).lower()
+
+
+def unmet_requirement(spec: str) -> Optional[str]:
+    """
+    Why the Python package `spec` asks for is not usable here, or None.
+
+    Checks that the distribution is installed and, for each extra named in
+    brackets, that the distributions the extra pulls in are installed too
+    (`andrep[playwright]` without playwright is not andrep[playwright]). The
+    version part of the spec is not compared: presence is what decides whether
+    the plugin's code can import at all.
+    """
+    from importlib import metadata
+
+    match = _REQUIREMENT.match(spec or '')
+    if not match:
+        return f"'{spec}' is not a requirement"
+    name, extras = match.group(1), match.group(2)
+    try:
+        declared = metadata.requires(name) or []
+    except metadata.PackageNotFoundError:
+        return f"'{name}' is not installed"
+
+    for extra in [e.strip() for e in (extras or '').split(',') if e.strip()]:
+        wanted = _normalized(extra)
+        pulled = []
+        for requirement in declared:
+            marker = requirement.partition(';')[2]
+            found = re.search(r'extra\s*==\s*[\'"]([^\'"]+)[\'"]', marker)
+            if found and _normalized(found.group(1)) == wanted:
+                pulled.append(_REQUIREMENT.match(requirement).group(1))
+        if not pulled:
+            return f"'{name}' declares no extra '{extra}'"
+        for dependency in pulled:
+            try:
+                metadata.distribution(dependency)
+            except metadata.PackageNotFoundError:
+                return f"'{name}[{extra}]' needs '{dependency}', which is not installed"
+    return None
 
 
 def expand_shorthand(node: Any) -> Any:
@@ -291,12 +339,50 @@ class PluginsManager:
 
         # Process plugins in dependency order
         self._sort_dependencies()
+        self._check_requirements()
 
         # Merge plugin data
         for name in self.sorted:
             plugin = self.plugins[name]
             for data in plugin.data:
                 self.merge_dicts(data, name)
+
+    def _check_requirements(self) -> None:
+        """
+        Check the third-party packages each plugin declares under `requires`.
+
+            requires:
+              python: ["andrep[playwright,sqlalchemy]"]
+
+        The plugin declares, kitebase checks, the application installs: the
+        virtual environment is the application's, and so is the choice of where
+        a package comes from (a tag, a local checkout, an index). A plugin whose
+        requirements are not met is still merged, but its Python is not
+        imported: the error names the package, where an import would have
+        stopped half-way through loading with a traceback.
+        """
+        for name in self.sorted:
+            plugin = self.plugins[name]
+            requires = plugin.config.get('requires') or {}
+            path = f'plugins.{name}.requires'
+            if not isinstance(requires, dict) or set(requires) - {'python'}:
+                self.add_issue('error', 'requires-malformed', path,
+                               "'requires' holds 'python': a list of packages", name)
+                continue
+            specs = requires.get('python') or []
+            if not isinstance(specs, list) or not all(isinstance(x, str) for x in specs):
+                self.add_issue('error', 'requires-malformed', f'{path}.python',
+                               "'requires.python' is a list of packages, as pip writes them", name)
+                continue
+            for spec in specs:
+                reason = unmet_requirement(spec)
+                if reason:
+                    plugin.unmet.append(spec)
+                    self.add_issue(
+                        'error', 'requirement-missing', f'{path}.python',
+                        f"Plugin '{name}' requires {spec}: {reason}. The application "
+                        f"installs it (uv add \"{spec}\"); until then the plugin's "
+                        f"Python is not loaded", name)
 
     def _plugin_roots(self) -> List[Tuple[Path, Optional[List[str]]]]:
         """
@@ -962,7 +1048,9 @@ class PluginsManager:
         """
         sources = []
         for name, plugin in self.plugins.items():
-            sources.extend(plugin.sources)
+            # Its imports would fail: _check_requirements has said why.
+            if not plugin.unmet:
+                sources.extend(plugin.sources)
         if to_str:
             return [str(s) for s in sources]
         return sources
@@ -1006,6 +1094,8 @@ class Plugin:
         # Initialize file lists and timestamp
         self.data: List[Dict[str, Any]] = []
         self.sources: List[Path] = []
+        # Packages of `requires` that are not installed (see _check_requirements).
+        self.unmet: List[str] = []
         self.data_files: List[Path] = []
         self.files: List[Path] = []
         self.timestamp: float = 0  # Default timestamp
