@@ -131,3 +131,4 @@ def test_a_malformed_declaration_is_an_error(tmp_path, monkeypatch, requires):
 
 def test_no_declaration_is_nothing_to_check(tmp_path, monkeypatch):
     assert codes(load(tmp_path, monkeypatch)) == []
+

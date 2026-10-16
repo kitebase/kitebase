@@ -1040,6 +1040,9 @@ class PluginsManager:
         """
         Get a list of all Python source files from all plugins.
 
+        In dependency order: a plugin's code may import the code of the
+        plugins it depends on, which is then already loaded.
+
         Args:
             to_str: if needed transform the Path object to string
 
@@ -1047,7 +1050,8 @@ class PluginsManager:
             List[Path]: List of all Python source files
         """
         sources = []
-        for name, plugin in self.plugins.items():
+        for name in self.sorted:
+            plugin = self.plugins[name]
             # Its imports would fail: _check_requirements has said why.
             if not plugin.unmet:
                 sources.extend(plugin.sources)

@@ -337,6 +337,15 @@ class CommandProcessor:
                 package_name = dir_path.name
                 full_module_name = f"{package_name}.{module_name}"
 
+                # Already imported by a module loaded before it (a sibling, or
+                # a plugin depending on this one): executing it again would
+                # give its state, a registry for one, a second copy.
+                loaded = sys.modules.get(full_module_name)
+                if loaded is not None and getattr(loaded, '__file__', None) and \
+                        Path(loaded.__file__).resolve() == path.resolve():
+                    self.endpoints.update(_ENDPOINTS.copy())
+                    continue
+
                 # Load the module specifying the package
                 spec = importlib.util.spec_from_file_location(
                     full_module_name,
