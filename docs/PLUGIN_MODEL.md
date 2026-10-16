@@ -145,6 +145,31 @@ any plugin that depends on it.
 Circular dependencies and missing dependencies are caught at startup and raise
 a clear error.
 
+#### Third-party packages (`requires`)
+
+A plugin whose Python imports a package kitebase does not bring declares it,
+with the extras it needs:
+
+```yaml
+# plugins/reports/config.yaml
+requires:
+  python: ["andrep[playwright,sqlalchemy]"]
+```
+
+The plugin declares, kitebase checks, the application installs: the virtual
+environment is the application's, and so is the choice of where a package
+comes from (PyPI, a tag, a checkout). The check runs when the plugins load,
+over the included ones only, and looks at presence, not versions: a package
+that is missing, or an extra whose dependencies are, is an error
+(`requirement-missing`) naming plugin and package, with the command to add it
+(`uv add "andrep[playwright,sqlalchemy]"`). A declaration that is not a list
+of requirement strings under `python` is `requires-malformed`. Both reach
+`kitebase check` and the startup summary like every other issue.
+
+A plugin with a requirement missing is still merged, but its Python is not
+imported: the error says which package is missing, instead of an import
+failing half-way through the load.
+
 ### 1.4 Load and Merge Sequence
 
 When `PluginsManager.load_plugins()` is called:
@@ -157,6 +182,13 @@ When `PluginsManager.load_plugins()` is called:
    rules described in Chapter 2 apply.
 
 The final `data` dict is the single source of truth for the entire application.
+
+The plugins' Python files are imported afterwards, when the database schema is
+built, in the same dependency order: a plugin's code may import the code of the
+plugins it depends on (`from reports.registry import report`). Each file is a
+module named `<plugin dir>.<file>`, executed once: a module a sibling or a
+dependent has already imported is not executed again, so its state (a
+registry, say) has one copy.
 
 ### 1.5 Sections and the Agnostic Core
 
