@@ -7,7 +7,7 @@ path by path, and `check` warns about a key outside it.
 from pathlib import Path
 
 from kitebase import vocabulary as v
-from tests.test_merge_golden import APPS, merged_tree
+from tests.test_merge_golden import APPS, merged_tree, needs_commons
 
 VOCAB = {
     'tables.*': ['columns', 'label'],
@@ -77,6 +77,7 @@ def test_what_yaml_would_misread_is_written_so_it_reads_back():
     assert v.load_text(text) == {'pages.*.content.source.joins[].*': ['on', 'type']}
 
 
+@needs_commons
 def test_the_shipped_vocabulary_covers_devtest(monkeypatch):
     """devtest is one of the applications it was made from: no key unknown."""
     data = merged_tree(APPS['devtest'], monkeypatch)

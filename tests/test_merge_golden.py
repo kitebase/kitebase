@@ -29,9 +29,14 @@ from kitebase.plugins import PluginsManager
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GOLDEN_DIR = Path(__file__).parent / 'golden'
 
-# Applications that live inside this repository. A checkout has devtest and
-# nothing else, so nothing here may depend on a sibling repository being present.
+# Applications that live inside this repository. devtest reaches the shared
+# plugins by path, in the workstation layout (docs/GETTING_STARTED.md): a
+# checkout of this repository alone skips what loads it, and says why.
 APPS = {'devtest': REPO_ROOT / 'devtest'}
+COMMONS = REPO_ROOT.parent / 'commons' / 'plugins'
+needs_commons = pytest.mark.skipif(
+    not COMMONS.is_dir(),
+    reason=f'devtest needs the kitebase-commons checkout at {COMMONS}')
 
 # How many differing paths to print before giving up: enough to see the shape of
 # a regression, few enough to read.
@@ -89,6 +94,7 @@ def differences(old: Any, new: Any, path: str = '') -> Iterator[str]:
         yield f"{path}: {old!r} → {new!r}"
 
 
+@needs_commons
 @pytest.mark.parametrize('app', sorted(APPS))
 def test_the_merged_tree_is_what_it_was(app, monkeypatch):
     tree = merged_tree(APPS[app], monkeypatch)

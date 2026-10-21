@@ -1,4 +1,4 @@
 name: library
 version: 0.0.1
 description: Library app
-depends_on: [common, users, books]
+depends_on: [common, users, devtypes, books]

@@ -9,8 +9,9 @@ never fired. The question "does this filter mention that column" belongs to the
 query builder, which owns the syntax: concise keys, the `Table.column` form,
 verbose dicts, nested and/or groups. The mixin asks; it does not parse.
 
-The behavior under test is the real one, imported from the copy `devtest`
-carries, against an in-memory model: a stub would be testing the stub.
+The behavior under test is the real one, imported from the shared plugins
+beside this checkout, against an in-memory model: a stub would be testing the
+stub.
 """
 import importlib.util
 from pathlib import Path
@@ -23,7 +24,10 @@ import kitebase.utils
 from kitebase.querybuilder import DynamicQueryBuilder, filters_mention
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-COMMON_MODEL = REPO_ROOT / 'devtest' / 'commons' / 'common' / 'model.py'
+COMMON_MODEL = REPO_ROOT.parent / 'commons' / 'plugins' / 'common' / 'model.py'
+if not COMMON_MODEL.exists():
+    pytest.skip(f'needs the kitebase-commons checkout at {COMMON_MODEL.parent.parent}',
+                allow_module_level=True)
 
 spec = importlib.util.spec_from_file_location('common_model', COMMON_MODEL)
 common_model = importlib.util.module_from_spec(spec)

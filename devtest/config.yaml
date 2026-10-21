@@ -6,9 +6,16 @@ license: MIT
 author: "Claudio Driussi"
 
 # folders which contain plugins (each entry is a *root* holding plugin dirs).
-# `commons` is a separate root (shared/reusable plugins) kept distinct from the
-# app-specific `plugins` root — this exercises the multi-root composition.
-plugins: [commons, plugins, plugins/libapp]
+# The shared plugins are reached by path, as any application reaches them: the
+# kitebase-commons checkout beside this one, in the workstation layout of
+# docs/GETTING_STARTED.md (server/, client/, commons/ side by side). Without it
+# the bench does not start, and the error names the path it looked for.
+# What devtest adds to them is in its own plugins (devtypes, libapp/library).
+plugins:
+  - path: ../../commons/plugins
+    include: [common, users]
+  - plugins
+  - plugins/libapp
 
 # the script that loads the app and carries its commands: `kitebase db-check`
 # here runs `devtest.py db-check` (default: kite.py)

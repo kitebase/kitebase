@@ -1,8 +1,0 @@
-name: common
-version: 0.0.1
-description: Common used types and tables
-license: MIT
-author: Claudio Driussi
-url: https://claudiodriussi.it
-date: 2025-03-07
-depends_on: []

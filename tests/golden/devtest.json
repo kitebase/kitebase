@@ -21,9 +21,18 @@
    "length": 32,
    "$plugin": "common"
   },
-  "SKU": {
+  "Code": {
    "base": "ShortStr",
-   "nullable": false,
+   "index": true,
+   "$plugin": "common"
+  },
+  "UuidStr": {
+   "base": "String",
+   "length": 36,
+   "default": "$uuid",
+   "deferred": true,
+   "editable": false,
+   "unique": true,
    "$plugin": "common"
   },
   "UpperStr": {
@@ -54,6 +63,7 @@
    "help": "Please insert a robust password and keep it safe\n",
    "secret": true,
    "on_write": "password_hash",
+   "validate": "password_policy",
    "$plugin": "common"
   },
   "Email": {
@@ -68,7 +78,6 @@
    "default": {
     "$plugin": "common"
    },
-   "nullable": true,
    "$plugin": "common"
   },
   "Markdown": {
@@ -80,21 +89,18 @@
    "base": "String",
    "widget": "tel",
    "length": 20,
-   "nullable": true,
    "$plugin": "common"
   },
   "URL": {
    "base": "String",
    "widget": "url",
    "length": 512,
-   "nullable": true,
    "$plugin": "common"
   },
   "Color": {
    "base": "String",
    "widget": "color",
    "length": 7,
-   "nullable": true,
    "label": "Color",
    "help": "Hex color code (e.g., #FF5733)",
    "$plugin": "common"
@@ -103,7 +109,6 @@
    "base": "String",
    "widget": "filepath",
    "length": 512,
-   "nullable": true,
    "label": "File Path",
    "help": "Path to uploaded file or resource",
    "$plugin": "common"
@@ -113,14 +118,19 @@
    "widget": "currency",
    "precision": 10,
    "scale": 2,
-   "nullable": true,
    "$plugin": "common"
   },
-  "Price": {
-   "base": "Money",
-   "widget": "currency",
-   "precision": 10,
-   "scale": 4,
+  "Percent": {
+   "base": "Numeric",
+   "widget": "percent",
+   "precision": 5,
+   "scale": 2,
+   "$plugin": "common"
+  },
+  "Quantity": {
+   "base": "Numeric",
+   "precision": 12,
+   "scale": 3,
    "$plugin": "common"
   },
   "TimeStamp": {
@@ -133,6 +143,7 @@
      "default": "$now",
      "deferred": true,
      "nullable": false,
+     "query_rank": "more",
      "$plugin": "common"
     },
     {
@@ -143,6 +154,7 @@
      "onupdate": "$now",
      "deferred": true,
      "nullable": false,
+     "query_rank": "more",
      "$plugin": "common"
     }
    ],
@@ -154,31 +166,26 @@
     {
      "name": "address",
      "type": "String",
-     "nullable": true,
      "$plugin": "common"
     },
     {
      "name": "city",
      "type": "String",
-     "nullable": true,
      "$plugin": "common"
     },
     {
      "name": "state",
-     "type": "String",
-     "nullable": true,
+     "type": "ShortStr",
      "$plugin": "common"
     },
     {
      "name": "zip",
-     "type": "String",
-     "nullable": true,
+     "type": "ShortStr",
      "$plugin": "common"
     },
     {
      "name": "country",
      "type": "String",
-     "nullable": true,
      "$plugin": "common"
     }
    ],
@@ -193,6 +200,7 @@
      "default": true,
      "nullable": false,
      "label": "Active",
+     "query_rank": "more",
      "$plugin": "common"
     }
    ],
@@ -235,14 +243,25 @@
     {
      "name": "last_login",
      "type": "DateTime",
-     "nullable": true,
      "label": "Last Login",
      "$plugin": "common"
     }
    ],
    "$plugin": "common"
   },
-  "$plugin": "common"
+  "$plugin": "common",
+  "SKU": {
+   "base": "ShortStr",
+   "nullable": false,
+   "$plugin": "devtypes"
+  },
+  "Price": {
+   "base": "Money",
+   "widget": "currency",
+   "precision": 10,
+   "scale": 4,
+   "$plugin": "devtypes"
+  }
  },
  "tables": {
   "Config": {
@@ -968,6 +987,106 @@
   }
  },
  "pages": {
+  "user_form": {
+   "title": "User",
+   "content": {
+    "type": "form",
+    "source": {
+     "model": "User",
+     "id": "$props.id",
+     "$plugin": "users"
+    },
+    "fields": [
+     {
+      "name": "name",
+      "label": "Name",
+      "$plugin": "users"
+     },
+     {
+      "name": "username",
+      "label": "Username",
+      "$plugin": "users"
+     },
+     {
+      "name": "email",
+      "label": "Email",
+      "$plugin": "users"
+     },
+     {
+      "name": "password",
+      "label": "Password",
+      "widget": "password",
+      "help": "Leave it empty to keep the current one. A new user needs one.",
+      "$plugin": "users"
+     },
+     {
+      "name": "is_active",
+      "label": "Active",
+      "type": "Boolean",
+      "$plugin": "users"
+     },
+     {
+      "name": "is_admin",
+      "label": "Administrator",
+      "type": "Boolean",
+      "$plugin": "users"
+     }
+    ],
+    "actions": {
+     "toolbar": [
+      "save",
+      "cancel"
+     ],
+     "$plugin": "users"
+    },
+    "$plugin": "users"
+   },
+   "$plugin": "users"
+  },
+  "password_change": {
+   "title": "Change password",
+   "content": {
+    "type": "form",
+    "source": {
+     "endpoint": "password_form",
+     "save_endpoint": "change_password",
+     "$plugin": "users"
+    },
+    "fields": [
+     {
+      "name": "current",
+      "label": "Current password",
+      "widget": "password",
+      "$plugin": "users"
+     },
+     {
+      "name": "new",
+      "label": "New password",
+      "widget": "password",
+      "$plugin": "users"
+     },
+     {
+      "name": "confirm",
+      "label": "Repeat the new password",
+      "widget": "password",
+      "$plugin": "users"
+     }
+    ],
+    "policy": {
+     "editable": true,
+     "$plugin": "users"
+    },
+    "actions": {
+     "toolbar": [
+      "save"
+     ],
+     "$plugin": "users"
+    },
+    "$plugin": "users"
+   },
+   "$plugin": "users"
+  },
+  "$plugin": "users",
   "book_with_reviews": {
    "title": "Books & Reviews",
    "content": {
@@ -1024,7 +1143,6 @@
    ],
    "$plugin": "panels"
   },
-  "$plugin": "panels",
   "book_demo_bottom_full": {
    "title": "Book Demo — bottom full width",
    "content": {

@@ -1,0 +1,4 @@
+name: devtypes
+version: 0.0.1
+description: "The types devtest derives from the shared vocabulary"
+depends_on: [common]

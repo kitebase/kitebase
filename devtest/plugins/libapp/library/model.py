@@ -17,3 +17,14 @@ class Book:
         if not self.reviews:
             return 0.0
         return sum(review.rating for review in self.reviews) / len(self.reviews)
+
+
+class LibraryUser:
+    """Library-specific extensions to LibraryUser.
+    - loans relationship comes from Loan.library_user_id FK (library/model.yaml)
+    """
+
+    @hybrid_property
+    def active_loans(self):
+        """The loans not returned yet."""
+        return [loan for loan in self.loans if not loan.returned_at]

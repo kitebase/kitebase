@@ -3,6 +3,25 @@
 Under the `devtest` directory you will find useful scripts written to test
 Kitebase library.
 
+## The shared plugins
+
+`devtest` takes `common` and `users` from the kitebase-commons repository, by
+path, as any application does (`config.yaml`, `plugins:`): it expects the
+checkout beside this one, in the layout of `docs/GETTING_STARTED.md`
+
+```
+kitebase/
+├── server/      this repository, devtest inside
+├── client/
+└── commons/     kitebase-commons
+```
+
+What devtest adds is in its own plugins, as differences: `devtypes` derives the
+types it needs (`SKU`, `Price`) from the shared ones, and `libapp/library` adds
+columns to `User` and methods to its own tables. The shared plugins are not
+copied and not edited here; a change to them is made in kitebase-commons, and
+moves the golden of the merged tree (`tests/golden/devtest.json`).
+
 ## Testing
 
 The `devtest.py` script, starts Kitebase and if needed regenerate the source

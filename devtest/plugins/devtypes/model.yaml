@@ -1,0 +1,16 @@
+# What devtest needs beyond the shared vocabulary of commons/plugins/common.
+#
+# A type is never declared twice, so a shared one is not refined here: a new
+# name derives from the link of the chain that already says most of it.
+
+types:
+
+  SKU:
+    base: ShortStr
+    nullable: False
+
+  Price:
+    base: Money
+    widget: currency
+    precision: 10
+    scale: 4

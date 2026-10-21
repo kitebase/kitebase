@@ -14,7 +14,7 @@ library and using it are the same act. If you only want to see it run, one
 command does that without cloning anything —
 [Appendix B](#appendix-b--without-cloning-anything).
 
-*Last revised: 2026-10-05. Walked on Linux; see [Appendix A](#appendix-a--prerequisites-by-platform)
+*Last revised: 2026-10-21. Walked on Linux; see [Appendix A](#appendix-a--prerequisites-by-platform)
 for what is expected of macOS and Windows.*
 
 ---
@@ -81,12 +81,12 @@ kitebase/
     └── myapp/          the application
 ```
 
-**Nothing in the framework depends on that arrangement.** Three conveniences do:
+**Nothing in the framework depends on that arrangement.** Four conveniences do:
 the client finds the `devtest` bench by looking for `server/devtest` up to three
-levels above itself, `kitebase dev` finds the client beside the library, and an
-application that declares a shared plugin root writes the path to it, which is
-short when they are close. Your applications say where they are, and can live
-anywhere.
+levels above itself, `kitebase dev` finds the client beside the library, the
+bench reaches the shared plugins at `../../commons/plugins`, and an application
+that declares a shared plugin root writes the path to it, which is short when
+they are close. Your applications say where they are, and can live anywhere.
 
 Then the environment, still from `kitebase/`:
 
@@ -592,7 +592,9 @@ cd ../..
 ```
 
 What you are looking for is **no failures** — the counts move with the code, and
-a number written here would be wrong within a month. The bench answers on 8300
+a number written here would be wrong within a month. No skips either: without
+`commons` beside `server`, the tests that load the bench are skipped, naming the
+path they looked for, and the bench refuses to start, saying the same. The bench answers on 8300
 with the same info JSON as chapter 2, saying no client is built: `pnpm build` in
 `client` compiles one into `server/devtest/clientui/` if you want to see it.
 
@@ -698,6 +700,8 @@ cd client          && pnpm dev                           # 5173, playground, on 
 ```
 
 `devtest` exercises the library, and is where a feature is demonstrated first.
+It takes `common` and `users` from the shared plugins by path, as any
+application does, and adds what is its own in its plugins.
 `demo` has a venv of its own and declares kitebase as a dependency: it is the
 reference consumer of the shared plugins and behaves like an application outside
 the repository, because that is what it has to prove.

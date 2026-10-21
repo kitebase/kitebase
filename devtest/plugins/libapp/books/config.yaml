@@ -1,4 +1,4 @@
 name: books
 version: 0.0.1
 description: books and authors declarations
-depends_on: [common]
+depends_on: [common, devtypes]
