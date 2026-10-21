@@ -120,6 +120,14 @@ implementations of the same plugin, and the other stays inert. A name reached as
 a *dependency* and provided by more than one root is refused: include it
 explicitly from the root you mean.
 
+The client follows the same selection. It reads the same `plugins:` list, follows
+`include` and `depends_on` over every root the same way, and compiles in the
+components and formatters of the selected plugins only: a plugin left out
+reaches neither the schema nor the browser. A partial root nested inside a whole
+one (a link to a shared root inside the application's own) keeps its own
+selection, and the outer root leaves its directory out. The client reports none
+of the errors above; the server does.
+
 ### 1.3 Plugin Identity and Dependencies
 
 Each plugin has a unique **name** (defaults to the directory name, overridable in
@@ -925,14 +933,27 @@ types:
 
 ### 3.9 Merge Behaviour for Types
 
-`types` is a plain dict. The merge algorithm applies dict-merge semantics:
+Types are the one section that is not merged across plugins. Each plugin's
+`types` are read on their own, and a name declared by a second plugin raises
+`Type already defined` (§ 3.3): two plugins reaching for the same name is a
+collision, never a refinement.
 
-- A derived plugin can **add a new type** by declaring a new key.
-- A derived plugin can **override specific properties** of an existing type
-  by declaring the same key with only the properties to change.
-- A derived plugin can **redefine a type entirely** by declaring it with a
-  full definition — the recursive merge still applies, so only listed
-  properties change.
+- A derived plugin **adds a new type** by declaring a new key.
+- It **extends an existing one by deriving it**: a new name with `base:` set to
+  the type, stating only what differs. Tables that want the change name the
+  derived type; the base stays as it was for everyone else.
+
+```yaml
+# devtest/plugins/devtypes/model.yaml: what devtest adds to commons/common
+types:
+  SKU:
+    base: ShortStr
+    nullable: False
+  Price:
+    base: Money
+    precision: 10
+    scale: 4
+```
 
 There is no positional ordering for types (they are a dict, not a list).
 
