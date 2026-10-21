@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional
 
 import kitebase.utils
 from kitebase.endpoints import endpoint
+from kitebase.i18n import translate_labels
 
 # Merge metadata (`$plugin`) plus keys consumed server-side (`parent`/`root` drive
 # tree/cascade; `access` gates visibility) — none of these are sent to the client.
@@ -128,7 +129,9 @@ def get_menu(data: Dict[str, Any]) -> Dict[str, Any]:
             continue
         if not _passes_access(item, context):
             continue
-        selected[item_id] = app.pm.resolve_refs(item)
+        # Translated before the sort, so siblings without an order sort by
+        # the label the user reads.
+        selected[item_id] = translate_labels(app.pm.resolve_refs(item))
 
     # 4. Build the parent → children map. An item whose effective parent is not a
     #    selected node of this root (missing, self, or belongs elsewhere) attaches
@@ -158,8 +161,8 @@ def get_menu(data: Dict[str, Any]) -> Dict[str, Any]:
 
     tree = build(None, frozenset())
 
-    root_out = {k: v for k, v in root_def.items()
-                if k not in _INTERNAL_KEYS and k != 'items'}
+    root_out = translate_labels({k: v for k, v in root_def.items()
+                                 if k not in _INTERNAL_KEYS and k != 'items'})
     root_out['id'] = root_id
     root_out['items'] = tree
 

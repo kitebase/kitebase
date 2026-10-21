@@ -382,6 +382,30 @@ def _fill_titles(app: Any, obj: Any, model: Optional[str] = None) -> None:
             _fill_titles(app, value, model)
 
 
+def command_label(command_id: str) -> str:
+    """The name of a command that declares none: its id as words, capitalised
+    (`print_balance` is "Print balance")."""
+    words = ' '.join(w for w in command_id.split('_') if w)
+    return words[:1].upper() + words[1:]
+
+
+def _fill_command_labels(obj: Any) -> None:
+    """Give every command without a `label` the one its id spells, so that it
+    is a string the server translates like the declared ones."""
+    if isinstance(obj, list):
+        for item in obj:
+            _fill_command_labels(item)
+        return
+    if not isinstance(obj, dict):
+        return
+    for key, value in obj.items():
+        if key == 'commands' and isinstance(value, list):
+            for cmd in value:
+                if isinstance(cmd, dict) and isinstance(cmd.get('id'), str) and 'label' not in cmd:
+                    cmd['label'] = command_label(cmd['id'])
+        _fill_command_labels(value)
+
+
 def _fill_fields(app: Any, obj: Any, model: Optional[str] = None) -> None:
     """Put under every field of a written form the attributes its column declares.
 
@@ -423,6 +447,7 @@ def _resolve(app: Any, page_id: str):
             resolved = _on_auto(app, page_id, resolved)
         collections = resolve_collections(resolved, page_id)
         _fill_titles(app, resolved)
+        _fill_command_labels(resolved)
         content = resolved.get('content')
         if isinstance(content, dict) and content.get('type', 'form') == 'form':
             _fill_fields(app, content)

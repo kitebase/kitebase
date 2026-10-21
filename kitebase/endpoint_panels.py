@@ -1,6 +1,7 @@
 from typing import Any, Dict
 import kitebase.utils
 from kitebase.endpoints import endpoint
+from kitebase.i18n import translate_labels
 from kitebase.pages import load_page, strip_meta
 # Note: context is set globally via BaseApp.set_context() before each call —
 # endpoint functions receive only (data).
@@ -12,8 +13,9 @@ def get_page(data: Dict[str, Any]) -> Dict[str, Any]:
     Return a resolved page descriptor by id.
 
     Resolves all $ref fields, completes collection nodes (a node's `model:` fills
-    its view's `source.model`), and strips internal $plugin metadata before
-    sending to the client.
+    its view's `source.model`), gives commands without a label the one their id
+    spells, strips internal $plugin metadata, and translates the labels to the
+    current locale before sending to the client.
 
     Resolution order:
       1. Explicit pages dict (YAML plugin pages)
@@ -40,4 +42,4 @@ def get_page(data: Dict[str, Any]) -> Dict[str, Any]:
     if page is None:
         return {'status': 'error', 'message': f"Page not found: '{page_id}'", 'code': 404}
 
-    return {'status': 'success', 'data': strip_meta(page), 'code': 200}
+    return {'status': 'success', 'data': translate_labels(strip_meta(page)), 'code': 200}

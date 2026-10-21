@@ -634,6 +634,14 @@ def update_context(data):
         return {"status": "error", "message": str(e), "code": 500}
 
 
+def _translated_columns(tables: Dict[str, Any]) -> Dict[str, Any]:
+    for table in tables.values():
+        for col in table.get('columns', []):
+            if isinstance(col.get('label'), str):
+                col['label'] = _(col['label'])
+    return tables
+
+
 @endpoint('get_server_config')
 def get_server_config(data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -678,7 +686,8 @@ def get_server_config(data: Dict[str, Any]) -> Dict[str, Any]:
                     'app_title': app.pm.config.get('title'),
                 },
                 'types': app.get_type_schema(include_builtin),
-                'tables': app.get_table_schema(),
+                # The column labels name the fields in filters and pickers.
+                'tables': _translated_columns(app.get_table_schema()),
                 'schemas': app.get_schema_registry(),
             },
             'code': 200,
