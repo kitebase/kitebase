@@ -491,7 +491,8 @@ deployment usually writes.
 
 `include` is positive on purpose: what a shared root gains over time stays inert
 until an application asks for it by name. Dependencies are followed for you —
-`include: [partners]` brings `common` along without naming it.
+`include: [partners]` brings `common` along without naming it. The client
+follows the same list: the components of a plugin left out are not compiled in.
 
 > Not `users`: a generated application has a `users` plugin of its own, and a
 > plugin name provided by two roots is refused, by name and by both paths.
