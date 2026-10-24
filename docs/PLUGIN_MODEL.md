@@ -1481,9 +1481,10 @@ Types and tables interact through the type resolution chain:
 column.type  →  types[name]  →  base type  →  SQLAlchemy column
 ```
 
-A derived plugin that changes a type definition automatically affects **all**
-columns of that type across all tables, without touching the table definitions.
-This makes types a powerful customisation lever.
+A type is shared by every column that names it, so it is never changed in place:
+a derived plugin derives it (§ 3.9) and names the derived type in the tables that
+want the change. The tables of other plugins keep the base, and no column changes
+without its own table saying so.
 
 ---
 
