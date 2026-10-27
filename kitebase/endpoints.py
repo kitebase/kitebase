@@ -308,6 +308,9 @@ class CommandProcessor:
 
         Args:
             file_paths: List of paths to Python files containing endpoint definitions
+
+        Raises:
+            ImportError: If a file does not load, naming the module and the cause
         """
         import sys
         from pathlib import Path
@@ -381,9 +384,16 @@ class CommandProcessor:
                 # print(f"Loaded {len(_ENDPOINTS)} endpoints from file {path}")
 
             except Exception as e:
-                print(f"Error loading module {path}: {e}")
-                import traceback
-                traceback.print_exc()
+                # A module that does not load stops the start: an app missing
+                # some of its endpoints fails later, and further from the cause.
+                sys.modules.pop(full_module_name, None)
+                hint = ''
+                if isinstance(e, ModuleNotFoundError):
+                    hint = (" (if the module exists only alongside another plugin, "
+                            "list it under `optional` in its plugin's config.yaml)")
+                raise ImportError(
+                    f"Plugin module '{full_module_name}' ({path}) does not load: "
+                    f"{type(e).__name__}: {e}{hint}") from e
 
             finally:
                 # Remove the added path if necessary

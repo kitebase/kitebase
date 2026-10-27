@@ -172,3 +172,48 @@ def test_a_registered_endpoint_keeps_its_command():
 
 def test_nothing_loaded_is_nothing_to_compare_with():
     assert page_with_commands(None) == ['archive', 'print', 'refresh']
+
+
+# ── check ─────────────────────────────────────────────────────────────────────
+
+class Declarer:
+    def __init__(self, config):
+        self.config = config
+
+
+def unknown_endpoints(optional, loaded=(), registered=('archivable',)):
+    """What `check` says of the Print and Archive commands declared by demo_ui."""
+    pm = PluginsManager()
+    pm.config = {}
+    pm.plugins = {'demo_ui': Declarer({'optional': optional}),
+                  **{name: Declarer({}) for name in loaded}}
+    pm.merge_dicts({'views': {'partner_table': {
+        'type': 'table', 'source': {'model': 'Partner'},
+        'navigator': {'commands': [
+            {'id': 'archive', 'endpoint': 'archivable'},
+            {'id': 'print', 'endpoint': 'reports.print'},
+        ]},
+    }}}, 'demo_ui')
+    app = FakeApp(pm, FakeProcessor(*registered))
+    from kitebase.diagnostics import run_checks
+    return [(i['severity'], i['path'], i['plugin']) for i in run_checks(app)
+            if i['code'] == 'command-endpoint-unknown']
+
+
+def test_an_endpoint_of_an_optional_plugin_not_loaded_is_expected():
+    assert unknown_endpoints({'reports': ['phonebook']}) == []
+
+
+def test_an_unknown_endpoint_is_a_warning():
+    """A misspelt name: the button would vanish without a word."""
+    assert unknown_endpoints({}) == [
+        ('warning', 'views.partner_table.navigator.commands[print].endpoint', 'demo_ui')]
+
+
+def test_with_the_optional_plugin_loaded_its_endpoint_must_be_there():
+    """reports is there, so reports.print missing is not its absence."""
+    assert len(unknown_endpoints({'reports': ['phonebook']}, loaded=['reports'])) == 1
+
+
+def test_a_registered_endpoint_says_nothing():
+    assert unknown_endpoints({}, registered=('archivable', 'reports.print')) == []

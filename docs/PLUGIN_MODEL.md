@@ -214,7 +214,9 @@ optional:
 ```
 
 A module left out of the list is an ordinary one: it is imported in an app
-without the other plugin too, and its import fails there.
+without the other plugin too, and its import fails there. A plugin module that
+does not load stops the start, with an `ImportError` naming the module and the
+cause, and pointing at `optional` when the cause is a missing module.
 
 **The unit is the file.** A dormant module holds only the code that depends on
 the optional plugin; everything else goes in modules loaded always, or it
@@ -226,7 +228,12 @@ loaded by then.
 **Only the Python is conditional, not the YAML**: a plugin's YAML is merged
 whether the other plugin is there or not. The commands are covered: `get_page`
 drops every command whose `endpoint` is not registered, so a Print command
-calling `reports.print` is not on the page of an app without `reports`. A view
+calling `reports.print` is not on the page of an app without `reports`. Since a
+misspelt endpoint would make a button vanish the same way, `kitebase check`
+warns of every command whose endpoint is not registered
+(`command-endpoint-unknown`), except when the declaring plugin lists, under
+`optional`, a plugin the app does not load and the endpoint is named after it
+(`reports.print`, `optional: {reports: [...]}`). A view
 on a table of the optional plugin, or a menu item towards one of its pages, is
 not covered yet.
 

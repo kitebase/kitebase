@@ -125,6 +125,9 @@ def _walk(app: Any, obj: Any, path: str, plugin: Optional[str],
         if obj.get('type') == 'collection':
             _check_collection(app, obj, path, plugin, issues)
 
+        if isinstance(obj.get('commands'), list):
+            _check_commands(app, obj['commands'], f'{path}.commands', plugin, issues)
+
         for key, value in obj.items():
             if not isinstance(key, str):
                 # YAML 1.1 reads an unquoted on/off/yes/no as a boolean: `on:`
@@ -396,6 +399,37 @@ def _check_auto_pages(app: Any, issues: List[Dict[str, Any]]) -> None:
                 'error', 'auto-missing', f'pages.{page_id}',
                 f"declares {AUTO}, but no table answers to '{page_id}' "
                 f"(expected <table>_list or <table>_form)", page.get('$plugin')))
+
+
+def _check_commands(app: Any, commands: List[Any], path: str,
+                    plugin: Optional[str], issues: List[Dict[str, Any]]) -> None:
+    """A command whose endpoint is not registered is not on the page: `get_page`
+    drops it. That is the purpose when the endpoint belongs to a plugin the app
+    does not load, and the declaring plugin says so under `optional`, with the
+    endpoint named after it (`reports.print` and `optional: {reports: [...]}`).
+    Otherwise it is most likely a misspelt name, and the button vanishes silently.
+    """
+    cp = getattr(app, 'cp', None)
+    if cp is None:
+        return      # nothing loaded to compare with
+    for cmd in commands:
+        if not isinstance(cmd, dict) or not isinstance(cmd.get('endpoint'), str):
+            continue
+        name = cmd['endpoint']
+        if name in cp.endpoints:
+            continue
+        owner = cmd.get('$plugin', plugin)
+        declarer = app.pm.plugins.get(owner) if owner else None
+        optional = declarer.config.get('optional') if declarer is not None else None
+        prefix = name.split('.', 1)[0]
+        if '.' in name and isinstance(optional, dict) and prefix in optional \
+                and prefix not in app.pm.plugins:
+            continue
+        issues.append(make_issue(
+            'warning', 'command-endpoint-unknown', f"{path}[{cmd.get('id', '?')}].endpoint",
+            f"endpoint '{name}' is not registered, so the command is not shown; "
+            f"if it belongs to a plugin this app may not load, declare that plugin "
+            f"under `optional`", owner))
 
 
 def _check_push_target(app: Any, action: Dict[str, Any], path: str,

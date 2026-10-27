@@ -50,3 +50,21 @@ def test_a_module_imported_by_a_sibling_is_not_executed_again(tmp_path, monkeypa
     import sys
     assert sys.modules['shelf2.api'].REGISTRY is sys.modules['shelf2.state'].REGISTRY
     assert sys.modules['shelf2.state'].REGISTRY == ['api']
+
+
+def test_a_module_that_does_not_load_stops_the_start(tmp_path, monkeypatch):
+    """Named, with the cause: not a traceback the start runs past."""
+    import pytest
+    pm = make_plugins(tmp_path, monkeypatch, {
+        'shelf3': ([], {'broken.py': 'from no_such_plugin.registry import report\n'}),
+    })
+
+    with pytest.raises(ImportError) as raised:
+        CommandProcessor().resolve_endpoints(pm.get_sources())
+
+    message = str(raised.value)
+    assert "Plugin module 'shelf3.broken'" in message
+    assert "No module named 'no_such_plugin'" in message
+    assert '`optional`' in message           # the likely fix, for a missing module
+    import sys
+    assert 'shelf3.broken' not in sys.modules
