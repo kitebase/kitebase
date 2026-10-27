@@ -178,6 +178,58 @@ A plugin with a requirement missing is still merged, but its Python is not
 imported: the error says which package is missing, instead of an import
 failing half-way through the load.
 
+#### Optional modules (`optional`)
+
+A plugin may have modules that make sense only alongside another plugin, which
+the application may or may not load: the phone book of the partners exists only
+where the app prints.
+
+```yaml
+# plugins/demo_ui/config.yaml
+depends_on: [common, users, partners]
+optional:
+  reports: [phonebook]    # phonebook.py is imported only if the app loads reports
+```
+
+The other plugin is **not pulled in**, as `depends_on` would: the application
+chooses it, by including it or not. When it is loaded, it orders before this
+plugin like a dependency, and the modules are imported as usual. When it is
+not, they stay dormant. Nothing in the plugin catches an `ImportError`: one
+swallowed would hide a misspelt module name as well. The mechanism is generic:
+any plugin name can appear under `optional`.
+
+A module named there that the plugin does not have is an error
+(`optional-unknown-module`), since a misspelt name would leave the real module
+loading always; a declaration that is not a mapping of plugin names to lists
+of module names is `optional-malformed`.
+
+Every module that depends on the other plugin is listed, one entry per file; a
+module needed only alongside two plugins is listed under both, and stays dormant
+when either is missing:
+
+```yaml
+optional:
+  reports: [phonebook, invoice_mail]
+  email:   [invoice_mail]       # only with both reports and email
+```
+
+A module left out of the list is an ordinary one: it is imported in an app
+without the other plugin too, and its import fails there.
+
+**The unit is the file.** A dormant module holds only the code that depends on
+the optional plugin; everything else goes in modules loaded always, or it
+disappears with it. A module loaded always does not import a dormant one (it
+would bring in the optional plugin's imports, or load the module behind the
+loader's back); a dormant module may import the rest of its plugin, which is
+loaded by then.
+
+**Only the Python is conditional, not the YAML**: a plugin's YAML is merged
+whether the other plugin is there or not. The commands are covered: `get_page`
+drops every command whose `endpoint` is not registered, so a Print command
+calling `reports.print` is not on the page of an app without `reports`. A view
+on a table of the optional plugin, or a menu item towards one of its pages, is
+not covered yet.
+
 ### 1.4 Load and Merge Sequence
 
 When `PluginsManager.load_plugins()` is called:
