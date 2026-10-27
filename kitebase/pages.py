@@ -389,21 +389,32 @@ def command_label(command_id: str) -> str:
     return words[:1].upper() + words[1:]
 
 
-def _fill_command_labels(obj: Any) -> None:
-    """Give every command without a `label` the one its id spells, so that it
-    is a string the server translates like the declared ones."""
+def _complete_commands(obj: Any, endpoints: Optional[Dict[str, Any]]) -> None:
+    """Drop every command whose endpoint is not registered, and give the others
+    without a `label` the one their id spells, so that it is a string the
+    server translates like the declared ones.
+
+    An endpoint is missing when its module was not loaded: a plugin that lets
+    an app go without printing (`optional:` in its config) declares the Print
+    command all the same, and without `reports` the command is not there.
+    `endpoints` None skips the filter: nothing has been loaded to compare with.
+    """
     if isinstance(obj, list):
         for item in obj:
-            _fill_command_labels(item)
+            _complete_commands(item, endpoints)
         return
     if not isinstance(obj, dict):
         return
     for key, value in obj.items():
         if key == 'commands' and isinstance(value, list):
+            if endpoints is not None:
+                value[:] = [cmd for cmd in value if not (
+                    isinstance(cmd, dict) and isinstance(cmd.get('endpoint'), str)
+                    and cmd['endpoint'] not in endpoints)]
             for cmd in value:
                 if isinstance(cmd, dict) and isinstance(cmd.get('id'), str) and 'label' not in cmd:
                     cmd['label'] = command_label(cmd['id'])
-        _fill_command_labels(value)
+        _complete_commands(value, endpoints)
 
 
 def _fill_fields(app: Any, obj: Any, model: Optional[str] = None) -> None:
@@ -447,7 +458,8 @@ def _resolve(app: Any, page_id: str):
             resolved = _on_auto(app, page_id, resolved)
         collections = resolve_collections(resolved, page_id)
         _fill_titles(app, resolved)
-        _fill_command_labels(resolved)
+        cp = getattr(app, 'cp', None)
+        _complete_commands(resolved, cp.endpoints if cp is not None else None)
         content = resolved.get('content')
         if isinstance(content, dict) and content.get('type', 'form') == 'form':
             _fill_fields(app, content)

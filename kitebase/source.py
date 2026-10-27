@@ -115,7 +115,7 @@ class PluginClassFinder:
         Scan all plugin source files for classes that match table names.
         """
         for plugin_name, plugin in self.pm.plugins.items():
-            for source_file in plugin.sources:
+            for source_file in plugin.loadable_sources():
                 self._process_source_file(source_file, plugin)
 
     def _process_source_file(self, source_file: Path, plugin) -> None:

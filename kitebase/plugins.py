@@ -6,7 +6,7 @@ import importlib.util
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union, Any
+from typing import Dict, List, Optional, Set, Tuple, Union, Any
 import yaml
 from kitebase import apptime
 from kitebase.utils import deep_merge
@@ -340,6 +340,7 @@ class PluginsManager:
         # Process plugins in dependency order
         self._sort_dependencies()
         self._check_requirements()
+        self._check_optional()
 
         # Merge plugin data
         for name in self.sorted:
@@ -383,6 +384,41 @@ class PluginsManager:
                         f"Plugin '{name}' requires {spec}: {reason}. The application "
                         f"installs it (uv add \"{spec}\"); until then the plugin's "
                         f"Python is not loaded", name)
+
+    def _check_optional(self) -> None:
+        """
+        Mark the modules that exist only alongside a plugin the app may not load.
+
+            optional:
+              reports: [phonebook]    # imported only if the app loads reports
+
+        The other plugin is not pulled in: the application chooses it. When it
+        is loaded, it orders before this one like a dependency and the modules
+        are imported as usual, so a failing import is an error like any other;
+        when it is not, they stay dormant. A module named here that the plugin
+        does not have is an error: a misspelt name would otherwise load the
+        module unconditionally.
+        """
+        for name in self.sorted:
+            plugin = self.plugins[name]
+            optional = plugin.config.get('optional') or {}
+            path = f'plugins.{name}.optional'
+            if not isinstance(optional, dict):
+                self.add_issue('error', 'optional-malformed', path,
+                               "'optional' maps a plugin to a list of this plugin's modules", name)
+                continue
+            stems = {s.stem for s in plugin.sources}
+            for other, modules in optional.items():
+                if not isinstance(modules, list) or not all(isinstance(m, str) for m in modules):
+                    self.add_issue('error', 'optional-malformed', f'{path}.{other}',
+                                   f"'optional.{other}' is a list of module names", name)
+                    continue
+                for module in modules:
+                    if module not in stems:
+                        self.add_issue('error', 'optional-unknown-module', f'{path}.{other}',
+                                       f"Plugin '{name}' has no module '{module}.py'", name)
+                    elif other not in self.plugins:
+                        plugin.dormant.add(module)
 
     def _plugin_roots(self) -> List[Tuple[Path, Optional[List[str]]]]:
         """
@@ -428,6 +464,14 @@ class PluginsManager:
         """Names a plugin depends on, normalised to a list."""
         deps = plugin.config.get('depends_on', []) or []
         return [deps] if isinstance(deps, str) else list(deps)
+
+    @staticmethod
+    def _optional_present(plugin: 'Plugin', present: Any) -> List[str]:
+        """The plugins of `optional` that are loaded: they order like dependencies."""
+        optional = plugin.config.get('optional') or {}
+        if not isinstance(optional, dict):
+            return []   # reported by _check_optional()
+        return [name for name in optional if name in present]
 
     @classmethod
     def _select(cls, found: Dict[str, List['Plugin']],
@@ -494,7 +538,8 @@ class PluginsManager:
         # Create dependency graph
         dependencies: Dict[str, set] = {}
         for name, value in self.plugins.items():
-            dependencies[name] = set(self._depends_on(value))
+            dependencies[name] = set(self._depends_on(value)) | \
+                set(self._optional_present(value, self.plugins))
 
         # Validate dependencies
         all_items = set(dependencies.keys())
@@ -1051,10 +1096,7 @@ class PluginsManager:
         """
         sources = []
         for name in self.sorted:
-            plugin = self.plugins[name]
-            # Its imports would fail: _check_requirements has said why.
-            if not plugin.unmet:
-                sources.extend(plugin.sources)
+            sources.extend(self.plugins[name].loadable_sources())
         if to_str:
             return [str(s) for s in sources]
         return sources
@@ -1100,6 +1142,8 @@ class Plugin:
         self.sources: List[Path] = []
         # Packages of `requires` that are not installed (see _check_requirements).
         self.unmet: List[str] = []
+        # Modules of `optional` whose plugin is not loaded (see _check_optional).
+        self.dormant: Set[str] = set()
         self.data_files: List[Path] = []
         self.files: List[Path] = []
         self.timestamp: float = 0  # Default timestamp
@@ -1121,3 +1165,10 @@ class Plugin:
                     self.data_files.append(file)
                 else:
                     self.files.append(file)
+
+    def loadable_sources(self) -> List[Path]:
+        """The Python files to import: none while a requirement is missing
+        (their imports would fail), and none of the dormant optional modules."""
+        if self.unmet:
+            return []
+        return [s for s in self.sources if s.stem not in self.dormant]
