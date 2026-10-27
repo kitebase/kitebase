@@ -88,6 +88,28 @@ def test_a_plugin_the_app_does_not_include_stays_out(tmp_path, monkeypatch):
     assert sources(pm) == ['partners.model']
 
 
+@pytest.mark.parametrize('loaded, imported', [
+    (['reports'], False),
+    (['reports', 'email'], True),
+])
+def test_a_module_under_two_plugins_needs_both(tmp_path, monkeypatch, loaded, imported):
+    plugin(tmp_path / 'plugins', 'partners',
+           {'optional': {'reports': ['invoice_mail'], 'email': ['invoice_mail']}},
+           modules=['model', 'invoice_mail'])
+    for name in ('reports', 'email'):
+        plugin(tmp_path / 'more', name)
+    cfg = tmp_path / 'config.yaml'
+    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': [
+        'plugins', {'path': 'more', 'include': loaded}]}))
+    monkeypatch.chdir(tmp_path)
+    pm = PluginsManager()
+    pm.load_config(str(cfg))
+    pm.load_plugins()
+
+    assert ('partners.invoice_mail' in sources(pm)) is imported
+    assert codes(pm) == []
+
+
 def test_a_module_the_plugin_does_not_have_is_an_error(tmp_path, monkeypatch):
     """A misspelt name would otherwise leave the real module loading always."""
     pm = load(tmp_path, monkeypatch, {'reports': ['phonbook']}, with_reports=False)
