@@ -111,6 +111,72 @@ def _refuse_secret(model_class, col_name: str) -> None:
         raise ValueError(f"Column '{table_name}.{col_name}' is not readable")
 
 
+# What an expression may contain once it becomes SQL text. Closed lists: a word
+# outside them is refused, which is what keeps a subquery (`select ... from`)
+# out of an expression, and with it every table and column the checks on the
+# statement would not see.
+EXPRESSION_FUNCTIONS = frozenset({
+    'abs', 'avg', 'cast', 'ceil', 'ceiling', 'coalesce', 'concat', 'count', 'date',
+    'datetime', 'extract', 'floor', 'group_concat', 'julianday', 'length', 'lower',
+    'ltrim', 'max', 'min', 'nullif', 'replace', 'round', 'rtrim', 'strftime',
+    'string_agg', 'substr', 'substring', 'sum', 'trim', 'upper',
+})
+EXPRESSION_KEYWORDS = frozenset({
+    'and', 'as', 'asc', 'between', 'case', 'current_date', 'current_timestamp',
+    'desc', 'distinct', 'else', 'end', 'false', 'in', 'is', 'like', 'not', 'null',
+    'or', 'then', 'true', 'when',
+    # extract(<part> from <column>) and cast(<value> as <type>)
+    'from', 'year', 'quarter', 'month', 'week', 'day', 'hour', 'minute', 'second',
+    'bigint', 'boolean', 'char', 'decimal', 'float', 'int', 'integer', 'numeric',
+    'real', 'text', 'timestamp', 'varchar',
+})
+_EXPRESSION_TOKEN = re.compile(r"""
+    (?P<space>\s+)
+  | (?P<string>'(?:[^']|'')*')
+  | (?P<number>\d+(?:\.\d+)?)
+  | (?P<name>[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?)
+  | (?P<op><>|!=|<=|>=|\|\||[-+*/%=<>(),])
+""", re.VERBOSE)
+
+
+def check_expression(expr: str, models: Dict[str, Any], main_table: str,
+                     aliases: Any = ()) -> None:
+    """
+    Refuse an expression that could say more than its columns.
+
+    Every word must be a column — `Model.column`, or a column of the main
+    table alone — a function or keyword of the lists above, or an alias the
+    select defined; strings and numbers pass, comments and `;` do not. A
+    column passes the same secret check as anywhere else.
+
+    Raises:
+        ValueError: naming what was refused
+    """
+    by_table = {getattr(m, '__tablename__', None): m for m in models.values()}
+    main = models.get(main_table)
+    pos = 0
+    while pos < len(expr):
+        match = _EXPRESSION_TOKEN.match(expr, pos)
+        if match is None:
+            raise ValueError(f"Expression {expr!r}: {expr[pos]!r} is not allowed")
+        token, kind = match.group(), match.lastgroup
+        if kind == 'op' and expr[pos:pos + 2] in ('--', '/*'):
+            raise ValueError(f"Expression {expr!r}: comments are not allowed")
+        if kind == 'name':
+            if '.' in token:
+                table, column = token.split('.', 1)
+                model = models.get(table) or by_table.get(table)
+                if model is None or not hasattr(model, column):
+                    raise ValueError(f"Expression {expr!r}: unknown column '{token}'")
+                _refuse_secret(model, column)
+            elif token.lower() not in EXPRESSION_FUNCTIONS | EXPRESSION_KEYWORDS \
+                    and token not in aliases:
+                if main is None or token not in main.__table__.columns:
+                    raise ValueError(f"Expression {expr!r}: '{token}' is not allowed")
+                _refuse_secret(main, token)
+        pos = match.end()
+
+
 class DynamicQueryBuilder:
     """
     Main query builder that coordinates specialized builders to construct a complete query from JSON or dictionary.
@@ -406,6 +472,8 @@ class DynamicQueryBuilder:
             group_columns = []
             for group_item in query_def['group_by']:
                 if isinstance(group_item, str):
+                    check_expression(group_item, self.models, main_table,
+                                     select_builder.aliases)
                     # First convert model references to table names
                     group_item = select_builder._process_column_references(group_item)
                     # Then handle database-specific functions like EXTRACT
@@ -764,6 +832,11 @@ class SelectBuilder:
                     continue
                 else:
                     raise ValueError(f"Model not found for wildcard selection: {table_name}")
+
+            # The alias after the last " as " is a label, quoted as one.
+            as_idx = col_expr.lower().rfind(" as ")
+            check_expression(col_expr[:as_idx] if as_idx != -1 else col_expr,
+                             self.models, self.main_table, self.aliases)
 
             # Apply database-specific replacements if needed
             col_expr = self._apply_database_specific_replacements(col_expr)
@@ -1942,7 +2015,8 @@ class OrderBuilder:
         if alias_column is not None:
             return alias_column
 
-        # If not an alias, proceed as before
+        check_expression(column_expr, self.models, self.main_table,
+                         self.select_builder.aliases)
         if "(" in column_expr and ")" in column_expr:
             # Function (e.g., "count(users.id)")
             return self.select_builder._parse_expression(column_expr)
@@ -1952,16 +2026,8 @@ class OrderBuilder:
             table_name, col_name = column_expr.split(".", 1)
             if table_name not in self.models:
                 raise ValueError(f"Model not found: {table_name}")
-            return getattr(self.models[table_name], col_name)
-        else:
-            # Could be a column of the main table or an untracked alias
-            try:
-                return getattr(self.models[self.main_table], column_expr)
-            except AttributeError:
-                # If column not found, assume it's an untracked column alias
-                # Use SQLAlchemy's text notation
-                from sqlalchemy import text
-                return text(column_expr)
+            return self.select_builder._column_of(self.models[table_name], col_name)
+        return self.select_builder._column_of(self.models[self.main_table], column_expr)
 
     def _apply_direction(self, query: Select, column: Any, direction: str) -> Select:
         """
