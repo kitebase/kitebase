@@ -9,6 +9,7 @@ from contextlib import contextmanager, ExitStack
 import sqlalchemy.types
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session, Session
+import kitebase.access
 from kitebase.plugins import PluginsManager, Plugin
 from kitebase.endpoints import CommandProcessor
 from kitebase.utils import deep_merge
@@ -129,6 +130,18 @@ class DB:
         self.multi_tenant_config: Dict[str, Any] = {}
         self.shared_tables: set = set()
         self.query_behaviors: List[Any] = []
+        self.guard: Any = kitebase.access.OPEN
+
+    def set_guard(self, guard: Any) -> None:
+        """
+        Register the guard every data port asks (see kitebase.access).
+
+        One per application: two policies have no obvious composition, so a
+        second registration is an error rather than a silent replacement.
+        """
+        if self.guard is not kitebase.access.OPEN:
+            raise ValueError(f"A guard is already registered: {type(self.guard).__name__}")
+        self.guard = guard
 
     def add_query_behavior(self, behavior_class: Any) -> None:
         """

@@ -34,6 +34,7 @@ from typing import Any, Dict, Iterator, List, Optional, Sequence
 import kitebase
 from kitebase.apptime import today
 from kitebase.endpoint_db import pk_field
+from kitebase import access
 from kitebase.endpoints import FileResult, endpoint
 from kitebase.i18n import _, _f
 from kitebase.querybuilder import DynamicQueryBuilder, JSONEncoder
@@ -83,7 +84,7 @@ def _situation(data: Dict[str, Any]) -> Dict[str, Any]:
     return {'query': query, 'ids': ids, 'columns': columns}
 
 
-@endpoint('export')
+@endpoint('export', access=access.AUTHENTICATED)
 def export_menu(data: Dict[str, Any]) -> Dict[str, Any]:
     """The menu of formats, each entry carrying the situation back."""
     try:
@@ -108,7 +109,7 @@ def export_menu(data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-@endpoint('export_file')
+@endpoint('export_file', access=access.PER_TABLE)
 def export_file(data: Dict[str, Any]) -> Any:
     """The file, through the download route."""
     fmt = data.get('format')

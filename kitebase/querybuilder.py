@@ -21,6 +21,7 @@ from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import ClauseElement
 from sqlalchemy.ext.declarative import DeclarativeMeta
 
+from kitebase import access
 from kitebase.utils import coerce_temporal, search_info, secret_columns, table_definition, temporal_condition
 
 # The escape character LIKE patterns are built with. Postgres already reads a
@@ -289,17 +290,22 @@ class DynamicQueryBuilder:
     }
     """
 
-    def __init__(self, session: Session, models: Dict[str, Type[DeclarativeMeta]]) -> None:
+    def __init__(self, session: Session, models: Dict[str, Type[DeclarativeMeta]],
+                 covered: Optional[List[str]] = None) -> None:
         """
         Initialize the builder with a SQLAlchemy session and a dictionary of models.
 
         Args:
             session: SQLAlchemy session for executing queries
             models: Dictionary with model names as keys and model classes as values
+            covered: models whose read permission the caller already answered
+                     for — the collections of an aggregate follow their root.
+                     Server code only: never from a client's payload.
         """
         self.session = session
         self.models = models
         self.engine = session.get_bind() if session else None
+        self.covered = list(covered or [])
 
     def build_query(self, query_def: Union[Dict[str, Any], str]) -> Select:
         """
@@ -368,9 +374,8 @@ class DynamicQueryBuilder:
         # INVARIANT — query behaviors are *visibility* filters, not
         # *authorization*. `resolve` comes from the client and bypasses every
         # behavior, so a behavior must never be the thing that keeps a user
-        # away from records they may not see. Enforce authorization elsewhere;
-        # if it ever has to live here, this loop is where the two kinds of
-        # behavior must start being told apart.
+        # away from records they may not see. Authorization is the access
+        # check at the end of this method, which `resolve` does not skip.
         main_model = self.models[main_table]
         if not query_def.get('resolve'):
             # Lazy import: keeps querybuilder usable standalone without kitebase stack
@@ -442,6 +447,12 @@ class DynamicQueryBuilder:
 
         if 'offset' in query_def:
             query = query.offset(query_def['offset'])
+
+        # Access: `<Model>.read` on every table the statement reads, found in
+        # the statement itself. After everything else and regardless of
+        # `resolve`, which skips behaviors, never permissions.
+        for model_name in sorted(access.tables_read(query, self.models, self.covered)):
+            access.check_table(model_name, 'read')
 
         return query
 

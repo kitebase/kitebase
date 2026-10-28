@@ -8,10 +8,11 @@ from io import StringIO
 from pathlib import Path
 from typing import Dict, Any, List
 import kitebase
+from kitebase import access
 from kitebase.endpoints import endpoint
 
 
-@endpoint('read_file')
+@endpoint('read_file', access=access.AUTHENTICATED)
 def read_file(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Generic endpoint for reading files of various formats.

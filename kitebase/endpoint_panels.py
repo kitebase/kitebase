@@ -1,5 +1,6 @@
 from typing import Any, Dict
 import kitebase.utils
+from kitebase import access
 from kitebase.endpoints import endpoint
 from kitebase.i18n import translate_labels
 from kitebase.pages import load_page, strip_meta
@@ -7,7 +8,7 @@ from kitebase.pages import load_page, strip_meta
 # endpoint functions receive only (data).
 
 
-@endpoint('get_page')
+@endpoint('get_page', access=access.AUTHENTICATED)
 def get_page(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Return a resolved page descriptor by id.

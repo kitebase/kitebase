@@ -39,6 +39,8 @@ this becomes the only write path is a decision for the day the client moves.
 from typing import Any, Dict, List, Optional, Tuple
 
 import kitebase.utils
+from kitebase import access
+from kitebase.access import AccessDenied
 from kitebase.endpoints import endpoint
 from kitebase.endpoint_db import pk_field, write_values, coerce_value
 from kitebase.pages import Aggregate, Collection, page_aggregate
@@ -98,7 +100,7 @@ def _link_of(app: Any, parent_model: str, coll: Collection) -> str:
 # ── Load ────────────────────────────────────────────────────────────────────
 
 def _select(app, session, model_name: str, conditions: List[Any],
-            order_by: Optional[List[Any]]) -> List[Dict[str, Any]]:
+            order_by: Optional[List[Any]], covered: List[str] = ()) -> List[Dict[str, Any]]:
     """Run one query and return its rows as dicts.
 
     Goes through the querybuilder rather than the ORM because a collection's
@@ -113,8 +115,11 @@ def _select(app, session, model_name: str, conditions: List[Any],
     open whole: half an aggregate is not a smaller aggregate, it is a wrong one,
     and a row invisible in the only place it can be edited can never be restored.
     The view's `domain` still applies: that is a filter, not a behavior.
+
+    `covered` names the models whose read permission is already answered: the
+    rows of a collection follow their root, and have no permission of their own.
     """
-    builder = DynamicQueryBuilder(session, app.models)
+    builder = DynamicQueryBuilder(session, app.models, covered=list(covered))
     query_def: Dict[str, Any] = {'table': model_name, 'resolve': True}
     if conditions:
         query_def['filters'] = {'conditions': conditions}
@@ -136,7 +141,7 @@ def _load_level(app, session, parent_model: str, collections: Dict[str, Collecti
         by_link.pop(None, None)
         conditions = [{coll.fk: ['in', list(by_link)]}] + _conditions_of(coll.domain)
         rows = _select(app, session, coll.model, conditions,
-                       coll.order_by or [f'{coll.model}.{pk}'])
+                       coll.order_by or [f'{coll.model}.{pk}'], covered=[coll.model])
 
         # The key exists even when empty: a collection with no rows is a fact,
         # and the client should not have to tell it from a collection it forgot.
@@ -155,7 +160,24 @@ def _load_level(app, session, parent_model: str, collections: Dict[str, Collecti
         _load_level(app, session, coll.model, coll.collections, children)
 
 
-def _load_tree(app, session, aggregate: Aggregate, record_id: Any) -> Optional[Dict[str, Any]]:
+def _aggregate_models(aggregate: Aggregate) -> List[str]:
+    """The root model and every collection model below it."""
+    found = [aggregate.model]
+    stack = list(aggregate.collections.values())
+    while stack:
+        coll = stack.pop()
+        found.append(coll.model)
+        stack.extend(coll.collections.values())
+    return found
+
+
+def _root_action(root_node: Dict[str, Any]) -> str:
+    """What writing a tree asks of its root: a change below it modifies it."""
+    return {'create': 'create', 'delete': 'delete'}.get(root_node.get('op'), 'update')
+
+
+def _load_tree(app, session, aggregate: Aggregate, record_id: Any,
+               covered: List[str] = ()) -> Optional[Dict[str, Any]]:
     """Load the root record and everything below it, or None if it does not exist.
 
     One path for the whole tree — see `_select` for why it resolves rather than
@@ -165,7 +187,7 @@ def _load_tree(app, session, aggregate: Aggregate, record_id: Any) -> Optional[D
     same kind of value in one payload is a trap for whoever reads it.
     """
     _, db_table, pk = _table_of(app, aggregate.model)
-    rows = _select(app, session, aggregate.model, [{pk: record_id}], None)
+    rows = _select(app, session, aggregate.model, [{pk: record_id}], None, covered)
     if not rows:
         return None
 
@@ -174,7 +196,7 @@ def _load_tree(app, session, aggregate: Aggregate, record_id: Any) -> Optional[D
     return root
 
 
-@endpoint('load_tree')
+@endpoint('load_tree', access=access.PER_TABLE)
 def load_tree(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Load a record and the collections its page declares, as one tree.
@@ -200,6 +222,8 @@ def load_tree(data: Dict[str, Any]) -> Dict[str, Any]:
         aggregate = page_aggregate(app, page_id)
         with app.get_session() as session:
             root = _load_tree(app, session, aggregate, data['id'])
+    except AccessDenied:
+        raise
     except ValueError as e:
         return {'status': 'error', 'message': str(e), 'code': 400}
     except Exception as e:
@@ -403,7 +427,7 @@ def _save_children(app, session, node_def, node: Dict[str, Any], parent: Optiona
                        id_map, deletes, depth + 1)
 
 
-@endpoint('save_tree')
+@endpoint('save_tree', access=access.PER_TABLE)
 def save_tree(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Write a record and the collections its page declares, in one transaction.
@@ -442,6 +466,8 @@ def save_tree(data: Dict[str, Any]) -> Dict[str, Any]:
     app = kitebase.utils.get_app()
     try:
         aggregate = page_aggregate(app, page_id)
+        # The aggregate decides for its rows: only the root is checked.
+        access.check_table(aggregate.model, _root_action(root_node))
 
         id_map: Dict[int, Any] = {}
         deletes: List[Tuple[int, str, Any]] = []
@@ -460,12 +486,16 @@ def save_tree(data: Dict[str, Any]) -> Dict[str, Any]:
 
             session.commit()
 
-            root = _load_tree(app, session, aggregate, root_id) if root_id is not None else None
+            # What was just written comes back under the permission that wrote it.
+            root = _load_tree(app, session, aggregate, root_id,
+                              covered=_aggregate_models(aggregate)) if root_id is not None else None
 
         return {'status': 'success',
                 'data': {'id': root_id, 'id_map': id_map, 'root': root},
                 'code': 200}
 
+    except AccessDenied:
+        raise
     except ValueError as e:
         return {'status': 'error', 'message': str(e), 'code': 400}
     except Exception as e:

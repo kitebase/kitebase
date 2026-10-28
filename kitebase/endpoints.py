@@ -7,12 +7,15 @@ from functools import wraps
 from typing import Dict, List, Any, Optional, Union, Callable
 from pathlib import Path
 import kitebase
+from kitebase.access import UNDECLARED, AccessDenied, check_endpoint
 
 # Global dictionary to register endpoints
 _ENDPOINTS: Dict[str, Callable] = {}
+# What each endpoint declared with `access=`; absent means undeclared
+_ACCESS: Dict[str, Optional[str]] = {}
 
 
-def endpoint(name: str) -> Callable[[Callable], Callable]:
+def endpoint(name: str, access: Optional[str] = UNDECLARED) -> Callable[[Callable], Callable]:
     """
     Decorator to register an endpoint function.
 
@@ -22,12 +25,18 @@ def endpoint(name: str) -> Callable[[Callable], Callable]:
 
     Args:
         name: The name of the endpoint for registration
+        access: What calling it requires, checked by the dispatcher before it
+                runs: a permission code (`reports.run`), `PER_TABLE` when the
+                endpoint checks each table it touches itself, `AUTHENTICATED`
+                when any logged-in user may call it. Undeclared, the guard
+                decides: the open one lets it through, a real one need not.
 
     Returns:
         The decorated function with registration side effect
     """
     def decorator(func: Callable) -> Callable:
         _ENDPOINTS[name] = func
+        _ACCESS[name] = access
 
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -436,6 +445,7 @@ class CommandProcessor:
             # pool, so anything left behind would be read by the next user.
             kitebase.db.BaseApp.set_context(command.context)
 
+            check_endpoint(command.operation, _ACCESS.get(command.operation, UNDECLARED))
             result_data = self.endpoints[command.operation](command.parameters)
 
             # An endpoint may either return its own envelope or a plain payload
@@ -453,6 +463,13 @@ class CommandProcessor:
                     data=result_data,
                     request_id=command.request_id
                 )
+
+        except AccessDenied as e:
+            _log.warning('%s by %s: denied %s [%s]', command.operation, who,
+                         e.permission, command.request_id)
+            return CommandResult(status="error", message=str(e),
+                                 request_id=command.request_id, code=403,
+                                 error_type=type(e).__name__)
 
         except Exception as e:
             _log.exception('%s by %s failed after %dms [%s]', command.operation, who,

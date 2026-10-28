@@ -23,6 +23,7 @@ that the devtest walking skeleton exercises (§9).
 from typing import Any, Dict, List, Optional
 
 import kitebase.utils
+from kitebase import access
 from kitebase.endpoints import endpoint
 from kitebase.i18n import translate_labels
 
@@ -87,7 +88,7 @@ def _passes_access(item: Dict[str, Any], context: Optional[Dict[str, Any]]) -> b
     return True
 
 
-@endpoint('get_menu')
+@endpoint('get_menu', access=access.AUTHENTICATED)
 def get_menu(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Return a composed, filtered, ordered menu tree for one root.

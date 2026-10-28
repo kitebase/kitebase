@@ -1,6 +1,8 @@
 import kitebase
 import kitebase.server_utils as server_utils
 import kitebase.transforms
+from kitebase import access
+from kitebase.access import AccessDenied
 from kitebase.endpoints import endpoint
 from kitebase.querybuilder import DynamicQueryBuilder
 from kitebase.i18n import _, _f
@@ -10,7 +12,7 @@ from sqlalchemy import Date, DateTime, Integer, inspect as sa_inspect
 import datetime
 
 
-@endpoint('db')
+@endpoint('db', access=access.PER_TABLE)
 def db_operations(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Generic database CRUD endpoint.
@@ -46,6 +48,10 @@ def db_operations(data: Dict[str, Any]) -> Dict[str, Any]:
 
         db_table = app.tables.get(table_name)
 
+        if method not in access.DB_METHODS:
+            return {"status": "error", "message": _f("Unsupported method: '{method}'", method=method), "code": 400}
+        access.check_table(model_class.__name__, access.DB_METHODS[method])
+
         # Execute the requested method
         if method == 'get':
             return handle_get(app, model_class, data, db_table)
@@ -53,11 +59,11 @@ def db_operations(data: Dict[str, Any]) -> Dict[str, Any]:
             return handle_create(app, model_class, data, db_table)
         elif method == 'update':
             return handle_update(app, model_class, data, db_table)
-        elif method == 'delete':
-            return handle_delete(app, model_class, data, db_table)
         else:
-            return {"status": "error", "message": _f("Unsupported method: '{method}'", method=method), "code": 400}
+            return handle_delete(app, model_class, data, db_table)
 
+    except AccessDenied:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -432,7 +438,7 @@ def build_filters(model_class, query_filters: Dict[str, Any]) -> Optional[Any]:
     return None
 
 
-@endpoint('query')
+@endpoint('query', access=access.PER_TABLE)
 def db_query(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Execute a query in DynamicQueryBuilder format
@@ -481,13 +487,15 @@ def db_query(data: Dict[str, Any]) -> Dict[str, Any]:
 
             return {"status": "success", "data": records}
 
+    except AccessDenied:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()
         return {"status": "error", "message": str(e), "code": 500}
 
 
-@endpoint('auth')
+@endpoint('auth', access=access.AUTHENTICATED)
 def authenticate(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Authenticate a user and return a context for subsequent operations.
@@ -584,7 +592,7 @@ def authenticate(data: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "error", "message": str(e), "code": 500}
 
 
-@endpoint('update_context')
+@endpoint('update_context', access=access.AUTHENTICATED)
 def update_context(data):
     """
     Update user context and return a new token with updated context.
@@ -642,7 +650,7 @@ def _translated_columns(tables: Dict[str, Any]) -> Dict[str, Any]:
     return tables
 
 
-@endpoint('get_server_config')
+@endpoint('get_server_config', access=access.AUTHENTICATED)
 def get_server_config(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Return server configuration and type registry for client-side use.
