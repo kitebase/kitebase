@@ -119,7 +119,8 @@ def decode_and_check_refresh(
     token: str,
     secret_key: str,
     jwt_expiration_hours: int = 24,
-    refresh_interval_minutes: int = 20
+    refresh_interval_minutes: int = 20,
+    reload: Optional[Callable[[Dict[str, Any]], Optional[Dict[str, Any]]]] = None
 ) -> Tuple[Optional[Dict[str, Any]], Optional[str], Optional[str]]:
     """
     Decode JWT token and check if it needs refresh.
@@ -132,6 +133,9 @@ def decode_and_check_refresh(
         secret_key: Secret key for JWT decoding
         jwt_expiration_hours: Token lifetime in hours
         refresh_interval_minutes: Refresh after this inactivity
+        reload: called on refresh with the payload; returns the fields to
+                read again (what the user table says now), or None when the
+                user may no longer log in, which refuses the token
 
     Returns:
         Tuple of (payload, new_token, error):
@@ -163,6 +167,12 @@ def decode_and_check_refresh(
 
         new_token = None
         if now - last_refresh > refresh_interval_seconds:
+            if reload is not None:
+                fresh = reload(payload)
+                if fresh is None:
+                    return None, None, 'Account is inactive'
+                payload = {**payload, **fresh}
+
             # Generate new token with extended expiration
             new_payload = {**payload}
             new_payload['exp'] = datetime.now(timezone.utc) + timedelta(hours=jwt_expiration_hours)
@@ -217,7 +227,8 @@ def extract_bearer_token(authorization_header: Optional[str]) -> Tuple[Optional[
 def issue_token(user_data: Dict[str, Any],
                 secret_key: str,
                 jwt_expiration_hours: int = 24,
-                context_fields: Optional[list] = None) -> Dict[str, Any]:
+                context_fields: Optional[list] = None,
+                source: str = 'login') -> Dict[str, Any]:
     """
     Sign a user context into a JWT: the answer of a successful login.
 
@@ -225,10 +236,15 @@ def issue_token(user_data: Dict[str, Any],
     No op_date: absent means today, read per request by defaults.op_date(); a
     token outlives the day it was issued on, so it carries only a date the
     user chose (update_context).
+
+    `src` says who vouches for the context: `login` read it from the user
+    table, and a refresh reads it again; `host` is the host application's
+    word (auth/token), kept as it is.
     """
     now = datetime.now(timezone.utc)
     payload = {
         'username': user_data.get('username'),
+        'src': source,
         'exp': now + timedelta(hours=jwt_expiration_hours),
         'last_refresh': now.timestamp(),  # Track last refresh for auto-refresh
     }
@@ -269,7 +285,7 @@ def handle_host_token(host_session, request, auth: 'AuthMiddleware') -> Dict[str
     if not context:
         return {'status': 'error', 'message': 'No host session',
                 'status_code': 401}
-    return auth.issue_token(context)
+    return auth.issue_token(context, source='host')
 
 def handle_auth(
     command_processor,
@@ -339,6 +355,34 @@ def context_fields(auth_config: Dict[str, Any], default: Optional[list] = None) 
     """The configured `context_fields`, then those plugins registered."""
     fields = list(auth_config.get('context_fields', default or []))
     return fields + [f for f in _REGISTERED_CONTEXT_FIELDS if f not in fields]
+
+
+def reload_user_context(config: Dict[str, Any], payload: Dict[str, Any],
+                        fields: list) -> Optional[Dict[str, Any]]:
+    """
+    The `fields` of a context that are columns of the user table, read again;
+    None when the user is gone or no longer active.
+
+    What a token says about its user is a copy taken at login: read again on
+    each refresh, a role taken away or an account disabled counts within one
+    refresh interval instead of when the token expires. Only for a token of
+    the login: what the host vouched for, or a token from before `src`
+    existed, stays as it is.
+    """
+    import kitebase.utils
+    if payload.get('src') != 'login':
+        return {}
+    auth = config.get('authentication', {})
+    user_table = auth.get('user_table', 'User')
+    user_model = kitebase.utils.get_app().models.get(user_table)
+    if user_model is None:
+        return {}
+    user = kitebase.utils.seek(user_table, {auth.get('username_field', 'username'):
+                                            payload.get('username')})
+    if user is None or (hasattr(user, 'is_active') and not user.is_active):
+        return None
+    columns = {c.key for c in user_model.__table__.columns}
+    return {f: getattr(user, f) for f in fields if f in columns}
 
 
 # Context fields the client may always set via update_context, regardless of
@@ -686,7 +730,9 @@ class AuthMiddleware:
             token,
             self.secret_key,
             self.jwt_expiration_hours,
-            self.refresh_interval_minutes
+            self.refresh_interval_minutes,
+            reload=lambda payload: reload_user_context(self.config, payload,
+                                                       self.context_fields)
         )
 
     def login(self, command_processor, credentials: Dict[str, str]) -> Dict[str, Any]:
@@ -708,10 +754,10 @@ class AuthMiddleware:
             self.context_fields
         )
 
-    def issue_token(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
+    def issue_token(self, user_data: Dict[str, Any], source: str = 'login') -> Dict[str, Any]:
         """Sign a context the caller vouches for, with this app's settings."""
         return issue_token(user_data, self.secret_key,
-                           self.jwt_expiration_hours, self.context_fields)
+                           self.jwt_expiration_hours, self.context_fields, source)
 
     def update_context(self, current_context: Dict[str, Any],
                        updates: Dict[str, Any]) -> Dict[str, Any]:

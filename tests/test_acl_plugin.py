@@ -216,6 +216,7 @@ def test_the_login_puts_the_roles_in_the_token(app):
     payload = jwt.decode(result['data']['token'], 'secret', algorithms=['HS256'])
     assert payload['roles'] == LIBRARIAN
     assert payload['is_admin'] is False
+    assert payload['src'] == 'login'
 
 
 def test_check_reads_the_roles_without_complaint(app):
@@ -223,3 +224,54 @@ def test_check_reads_the_roles_without_complaint(app):
     noise = [i for i in run_checks(app)
              if str(i.get('path', '')).startswith(('roles', 'permissions'))]
     assert noise == [], noise
+
+
+# ── Refresh: what the token says is read again ───────────────────────────────
+
+def _stale(token):
+    """The same token, as if issued before the last refresh interval."""
+    payload = jwt.decode(token, 'secret', algorithms=['HS256'])
+    return jwt.encode({**payload, 'last_refresh': 0}, 'secret', algorithm='HS256')
+
+
+def _set_user(app, username, **values):
+    with app.get_session() as session:
+        user = session.query(app.models['User']).filter_by(username=username).one()
+        for key, value in values.items():
+            setattr(user, key, value)
+        session.commit()
+
+
+def test_a_role_taken_away_counts_from_the_next_refresh(app):
+    auth = server_utils.AuthMiddleware(app.pm.config, 'secret')
+    token = auth.login(app.cp, {'username': 'bea', 'password': 'pw'})['data']['token']
+    _set_user(app, 'bea', roles=MEMBER)
+
+    payload, new_token, error = auth.decode_and_refresh(token)
+    assert payload['roles'] == LIBRARIAN        # not due yet: the token stands
+
+    payload, new_token, error = auth.decode_and_refresh(_stale(token))
+    assert error is None
+    assert payload['roles'] == MEMBER           # this request already sees it
+    assert jwt.decode(new_token, 'secret', algorithms=['HS256'])['roles'] == MEMBER
+
+
+def test_a_disabled_account_is_refused_at_the_refresh(app):
+    auth = server_utils.AuthMiddleware(app.pm.config, 'secret')
+    token = auth.login(app.cp, {'username': 'bea', 'password': 'pw'})['data']['token']
+    _set_user(app, 'bea', is_active=False)
+
+    payload, new_token, error = auth.decode_and_refresh(_stale(token))
+    assert payload is None and new_token is None
+    assert error == 'Account is inactive'
+
+
+def test_what_the_host_vouched_for_is_not_read_again(app):
+    """auth/token signs the host's word: the user need not be in our table."""
+    auth = server_utils.AuthMiddleware(app.pm.config, 'secret')
+    token = auth.issue_token({'username': 'guest', 'roles': MEMBER}, source='host')['data']['token']
+
+    payload, new_token, error = auth.decode_and_refresh(_stale(token))
+    assert error is None
+    assert payload['roles'] == MEMBER
+    assert jwt.decode(new_token, 'secret', algorithms=['HS256'])['src'] == 'host'
