@@ -78,6 +78,7 @@ def fresh_registry():
     yield
     Base.registry.dispose()
     Base.metadata.clear()
+    access._GUARD = access.OPEN
 
 
 @pytest.fixture
@@ -123,7 +124,7 @@ def app(tmp_path, monkeypatch):
 
 def guarded(app, denied=()):
     guard = Recorder(denied)
-    app.guard = guard
+    access.set_guard(guard)
     return guard
 
 
@@ -291,15 +292,40 @@ def test_an_undeclared_endpoint_is_left_to_the_guard(app, declared):
 
 
 def test_without_a_guard_everything_is_open(app, declared):
-    assert app.guard is access.OPEN
+    assert access._GUARD is access.OPEN
     assert send('bench.silent', {})['status'] == 'success'
     assert send('db', {'table': 'Book', 'method': 'delete', 'id': 1})['status'] == 'success'
 
 
-def test_a_second_guard_is_an_error(app):
-    app.set_guard(Recorder())
+def test_a_second_guard_is_an_error():
+    access.set_guard(Recorder())
     with pytest.raises(ValueError):
-        app.set_guard(Recorder())
+        access.set_guard(Recorder())
+
+
+def test_the_guard_is_handed_the_app_it_serves(tmp_path, monkeypatch):
+    seen = []
+
+    class Binding(Recorder):
+        def bind(self, app):
+            seen.append(app)
+
+    access.set_guard(Binding())
+    plugin = tmp_path / 'plugins' / 'bench'
+    plugin.mkdir(parents=True)
+    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'bench', 'version': '0.0.1'}))
+    (plugin / 'model.yaml').write_text(yaml.safe_dump({'tables': TABLES}))
+    cfg = tmp_path / 'config.yaml'
+    cfg.write_text(yaml.safe_dump({'name': 'bench', 'plugins': ['plugins']}))
+    monkeypatch.chdir(tmp_path)
+    pm = PluginsManager()
+    pm.load_config(str(cfg))
+    kitebase.utils.register_standard_handlers(pm)
+    pm.load_plugins()
+    instance = DB()
+    instance.calc_db(pm)
+
+    assert seen == [instance]
 
 
 def test_every_core_endpoint_declares_its_access():

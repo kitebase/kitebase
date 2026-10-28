@@ -324,6 +324,23 @@ def handle_auth(
         return _error_from_exc(e)
 
 
+# Fields a plugin adds to every login context, beside the configured ones: the
+# plugin that reads a column off the user puts it in the token itself.
+_REGISTERED_CONTEXT_FIELDS: list = []
+
+
+def add_context_field(name: str) -> None:
+    """Put a column of the user table in every login context and token."""
+    if name not in _REGISTERED_CONTEXT_FIELDS:
+        _REGISTERED_CONTEXT_FIELDS.append(name)
+
+
+def context_fields(auth_config: Dict[str, Any], default: Optional[list] = None) -> list:
+    """The configured `context_fields`, then those plugins registered."""
+    fields = list(auth_config.get('context_fields', default or []))
+    return fields + [f for f in _REGISTERED_CONTEXT_FIELDS if f not in fields]
+
+
 # Context fields the client may always set via update_context, regardless of
 # app config. These are framework-owned, non-identity fields.
 FRAMEWORK_UPDATABLE_FIELDS = frozenset({'op_date'})
@@ -643,7 +660,11 @@ class AuthMiddleware:
         auth_config = config.get('authentication', {})
         self.jwt_expiration_hours = auth_config.get('jwt_expiration_hours', 24)
         self.refresh_interval_minutes = auth_config.get('jwt_refresh_interval_minutes', 20)
-        self.context_fields = auth_config.get('context_fields', [])
+
+    @property
+    def context_fields(self) -> list:
+        # Read when used: plugins register theirs after this is built.
+        return context_fields(self.config.get('authentication', {}))
 
     def extract_token(self, authorization_header: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
         """

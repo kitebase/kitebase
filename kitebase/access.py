@@ -3,9 +3,10 @@
 The core owns the ports and names the permissions; a policy plugin decides.
 Every port asks `check(permission)` — `Book.read` for each table a query
 touches, `Book.update` before a write, the permission an endpoint declares —
-and the answer comes from the guard the application registered with
-`app.set_guard()`. Without one the `OpenGuard` answers yes to everything, so an
-application that does not enable access control behaves as if none existed.
+and the answer comes from the guard a policy plugin registered with
+`set_guard()` when its module loaded. Without one the `OpenGuard` answers yes
+to everything, so an application that does not enable access control behaves
+as if none existed.
 
 The core never names a role, a user flag or an administrator: those belong to
 the guard. What it guarantees is that no port reaches the data without asking.
@@ -40,6 +41,9 @@ class Guard:
     rules are written once here in terms of it.
     """
 
+    def bind(self, app: Any) -> None:
+        """Called once the app's plugins are merged: where to read the policy from."""
+
     def allows(self, permission: str, context: Optional[Dict[str, Any]]) -> bool:
         raise NotImplementedError
 
@@ -68,15 +72,29 @@ class OpenGuard(Guard):
 
 OPEN = OpenGuard()
 
+# One per process, like the other registries a plugin module fills when it is
+# imported: the module runs once, whatever number of apps load it.
+_GUARD: Guard = OPEN
+
+
+def set_guard(guard: Guard) -> None:
+    """
+    Register the guard every port asks. One only: two policies have no obvious
+    composition, so a second registration is an error, not a replacement.
+    """
+    global _GUARD
+    if _GUARD is not OPEN:
+        raise ValueError(f"A guard is already registered: {type(_GUARD).__name__}")
+    _GUARD = guard
+
+
+def bind(app: Any) -> None:
+    """Hand the app to the guard; the core calls it at the end of calc_db."""
+    _GUARD.bind(app)
+
 
 def _guard() -> Guard:
-    # Lazy and forgiving: the querybuilder is usable without a kitebase app,
-    # and then nothing has been registered to ask.
-    try:
-        import kitebase.utils
-        return getattr(kitebase.utils.get_app(), 'guard', None) or OPEN
-    except Exception:
-        return OPEN
+    return _GUARD
 
 
 def _context() -> Optional[Dict[str, Any]]:

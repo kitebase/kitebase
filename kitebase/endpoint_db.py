@@ -524,7 +524,7 @@ def authenticate(data: Dict[str, Any]) -> Dict[str, Any]:
         user_table = config.get('user_table', 'User')
         name_field = config.get('username_field', 'username')
         pass_field = config.get('password_field', 'password')
-        context_fields = config.get('context_fields', ['id'])
+        context_fields = server_utils.context_fields(config, default=['id'])
 
         # Find the user
         user = kitebase.utils.seek(user_table, {name_field: username})

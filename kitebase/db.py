@@ -130,18 +130,6 @@ class DB:
         self.multi_tenant_config: Dict[str, Any] = {}
         self.shared_tables: set = set()
         self.query_behaviors: List[Any] = []
-        self.guard: Any = kitebase.access.OPEN
-
-    def set_guard(self, guard: Any) -> None:
-        """
-        Register the guard every data port asks (see kitebase.access).
-
-        One per application: two policies have no obvious composition, so a
-        second registration is an error rather than a silent replacement.
-        """
-        if self.guard is not kitebase.access.OPEN:
-            raise ValueError(f"A guard is already registered: {type(self.guard).__name__}")
-        self.guard = guard
 
     def add_query_behavior(self, behavior_class: Any) -> None:
         """
@@ -178,6 +166,8 @@ class DB:
         self._calc_columns()
         self._calc_endpoints()
         self._load_multi_tenant_config()
+        # After the endpoints: a policy plugin registers its guard on import.
+        kitebase.access.bind(self)
 
     def _calc_types(self) -> None:
         """
