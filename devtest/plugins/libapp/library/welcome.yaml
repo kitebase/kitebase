@@ -19,4 +19,4 @@ pages:
           - { username: catalog,   password: catalog,   role: Cataloguer,    sees: "The catalogue. No loans: the Loans tab of Book + reviews is not there." }
           - { username: desk,      password: desk,      role: Loans desk,    sees: "Members and loans; books read only, every other table by its label." }
           - { username: librarian, password: librarian, role: Librarian,     sees: "Cataloguer and loans desk together, plus the reviews." }
-          - { username: stats,     password: stats,     role: Statistics,    sees: "The loans, but not the members' names: the loan list answers 403." }
+          - { username: stats,     password: stats,     role: Statistics,    sees: "Loan statistics, by book and by month. The Loans list answers 403: it shows the members' names." }

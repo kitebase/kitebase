@@ -998,6 +998,15 @@
    "panel": "loan_manager",
    "$plugin": "library"
   },
+  "stats": {
+   "label": "Loan statistics",
+   "icon": "chart-column",
+   "parent": "library",
+   "order": 15,
+   "action": "stack_push",
+   "panel": "loan_stats",
+   "$plugin": "library"
+  },
   "reviews": {
    "label": "Reviews",
    "icon": "star",
@@ -1709,6 +1718,30 @@
    },
    "$plugin": "wizards"
   },
+  "loan_stats": {
+   "title": "Loan statistics",
+   "access": "library.loan_stats",
+   "content": {
+    "$ref": "views.loan_stats_by_book",
+    "$plugin": "library"
+   },
+   "panels": [
+    {
+     "id": "by_month",
+     "pos": "bottom",
+     "height": 240,
+     "trigger": {
+      "event": "row_click",
+      "pass": [
+       "id"
+      ]
+     },
+     "$ref": "views.loan_stats_by_month",
+     "$plugin": "library"
+    }
+   ],
+   "$plugin": "library"
+  },
   "welcome": {
    "title": "Welcome",
    "content": {
@@ -1753,7 +1786,7 @@
        "username": "stats",
        "password": "stats",
        "role": "Statistics",
-       "sees": "The loans, but not the members' names: the loan list answers 403.",
+       "sees": "Loan statistics, by book and by month. The Loans list answers 403: it shows the members' names.",
        "$plugin": "library"
       }
      ],
@@ -3005,6 +3038,141 @@
     "$plugin": "wizards"
    },
    "$plugin": "wizards"
+  },
+  "loan_stats_by_book": {
+   "type": "table",
+   "source": {
+    "model": "Loan",
+    "joins": [
+     {
+      "Book": "Loan.book_id = Book.id",
+      "$plugin": "library"
+     }
+    ],
+    "group_by": [
+     "Book.id",
+     "Book.title"
+    ],
+    "order_by": [
+     "-loans"
+    ],
+    "$plugin": "library"
+   },
+   "navigator": {
+    "mode": "readonly",
+    "$plugin": "library"
+   },
+   "columns": [
+    {
+     "field": "Book.id as id",
+     "visible": false,
+     "$plugin": "library"
+    },
+    {
+     "field": "Book.title",
+     "title": "Book",
+     "$plugin": "library"
+    },
+    {
+     "field": "count(Loan.id) as loans",
+     "title": "Loans",
+     "width": 90,
+     "align": "right",
+     "$plugin": "library"
+    },
+    {
+     "field": "sum(case when Loan.returned_at is null then 1 else 0 end) as still_out",
+     "title": "Still out",
+     "width": 100,
+     "align": "right",
+     "$plugin": "library"
+    },
+    {
+     "field": "max(Loan.borrowed_at) as last_borrowed",
+     "title": "Last borrowed",
+     "formatter": "date",
+     "width": 130,
+     "$plugin": "library"
+    }
+   ],
+   "actions": {
+    "toolbar": [
+     "export"
+    ],
+    "$plugin": "library"
+   },
+   "$plugin": "library"
+  },
+  "loan_stats_by_month": {
+   "type": "table",
+   "source": {
+    "model": "Loan",
+    "filters": {
+     "conditions": [
+      {
+       "Loan.book_id": [
+        "=",
+        "$trigger.id"
+       ],
+       "$plugin": "library"
+      }
+     ],
+     "$plugin": "library"
+    },
+    "group_by": [
+     "year",
+     "month"
+    ],
+    "order_by": [
+     "-year",
+     "-month"
+    ],
+    "$plugin": "library"
+   },
+   "navigator": {
+    "mode": "readonly",
+    "$plugin": "library"
+   },
+   "columns": [
+    {
+     "field": "min(Loan.id) as id",
+     "visible": false,
+     "$plugin": "library"
+    },
+    {
+     "field": "extract(year from Loan.borrowed_at) as year",
+     "title": "Year",
+     "width": 80,
+     "$plugin": "library"
+    },
+    {
+     "field": "extract(month from Loan.borrowed_at) as month",
+     "title": "Month",
+     "width": 80,
+     "$plugin": "library"
+    },
+    {
+     "field": "count(Loan.id) as loans",
+     "title": "Loans",
+     "width": 90,
+     "align": "right",
+     "$plugin": "library"
+    },
+    {
+     "field": "count(distinct Loan.library_user_id) as members",
+     "title": "Members",
+     "width": 100,
+     "align": "right",
+     "$plugin": "library"
+    }
+   ],
+   "actions": {
+    "toolbar": [
+     "export"
+    ],
+    "$plugin": "library"
+   },
+   "$plugin": "library"
   }
  },
  "schemas": {
@@ -3093,6 +3261,7 @@
    "label": "Statistics",
    "grants": [
     "Loan.read",
+    "library.loan_stats",
     "*.label",
     "-LibraryUser.label"
    ],

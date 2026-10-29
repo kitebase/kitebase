@@ -1,0 +1,89 @@
+# Loan statistics: the page for whoever may count the loans but not see who
+# borrowed (library.stats). Every column is a count or a label, none names a
+# member, so the role that gets 403 on the loan list reads this one.
+#
+# A click on a book shows its loans month by month, below. A group has no
+# record to open, so both lists are read only (`navigator.mode: readonly`),
+# and each still hands the grid a key, aliased as a hidden `id`.
+
+pages:
+
+  loan_stats:
+    title: Loan statistics
+    # A function of its own: whoever reads the loans could run these counts,
+    # but the page and its menu item are for the statistics role alone.
+    access: library.loan_stats
+    content:
+      $ref: "views.loan_stats_by_book"
+    panels:
+      - id: by_month
+        pos: bottom
+        height: 240
+        trigger:
+          event: row_click
+          pass: [id]
+        $ref: "views.loan_stats_by_month"
+
+
+views:
+
+  loan_stats_by_book:
+    type: table
+    source:
+      model: Loan
+      joins:
+        - Book: "Loan.book_id = Book.id"
+      group_by: ["Book.id", "Book.title"]
+      order_by: [-loans]
+    navigator:
+      mode: readonly
+    columns:
+      - field: "Book.id as id"
+        visible: false
+      - field: Book.title
+        title: Book
+      - field: "count(Loan.id) as loans"
+        title: Loans
+        width: 90
+        align: right
+      - field: "sum(case when Loan.returned_at is null then 1 else 0 end) as still_out"
+        title: Still out
+        width: 100
+        align: right
+      - field: "max(Loan.borrowed_at) as last_borrowed"
+        title: Last borrowed
+        formatter: date
+        width: 130
+    actions:
+      toolbar: [export]
+
+  loan_stats_by_month:
+    type: table
+    source: 
+      model: Loan
+      filters:
+        conditions:
+          - Loan.book_id: ["=", "$trigger.id"]
+      group_by: [year, month]
+      order_by: [-year, -month]
+    navigator:
+      mode: readonly
+    columns:
+      - field: "min(Loan.id) as id"
+        visible: false
+      - field: "extract(year from Loan.borrowed_at) as year"
+        title: Year
+        width: 80
+      - field: "extract(month from Loan.borrowed_at) as month"
+        title: Month
+        width: 80
+      - field: "count(Loan.id) as loans"
+        title: Loans
+        width: 90
+        align: right
+      - field: "count(distinct Loan.library_user_id) as members"
+        title: Members
+        width: 100
+        align: right
+    actions:
+      toolbar: [export]

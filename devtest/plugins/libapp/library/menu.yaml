@@ -5,4 +5,5 @@ menu_items:
   # `{table}_list`, which is what that convention is for.
   members: { label: Members, icon: users,  parent: library, order: 5,  action: stack_push, panel: libraryuser_list }
   loans:   { label: Loans,   icon: repeat, parent: library, order: 10, action: stack_push, panel: loan_manager }
+  stats:   { label: Loan statistics, icon: chart-column, parent: library, order: 15, action: stack_push, panel: loan_stats }
   reviews: { label: Reviews, icon: star,   parent: library, order: 20, action: stack_push, panel: review_list }

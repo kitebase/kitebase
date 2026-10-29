@@ -7,8 +7,9 @@
 #   desk       the loans counter: members and loans, books read only, every
 #              other table shown by its label
 #   librarian  both, through `implies`, plus the reviews
-#   stats      the loans with every label but the members': the loan list
-#              answers 403, and `check` says so beforehand
+#   stats      the loans with every label but the members': Loan statistics
+#              (stats.yaml) is its page, through a permission no other role
+#              holds; the loan list answers 403, and `check` says so beforehand
 
 roles:
 
@@ -41,5 +42,6 @@ roles:
     label: Statistics
     grants:
       - Loan.read
+      - library.loan_stats
       - '*.label'
       - '-LibraryUser.label'

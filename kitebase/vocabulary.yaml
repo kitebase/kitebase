@@ -3,7 +3,7 @@
 # adds, never removes. '*' is an open map: its keys are data.
 menu_items.*: [action, confirm, icon, label, op, order, panel, parent]
 menus.*: [home_page, label]
-pages.*: [breadcrumb, confirm_on_leave, content, panels, title]
+pages.*: [access, breadcrumb, confirm_on_leave, content, panels, title]
 pages.*.content: [actions, columns, component, fields, layout, navigator, policy, props, rules, source, type]
 pages.*.content.actions: [toolbar]
 pages.*.content.columns[]: [field, formatter, title, width]
@@ -64,7 +64,7 @@ views.*: [actions, columns, component, data_schema, fields, layout, navigator, p
 views.*.actions: [row, toolbar]
 views.*.actions.row[]: [action, confirm, id, op, panel, params, pass]
 views.*.actions.row[].params: '*'
-views.*.columns[]: [align, field, formatter, title, width]
+views.*.columns[]: [align, field, formatter, title, visible, width]
 views.*.fields[]: [fields, group, name, widget]
 views.*.fields[].fields[]: [name, widget]
 views.*.layout[]: [border, columns, fields, id, label, pages, style, text, type]
