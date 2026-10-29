@@ -86,7 +86,7 @@ def query_books(data):
     }
 
 
-@endpoint('color_chooser', access=access.AUTHENTICATED)
+@endpoint('color_chooser', access='playground.demos')
 def color_chooser(data):
     """A chain of questions composed by the server, one answer at a time.
 

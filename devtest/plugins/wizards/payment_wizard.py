@@ -1,6 +1,5 @@
 import random
 from datetime import date, timedelta
-from kitebase import access
 from kitebase.endpoints import endpoint
 from kitebase.memoryset import MemorySet
 
@@ -99,7 +98,7 @@ class PaymentWizardSet(MemorySet):
         }
 
 
-@endpoint('payment_wizard', access=access.AUTHENTICATED)
+@endpoint('payment_wizard', access='playground.demos')
 def payment_wizard(data: dict) -> dict:
     step = data.get('step')
 

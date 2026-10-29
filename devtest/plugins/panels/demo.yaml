@@ -1,6 +1,7 @@
 pages:
   hello_demo:
     title: Hello Demo
+    access: playground.demos
     content:
       $ref: "views.hello_main"
     panels:
@@ -33,6 +34,7 @@ pages:
   # its own Svelte, and a page reaches it by registry id.
   msgbox_demo:
     title: Msgbox demo
+    access: playground.demos
     content:
       type: plugin
       component: library.msgboxdemo

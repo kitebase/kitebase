@@ -10,6 +10,7 @@ pages:
 
   product_demo_form:
     title: Scheda prodotto
+    access: playground.demos
     content:
       $ref: "views.product_demo_form"
 

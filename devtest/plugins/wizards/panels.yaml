@@ -43,16 +43,19 @@ pages:
 
   payment_wizard_params:
     title: Parametri solleciti
+    access: playground.demos
     content:
       $ref: "views.payment_wizard_params_form"
 
   payment_wizard_preview:
     title: Anteprima solleciti
+    access: playground.demos
     content:
       $ref: "views.payment_wizard_preview_table"
 
   payment_wizard_row_form:
     title: Modifica sollecito
+    access: playground.demos
     content:
       $ref: "views.payment_wizard_row_form"
 

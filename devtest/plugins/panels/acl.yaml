@@ -1,0 +1,7 @@
+# A permission of function, not of data: the demos of the Playground group
+# read no table, so nothing derived from the tables guards them. Their pages
+# and the endpoints behind them ask for it (panels, wizards, library/test.py);
+# devtest gives it to the librarian, and the access matrix to anyone else.
+
+permissions:
+  playground.demos: { label: Playground demos }

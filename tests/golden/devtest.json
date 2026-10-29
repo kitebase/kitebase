@@ -1757,6 +1757,7 @@
   },
   "hello_demo": {
    "title": "Hello Demo",
+   "access": "playground.demos",
    "content": {
     "$ref": "views.hello_main",
     "$plugin": "panels"
@@ -1798,6 +1799,7 @@
   },
   "msgbox_demo": {
    "title": "Msgbox demo",
+   "access": "playground.demos",
    "content": {
     "type": "plugin",
     "component": "library.msgboxdemo",
@@ -1807,6 +1809,7 @@
   },
   "product_demo_form": {
    "title": "Scheda prodotto",
+   "access": "playground.demos",
    "content": {
     "$ref": "views.product_demo_form",
     "$plugin": "wizards"
@@ -1815,6 +1818,7 @@
   },
   "payment_wizard_params": {
    "title": "Parametri solleciti",
+   "access": "playground.demos",
    "content": {
     "$ref": "views.payment_wizard_params_form",
     "$plugin": "wizards"
@@ -1823,6 +1827,7 @@
   },
   "payment_wizard_preview": {
    "title": "Anteprima solleciti",
+   "access": "playground.demos",
    "content": {
     "$ref": "views.payment_wizard_preview_table",
     "$plugin": "wizards"
@@ -1831,6 +1836,7 @@
   },
   "payment_wizard_row_form": {
    "title": "Modifica sollecito",
+   "access": "playground.demos",
    "content": {
     "$ref": "views.payment_wizard_row_form",
     "$plugin": "wizards"
@@ -1869,7 +1875,7 @@
     "props": {
      "title": "Devtest, a Kitebase demo and playground",
      "intro": [
-      "The library is the working part: catalogue, members, loans and reviews. The Playground group holds the demos of panels, triggers, wizards and dialogs.",
+      "The library is the working part: catalogue, members, loans and reviews. The Playground group holds the demos of panels, triggers, wizards and dialogs: those that read no table ask for playground.demos, which the librarian has.",
       "Access control is on. Sign out and back in as another user to see what each role is given: the menu, the pages and the data follow the role."
      ],
      "users": [
@@ -1898,14 +1904,14 @@
        "username": "librarian",
        "password": "librarian",
        "role": "Librarian",
-       "sees": "Cataloguer and loans desk together, plus the reviews.",
+       "sees": "Cataloguer and loans desk together, plus the reviews and the Playground demos.",
        "$plugin": "library"
       },
       {
        "username": "stats",
        "password": "stats",
        "role": "Statistics",
-       "sees": "Loan statistics, by book and by month. The Loans list answers 403: it shows the members' names.",
+       "sees": "Loan statistics, by book and by month. The Loans list answers 403: it shows the members' names. No Playground: the group goes when nothing in it is left.",
        "$plugin": "library"
       }
      ],
@@ -3294,6 +3300,13 @@
    "$plugin": "library"
   }
  },
+ "permissions": {
+  "playground.demos": {
+   "label": "Playground demos",
+   "$plugin": "panels"
+  },
+  "$plugin": "panels"
+ },
  "schemas": {
   "payment_wizard_data": {
    "id": "Integer",
@@ -3372,7 +3385,8 @@
     "library.desk"
    ],
    "grants": [
-    "Review.*"
+    "Review.*",
+    "playground.demos"
    ],
    "$plugin": "library"
   },

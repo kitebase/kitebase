@@ -6,7 +6,8 @@
 #              Loans tab of "Book + reviews" taken out of the page
 #   desk       the loans counter: members and loans, books read only, every
 #              other table shown by its label
-#   librarian  both, through `implies`, plus the reviews
+#   librarian  both, through `implies`, plus the reviews and the demos of
+#              the Playground (playground.demos, declared by panels)
 #   stats      the loans with every label but the members': Loan statistics
 #              (stats.yaml) is its page, through a permission no other role
 #              holds; the loan list answers 403, and `check` says so beforehand
@@ -37,6 +38,7 @@ roles:
     implies: [library.catalog, library.desk]
     grants:
       - Review.*
+      - playground.demos
 
   library.stats:
     label: Statistics

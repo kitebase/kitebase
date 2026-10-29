@@ -12,11 +12,11 @@ pages:
       props:
         title: Devtest, a Kitebase demo and playground
         intro:
-          - "The library is the working part: catalogue, members, loans and reviews. The Playground group holds the demos of panels, triggers, wizards and dialogs."
+          - "The library is the working part: catalogue, members, loans and reviews. The Playground group holds the demos of panels, triggers, wizards and dialogs: those that read no table ask for playground.demos, which the librarian has."
           - "Access control is on. Sign out and back in as another user to see what each role is given: the menu, the pages and the data follow the role."
         users:
           - { username: admin,     password: admin,     role: administrator, sees: "Everything: not a role, it passes every check." }
           - { username: catalog,   password: catalog,   role: Cataloguer,    sees: "The catalogue. No loans: the Loans tab of Book + reviews is not there." }
           - { username: desk,      password: desk,      role: Loans desk,    sees: "Members and loans; books read only, every other table by its label." }
-          - { username: librarian, password: librarian, role: Librarian,     sees: "Cataloguer and loans desk together, plus the reviews." }
-          - { username: stats,     password: stats,     role: Statistics,    sees: "Loan statistics, by book and by month. The Loans list answers 403: it shows the members' names." }
+          - { username: librarian, password: librarian, role: Librarian,     sees: "Cataloguer and loans desk together, plus the reviews and the Playground demos." }
+          - { username: stats,     password: stats,     role: Statistics,    sees: "Loan statistics, by book and by month. The Loans list answers 403: it shows the members' names. No Playground: the group goes when nothing in it is left." }

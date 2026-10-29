@@ -33,8 +33,8 @@ with what each is meant to see, and the login page says whom to try.
 | `admin` | administrator | everything: not a role, it passes every check |
 | `catalog` | Cataloguer | the catalogue; no loans, no members |
 | `desk` | Loans desk | members and loans; books read only, other tables by their label |
-| `librarian` | Librarian | cataloguer and loans desk together, plus the reviews |
-| `stats` | Statistics | Loan statistics, by book and by month; the loan list answers 403, it shows the members' names |
+| `librarian` | Librarian | cataloguer and loans desk together, plus the reviews and the Playground demos |
+| `stats` | Statistics | Loan statistics, by book and by month; the loan list answers 403, it shows the members' names; no Playground group |
 
 A database made before them gets them with `devtest.seed_staff`; a new one has
 them from the seed. `kitebase check` lists what the roles leave uncovered.
