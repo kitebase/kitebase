@@ -348,6 +348,7 @@
      "label": "Roles",
      "type": "Json",
      "default": [],
+     "validate": "acl_roles",
      "$plugin": "acl"
     },
     {
@@ -1027,40 +1028,109 @@
      "id": "$props.id",
      "$plugin": "users"
     },
-    "fields": [
+    "layout": [
      {
-      "name": "name",
-      "label": "Name",
-      "$plugin": "users"
-     },
-     {
-      "name": "username",
-      "label": "Username",
-      "$plugin": "users"
-     },
-     {
-      "name": "email",
-      "label": "Email",
-      "$plugin": "users"
-     },
-     {
-      "name": "password",
-      "label": "Password",
-      "widget": "password",
-      "help": "Leave it empty to keep the current one. A new user needs one.",
-      "$plugin": "users"
-     },
-     {
-      "name": "is_active",
-      "label": "Active",
-      "type": "Boolean",
-      "$plugin": "users"
-     },
-     {
-      "name": "is_admin",
-      "label": "Administrator",
-      "type": "Boolean",
-      "$plugin": "users"
+      "id": "sections",
+      "type": "tabs",
+      "pages": [
+       {
+        "id": "account",
+        "label": "Account",
+        "layout": [
+         {
+          "id": "account_main",
+          "type": "section",
+          "columns": [
+           {
+            "id": "identity",
+            "fields": [
+             {
+              "name": "name",
+              "label": "Name",
+              "width": "100%"
+             },
+             {
+              "name": "username",
+              "label": "Username",
+              "width": "50%"
+             },
+             {
+              "name": "email",
+              "label": "Email",
+              "width": "50%"
+             },
+             {
+              "name": "password",
+              "label": "Password",
+              "widget": "password",
+              "help": "Leave it empty to keep the current one. A new user needs one.",
+              "width": "50%"
+             },
+             {
+              "filler": null
+             },
+             {
+              "name": "is_active",
+              "label": "Active",
+              "type": "Boolean",
+              "width": "50%"
+             },
+             {
+              "name": "is_admin",
+              "label": "Administrator",
+              "type": "Boolean",
+              "width": "50%"
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "id": "roles",
+        "label": "Roles",
+        "layout": [
+         {
+          "id": "roles_main",
+          "type": "section",
+          "columns": [
+           {
+            "id": "roles_pick",
+            "fields": [
+             {
+              "name": "roles",
+              "label": "Roles",
+              "widget": "checklist",
+              "choices_endpoint": "acl_roles",
+              "help": "A role brings the roles it implies, shown checked and greyed."
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "id": "roles_text",
+          "type": "section",
+          "label": "As text",
+          "columns": [
+           {
+            "id": "roles_json",
+            "fields": [
+             {
+              "name": "roles",
+              "label": "Role codes, as JSON",
+              "widget": "json"
+             }
+            ]
+           }
+          ]
+         }
+        ],
+        "$plugin": "acl"
+       }
+      ],
+      "$plugin": "acl"
      }
     ],
     "actions": {

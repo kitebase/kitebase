@@ -22,7 +22,9 @@ pages.*.content.layout[].columns[].fields[].foreign_key: [field, target]
 pages.*.content.layout[].columns[].fields[].lookup: [filters]
 pages.*.content.layout[].columns[].fields[].lookup.filters: '*'
 pages.*.content.layout[].pages[]: [count, id, label, layout]
-pages.*.content.layout[].pages[].layout[]: [defaults, domain, fk, form, id, model, prefill, type, view]
+pages.*.content.layout[].pages[].layout[]: [columns, defaults, domain, fk, form, id, label, model, prefill, type, view]
+pages.*.content.layout[].pages[].layout[].columns[]: [fields, id]
+pages.*.content.layout[].pages[].layout[].columns[].fields[]: [choices_endpoint, filler, help, label, name, type, widget, width]
 pages.*.content.layout[].pages[].layout[].defaults: '*'
 pages.*.content.layout[].pages[].layout[].domain[]: '*'
 pages.*.content.layout[].pages[].layout[].prefill: '*'

@@ -252,6 +252,45 @@ def test_the_app_config_opens_an_undeclared_endpoint(app, plugin_endpoints):
     assert as_user('library.renew', {}, MEMBER)['code'] == 403
 
 
+# ── Assigning roles ──────────────────────────────────────────────────────────
+
+def test_the_catalogue_lists_the_roles_with_what_they_imply(app):
+    result = as_user('acl_roles', {}, is_admin=True)
+
+    roles = {r['value']: r for r in result['data']}
+    assert roles['library.librarian'] == {
+        'value': 'library.librarian', 'label': 'Librarian',
+        'group': 'library', 'implies': ['library.member']}
+    assert roles['library.member']['implies'] == []
+
+
+def test_the_catalogue_is_for_who_reads_the_users(app):
+    assert as_user('acl_roles', {}, LIBRARIAN)['code'] == 403
+
+
+def _set_roles(roles):
+    return as_user('db', {'table': 'User', 'method': 'update', 'id': 1,
+                          'data': {'roles': roles}}, is_admin=True)
+
+
+def test_declared_roles_are_saved(app):
+    assert _set_roles(['library.member', 'library.desk'])['status'] == 'success'
+
+
+def test_an_unknown_role_is_named_and_nothing_is_saved(app):
+    result = _set_roles(['library.member', 'library.membr'])
+
+    assert result['status'] == 'error'
+    assert 'library.membr' in str(result)
+    with app.get_session() as session:
+        assert session.get(app.models['User'], 1).roles == MEMBER
+
+
+def test_roles_are_a_list_of_codes(app):
+    assert _set_roles('library.member')['status'] == 'error'
+    assert _set_roles([1, 2])['status'] == 'error'
+
+
 # ── The token ────────────────────────────────────────────────────────────────
 
 def test_the_login_puts_the_roles_in_the_token(app):
