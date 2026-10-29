@@ -1128,6 +1128,29 @@
          }
         ],
         "$plugin": "acl"
+       },
+       {
+        "id": "access",
+        "label": "Access",
+        "layout": [
+         {
+          "id": "access_main",
+          "type": "section",
+          "columns": [
+           {
+            "id": "access_matrix",
+            "fields": [
+             {
+              "name": "roles",
+              "label": "What these roles give",
+              "widget": "acl.access"
+             }
+            ]
+           }
+          ]
+         }
+        ],
+        "$plugin": "acl"
        }
       ],
       "$plugin": "acl"

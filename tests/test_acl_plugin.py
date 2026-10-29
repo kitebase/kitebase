@@ -268,6 +268,35 @@ def test_the_catalogue_is_for_who_reads_the_users(app):
     assert as_user('acl_roles', {}, LIBRARIAN)['code'] == 403
 
 
+def _effective(roles, **extra):
+    data = as_user('acl_effective', {'roles': roles, **extra}, is_admin=True)['data']
+    return {t['name']: t['actions'] for t in data['tables']}, data
+
+
+def test_the_effective_access_names_the_role_that_gives_it(app):
+    tables, data = _effective(LIBRARIAN + DESK + ['library.nobody'])
+
+    assert tables['Book']['create'] == {'ok': True, 'by': ['Librarian'], 'denied_by': []}
+    assert tables['Book']['read']['by'] == ['Librarian']     # through `implies`
+    assert tables['Book']['delete']['ok'] is False
+    assert data['unknown'] == ['library.nobody']
+    renew = next(p for p in data['permissions'] if p['code'] == 'library.renew')
+    assert renew['label'] == 'Renew a loan' and renew['by'] == ['Librarian']
+
+
+def test_the_effective_access_shows_a_denial_and_where_it_is(app):
+    tables, _data = _effective(DESK)
+
+    assert tables['User']['label'] == {'ok': False, 'by': [], 'denied_by': ['Desk']}
+    assert tables['Book']['label']['by'] == ['Desk']
+
+
+def test_the_administrator_has_everything(app):
+    tables, _data = _effective([], is_admin=True)
+
+    assert all(a['ok'] for t in tables.values() for a in t.values())
+
+
 def _set_roles(roles):
     return as_user('db', {'table': 'User', 'method': 'update', 'id': 1,
                           'data': {'roles': roles}}, is_admin=True)
