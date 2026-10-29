@@ -4,10 +4,11 @@ from pathlib import Path
 sys.path.append("..")
 import kitebase  # noqa: E402
 import kitebase.plugins  # noqa: E402
+from kitebase import access  # noqa: E402
 from kitebase.endpoints import endpoint  # noqa: E402
 
 
-@endpoint('add')
+@endpoint('add', access=access.AUTHENTICATED)
 def add_numbers(data):
     a = data.get("a", 0)
     b = data.get("b", 0)
@@ -271,6 +272,29 @@ def main():
     print(result)
 
 
+# One user per role of the library (plugins/libapp/library/acl.yaml), the
+# password the same as the username, like admin.
+STAFF = [
+    ('catalog', 'Carol Hayes', ['library.catalog']),
+    ('desk', 'Dennis Ward', ['library.desk']),
+    ('librarian', 'Laura Bennett', ['library.librarian']),
+    ('stats', 'Steve Norris', ['library.stats']),
+]
+
+
+def seed_staff(session, model) -> int:
+    """Add the users of STAFF a database does not have yet; how many it added.
+    Called by the seed, and by hand on a database seeded before them."""
+    have = {u for (u,) in session.query(model.User.username)}
+    added = 0
+    for username, name, roles in STAFF:
+        if username not in have:
+            session.add(model.User(name=name, email=f'{username}@example.com',
+                                   username=username, password=username, roles=roles))
+            added += 1
+    return added
+
+
 def seed(app, model=None):
     """
     Fill an empty database with the data the tests and the UI work on.
@@ -347,6 +371,7 @@ def seed(app, model=None):
                 is_admin=True
             )
             session.add(admin_user)
+            seed_staff(session, model)
 
             # Create library user for library operations
             library_user = model.LibraryUser(

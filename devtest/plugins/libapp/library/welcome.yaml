@@ -1,0 +1,22 @@
+# The home page of devtest (menus.main.home_page): what devtest is, and the
+# users to try access control with, one per role of acl.yaml. Static content
+# through get_page: the texts are the props of a plugin component.
+
+pages:
+
+  welcome:
+    title: Welcome
+    content:
+      type: plugin
+      component: library.welcome
+      props:
+        title: Devtest, a Kitebase demo and playground
+        intro:
+          - "The library is the working part: catalogue, members, loans and reviews. The Playground group holds the demos of panels, triggers, wizards and dialogs."
+          - "Access control is on. Sign out and back in as another user to see what each role is given: the menu, the pages and the data follow the role."
+        users:
+          - { username: admin,     password: admin,     role: administrator, sees: "Everything: not a role, it passes every check." }
+          - { username: catalog,   password: catalog,   role: Cataloguer,    sees: "The catalogue. No loans: the Loans tab of Book + reviews is not there." }
+          - { username: desk,      password: desk,      role: Loans desk,    sees: "Members and loans; books read only, every other table by its label." }
+          - { username: librarian, password: librarian, role: Librarian,     sees: "Cataloguer and loans desk together, plus the reviews." }
+          - { username: stats,     password: stats,     role: Statistics,    sees: "The loans, but not the members' names: the loan list answers 403." }

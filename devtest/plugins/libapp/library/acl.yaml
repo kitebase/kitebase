@@ -1,0 +1,45 @@
+# The roles of the library, for trying access control in devtest.
+#
+# One user per role in the seed (password = username). The administrator is
+# not a role: `is_admin` passes every check. Each role shows something:
+#   catalog    the catalogue and nothing of the loans: a smaller menu, and the
+#              Loans tab of "Book + reviews" taken out of the page
+#   desk       the loans counter: members and loans, books read only, every
+#              other table shown by its label
+#   librarian  both, through `implies`, plus the reviews
+#   stats      the loans with every label but the members': the loan list
+#              answers 403, and `check` says so beforehand
+
+roles:
+
+  library.catalog:
+    label: Cataloguer
+    grants:
+      - Book.*
+      - Author.*
+      - Publisher.*
+      - BookAuthor.*
+      - Review.read
+      - '*.label'
+
+  library.desk:
+    label: Loans desk
+    grants:
+      - Loan.*
+      - LibraryUser.*
+      - Book.read
+      - Review.read
+      - '*.label'
+
+  library.librarian:
+    label: Librarian
+    implies: [library.catalog, library.desk]
+    grants:
+      - Review.*
+
+  library.stats:
+    label: Statistics
+    grants:
+      - Loan.read
+      - '*.label'
+      - '-LibraryUser.label'

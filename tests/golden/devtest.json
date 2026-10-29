@@ -344,6 +344,13 @@
      "$plugin": "users"
     },
     {
+     "name": "roles",
+     "label": "Roles",
+     "type": "Json",
+     "default": [],
+     "$plugin": "acl"
+    },
+    {
      "name": "employee_id",
      "type": "ShortStr",
      "unique": true,
@@ -819,7 +826,7 @@
  "menus": {
   "main": {
    "label": "DevTest",
-   "home_page": "hello_demo",
+   "home_page": "welcome",
    "$plugin": "menu"
   },
   "$plugin": "menu"
@@ -1686,6 +1693,60 @@
     "$plugin": "wizards"
    },
    "$plugin": "wizards"
+  },
+  "welcome": {
+   "title": "Welcome",
+   "content": {
+    "type": "plugin",
+    "component": "library.welcome",
+    "props": {
+     "title": "Devtest, a Kitebase demo and playground",
+     "intro": [
+      "The library is the working part: catalogue, members, loans and reviews. The Playground group holds the demos of panels, triggers, wizards and dialogs.",
+      "Access control is on. Sign out and back in as another user to see what each role is given: the menu, the pages and the data follow the role."
+     ],
+     "users": [
+      {
+       "username": "admin",
+       "password": "admin",
+       "role": "administrator",
+       "sees": "Everything: not a role, it passes every check.",
+       "$plugin": "library"
+      },
+      {
+       "username": "catalog",
+       "password": "catalog",
+       "role": "Cataloguer",
+       "sees": "The catalogue. No loans: the Loans tab of Book + reviews is not there.",
+       "$plugin": "library"
+      },
+      {
+       "username": "desk",
+       "password": "desk",
+       "role": "Loans desk",
+       "sees": "Members and loans; books read only, every other table by its label.",
+       "$plugin": "library"
+      },
+      {
+       "username": "librarian",
+       "password": "librarian",
+       "role": "Librarian",
+       "sees": "Cataloguer and loans desk together, plus the reviews.",
+       "$plugin": "library"
+      },
+      {
+       "username": "stats",
+       "password": "stats",
+       "role": "Statistics",
+       "sees": "The loans, but not the members' names: the loan list answers 403.",
+       "$plugin": "library"
+      }
+     ],
+     "$plugin": "library"
+    },
+    "$plugin": "library"
+   },
+   "$plugin": "library"
   }
  },
  "views": {
@@ -2977,5 +3038,51 @@
    "$plugin": "wizards"
   },
   "$plugin": "wizards"
+ },
+ "roles": {
+  "library.catalog": {
+   "label": "Cataloguer",
+   "grants": [
+    "Book.*",
+    "Author.*",
+    "Publisher.*",
+    "BookAuthor.*",
+    "Review.read",
+    "*.label"
+   ],
+   "$plugin": "library"
+  },
+  "library.desk": {
+   "label": "Loans desk",
+   "grants": [
+    "Loan.*",
+    "LibraryUser.*",
+    "Book.read",
+    "Review.read",
+    "*.label"
+   ],
+   "$plugin": "library"
+  },
+  "library.librarian": {
+   "label": "Librarian",
+   "implies": [
+    "library.catalog",
+    "library.desk"
+   ],
+   "grants": [
+    "Review.*"
+   ],
+   "$plugin": "library"
+  },
+  "library.stats": {
+   "label": "Statistics",
+   "grants": [
+    "Loan.read",
+    "*.label",
+    "-LibraryUser.label"
+   ],
+   "$plugin": "library"
+  },
+  "$plugin": "library"
  }
 }

@@ -1,5 +1,7 @@
 # configuration for the app
 name: mytestapp
+# The name the chrome and the login page show.
+title: Devtest
 version: 0.0.1
 description: "A simple test app"
 license: MIT
@@ -13,7 +15,7 @@ author: "Claudio Driussi"
 # What devtest adds to them is in its own plugins (devtypes, libapp/library).
 plugins:
   - path: ../../commons/plugins
-    include: [common, users]
+    include: [common, users, acl]
   - plugins
   - plugins/libapp
 
@@ -43,6 +45,10 @@ api:
 # people in (kitebase.clientui). An admin of a host would say `role: admin`.
 client:
   role: app
+  # What the login page shows before anyone is signed in (public, through /info).
+  signin:
+    subtitle: A Kitebase demo and playground
+    hint: "Try admin / admin, or catalog, desk, librarian, stats: the password is the username."
 
 # DataView pagination defaults
 # page_size: rows loaded per page (overridable per-view via source.limit in YAML)

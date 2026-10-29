@@ -12,7 +12,7 @@
 menus:
   main:
     label: DevTest
-    home_page: hello_demo
+    home_page: welcome
 
 menu_items:
 

@@ -1,4 +1,5 @@
 import kitebase
+from kitebase import access
 from kitebase.endpoints import endpoint
 
 
@@ -7,7 +8,7 @@ def ok():
     return True
 
 
-@endpoint('sayhello')
+@endpoint('sayhello', access=access.AUTHENTICATED)
 def say_hello(data):
     name = data.get("name", "World")
     lang = data.get("lang", "en")
@@ -26,9 +27,12 @@ def say_hello(data):
     }
 
 
-@endpoint('book_stats')
+@endpoint('book_stats', access=access.PER_TABLE)
 def book_stats(data):
     """What a button in a form can call: it acts, and reports in one line.
+
+    It reads for the user, so on a guarded session: counting the loans asks
+    `Loan.read`, and a cataloguer who cannot read them gets a 403.
 
     The bench for the fourth family (relations.md §19.1). The record it works on
     arrives as an id resolved from the form's draft (`$record.id`), which is also
@@ -42,6 +46,7 @@ def book_stats(data):
 
     app = kitebase.utils.get_app()
     with app.get_session() as session:
+        access.guard_session(session)
         book = session.get(app.model.Book, book_id)
         if book is None:
             return {'status': 'error', 'message': f'No book {book_id}', 'code': 404}
@@ -61,11 +66,12 @@ def book_stats(data):
                      'reviews': len(reviews), 'average_rating': average}}
 
 
-@endpoint('books')
+@endpoint('books', access=access.PER_TABLE)
 def query_books(data):
     app = kitebase.utils.get_app()
 
     with app.get_session() as session:
+        access.guard_session(session)
         books = session.query(app.model.Book).all()
         data = []
         for book in books:
@@ -80,7 +86,7 @@ def query_books(data):
     }
 
 
-@endpoint('color_chooser')
+@endpoint('color_chooser', access=access.AUTHENTICATED)
 def color_chooser(data):
     """A chain of questions composed by the server, one answer at a time.
 
