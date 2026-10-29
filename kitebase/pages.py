@@ -592,18 +592,32 @@ def can_open(app: Any, page_id: str) -> bool:
     return all(access.can(p) for p in page_permissions(app, page_id) or [])
 
 
-def restrict(app: Any, obj: Any) -> None:
-    """Take out of a resolved page what the current user cannot use: commands
-    whose endpoint or `access:` is refused, the "Search more…" of foreign keys
-    whose lookup page is (`lookup.page: false`), and the side panels and tabs
-    showing a model the user cannot read — a panel left without tabs goes too.
-    In place, on the copy `get_page` is about to send."""
+def restrict(app: Any, obj: Any, in_collection: bool = False) -> None:
+    """Take out of a resolved page what the current user cannot use. In place,
+    on the copy `get_page` is about to send:
+
+    - commands, row actions and form buttons whose endpoint, page or `access:`
+      is refused; a row action on `db` asks the permission of its method;
+    - Add and Delete of a list on `T` without `T.create` / `T.delete`; Edit
+      stays, it opens the record, and the form says whether it can be changed;
+    - a form on `T` with neither `T.create` nor `T.update` is not editable;
+    - the grid of a collection follows its root, like the save: a form that
+      cannot be changed shows its rows read only, so nothing is hidden there;
+    - the "Search more…" of foreign keys whose lookup page is closed
+      (`lookup.page: false`);
+    - side panels and tabs on a model the user cannot read, and a tab set left
+      empty.
+    """
     if isinstance(obj, list):
         for item in obj:
-            restrict(app, item)
+            restrict(app, item, in_collection)
+        obj[:] = [item for item in obj
+                  if not (isinstance(item, dict) and item.get('type') == BUTTON
+                          and not _can_act(app, item))]
         return
     if not isinstance(obj, dict):
         return
+
     fk = obj.get('foreign_key')
     if isinstance(obj.get('name'), str) and isinstance(fk, dict) and fk.get('target'):
         lookup = obj.get('lookup') if isinstance(obj.get('lookup'), dict) else {}
@@ -613,12 +627,44 @@ def restrict(app: Any, obj: Any) -> None:
                 page = f"{str(fk['target']).lower()}_list"
             if not can_open(app, page):
                 obj['lookup'] = {**lookup, 'page': False}
+
+    if obj.get('type') == COLLECTION:
+        in_collection = True
+    source = obj.get('source')
+    model = source.get('model') if isinstance(source, dict) else None
+    if isinstance(model, str) and not in_collection:
+        if obj.get('type') == 'form':
+            if not (access.can(f'{model}.create') or access.can(f'{model}.update')):
+                obj['policy'] = {**(obj.get('policy') or {}), 'editable': False}
+        elif 'navigator' in obj or obj.get('type') in LIST_TYPES:
+            _hide_gestures(obj, model)
+
     for key, value in obj.items():
         if key == 'commands' and isinstance(value, list):
-            value[:] = [cmd for cmd in value if not isinstance(cmd, dict) or _can_run(cmd)]
-        restrict(app, value)
+            value[:] = [cmd for cmd in value if not isinstance(cmd, dict) or _can_act(app, cmd)]
+        elif key == 'row' and isinstance(value, list):
+            value[:] = [act for act in value if not isinstance(act, dict) or _can_act(app, act)]
+        restrict(app, value, in_collection)
         if key in ('panels', 'tabs') and isinstance(value, list):
             value[:] = [item for item in value if not isinstance(item, dict) or _can_show(item)]
+
+
+# The views that are lists of rows, with a navigator unless they say `false`.
+LIST_TYPES = ('table', 'tree', 'kanban', 'cards')
+
+
+def _hide_gestures(view: Dict[str, Any], model: str) -> None:
+    """Add and Delete of a list, hidden without the permission they need."""
+    navigator = view.get('navigator', True)
+    if navigator is False:
+        return
+    hidden = [gesture for gesture, action in (('add', 'create'), ('delete', 'delete'))
+              if not access.can(f'{model}.{action}')]
+    if not hidden:
+        return
+    config = dict(navigator) if isinstance(navigator, dict) else {}
+    config['hide'] = list(dict.fromkeys([*(config.get('hide') or []), *hidden]))
+    view['navigator'] = config
 
 
 def _can_show(area: Dict[str, Any]) -> bool:
@@ -630,8 +676,21 @@ def _can_show(area: Dict[str, Any]) -> bool:
                 and not area['tabs'])
 
 
-def _can_run(command: Dict[str, Any]) -> bool:
-    endpoint = command.get('endpoint')
-    if isinstance(endpoint, str) and not access.can_call(endpoint):
-        return False
-    return all(access.can(p) for p in access.declared(command.get('access')))
+def _can_act(app: Any, item: Dict[str, Any]) -> bool:
+    """A command, a row action or a button: what it calls or opens, and its own
+    `access:`, which can only narrow."""
+    params = item.get('params') if isinstance(item.get('params'), dict) else {}
+    for key in ('endpoint', 'op'):
+        endpoint = item.get(key)
+        if not isinstance(endpoint, str):
+            continue
+        if endpoint == 'db' and params.get('method') in access.DB_METHODS and params.get('table'):
+            if not access.can(f"{params['table']}.{access.DB_METHODS[params['method']]}"):
+                return False
+        elif not access.can_call(endpoint):
+            return False
+    opens = item.get('opens') if isinstance(item.get('opens'), dict) else {}
+    for page in (item.get('panel'), opens.get('page')):
+        if isinstance(page, str) and not can_open(app, page):
+            return False
+    return all(access.can(p) for p in access.declared(item.get('access')))

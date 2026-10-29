@@ -72,6 +72,21 @@ PAGES = {
             {'id': 'author', 'type': 'form', 'source': {'model': 'Author'}},
         ],
     },
+    'book_rows': {'content': {
+        'type': 'table', 'source': {'model': 'Book'},
+        'actions': {'row': [
+            {'id': 'delete', 'action': 'endpoint', 'op': 'db',
+             'params': {'table': 'Book', 'method': 'delete'}},
+            {'id': 'review', 'action': 'stack_push', 'panel': 'author_review'},
+            {'id': 'open', 'action': 'stack_push', 'panel': 'book_form'},
+        ]},
+    }},
+    'book_card': {'content': {
+        'type': 'form', 'source': {'model': 'Book'},
+        'layout': [{'name': 'title'},
+                   {'type': 'button', 'id': 'renew', 'endpoint': 'bench.renew'},
+                   {'type': 'button', 'id': 'stats', 'endpoint': 'echo'}],
+    }},
     'author_review': {'access': 'bench.review',
                       'content': {'type': 'table', 'source': {'model': 'Author'}}},
 }
@@ -435,6 +450,43 @@ def test_panels_and_tabs_on_a_model_the_user_cannot_read_go(app):
     guarded(app, denied={'Author.read', 'Chapter.read'})
     page = send('get_page', {'id': 'book_desk'})['data']
     assert page['panels'] == []              # the tab set left empty goes too
+
+
+def test_add_and_delete_follow_create_and_delete(app):
+    guarded(app, denied={'Book.create', 'Book.delete'})
+    page = send('get_page', {'id': 'book_list'})['data']
+    assert page['content']['navigator']['hide'] == ['add', 'delete']
+
+    access._GUARD = access.OPEN
+    guarded(app, denied={'Book.delete'})
+    navigator = send('get_page', {'id': 'chapter_list'})['data']['content']['navigator']
+    assert 'hide' not in navigator          # Chapter is not Book: nothing hidden
+    assert send('get_page', {'id': 'book_list'})['data']['content']['navigator'] == {
+        'hide': ['delete']}
+
+
+def test_a_form_without_create_or_update_is_read_only(app):
+    guarded(app, denied={'Book.create', 'Book.update'})
+    content = send('get_page', {'id': 'book_form'})['data']['content']
+    assert content['policy'] == {'editable': False}
+    chapters = next(n for n in content['layout'] if n.get('type') == 'collection')
+    assert 'navigator' not in (chapters.get('view') or {})   # the rows follow the root
+
+    access._GUARD = access.OPEN
+    guarded(app, denied={'Book.update'})
+    assert 'policy' not in send('get_page', {'id': 'book_form'})['data']['content']
+
+
+def test_row_actions_ask_what_they_do_or_open(app):
+    guarded(app, denied={'Book.delete', 'bench.review'})
+    page = send('get_page', {'id': 'book_rows'})['data']
+    assert [a['id'] for a in page['content']['actions']['row']] == ['open']
+
+
+def test_a_button_the_user_cannot_use_goes(app, declared):
+    guarded(app, denied={'bench.renew'})
+    layout = send('get_page', {'id': 'book_card'})['data']['content']['layout']
+    assert [n.get('id', n.get('name')) for n in layout] == ['title', 'stats']
 
 
 def test_search_more_goes_when_the_lookup_page_is_closed(app):
