@@ -352,6 +352,14 @@
      "$plugin": "acl"
     },
     {
+     "name": "acl_exceptions",
+     "label": "Access exceptions",
+     "type": "Json",
+     "default": [],
+     "validate": "acl_exceptions",
+     "$plugin": "acl"
+    },
+    {
      "name": "employee_id",
      "type": "ShortStr",
      "unique": true,
@@ -1141,9 +1149,27 @@
             "id": "access_matrix",
             "fields": [
              {
-              "name": "roles",
-              "label": "What these roles give",
-              "widget": "acl.access"
+              "name": "acl_exceptions",
+              "label": "What this user may do",
+              "widget": "acl.access",
+              "help": "The roles give the cells; a click forces one for this user alone, granted (+) or denied (-). A denial wins over the roles."
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "id": "access_text",
+          "type": "section",
+          "label": "As text",
+          "columns": [
+           {
+            "id": "access_json",
+            "fields": [
+             {
+              "name": "acl_exceptions",
+              "label": "Exceptions, as JSON",
+              "widget": "json"
              }
             ]
            }

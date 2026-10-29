@@ -93,6 +93,7 @@ def app(tmp_path, monkeypatch):
         access._GUARD = loaded.GUARD
         server_utils.add_context_field('roles')
         server_utils.add_context_field('is_admin')
+        server_utils.add_context_field('acl_exceptions')
 
     pm = PluginsManager()
     pm.load_config(str(cfg))
@@ -129,10 +130,11 @@ def app(tmp_path, monkeypatch):
     server_utils._REGISTERED_CONTEXT_FIELDS[:] = fields
 
 
-def as_user(operation, parameters, roles=(), is_admin=False):
+def as_user(operation, parameters, roles=(), is_admin=False, exceptions=()):
     return CommandProcessor().send({
         'operation': operation, 'parameters': parameters,
-        'context': {'id': 1, 'username': 'x', 'roles': list(roles), 'is_admin': is_admin}})
+        'context': {'id': 1, 'username': 'x', 'roles': list(roles), 'is_admin': is_admin,
+                    'acl_exceptions': list(exceptions)}})
 
 
 MEMBER = ['library.member']
@@ -276,7 +278,8 @@ def _effective(roles, **extra):
 def test_the_effective_access_names_the_role_that_gives_it(app):
     tables, data = _effective(LIBRARIAN + DESK + ['library.nobody'])
 
-    assert tables['Book']['create'] == {'ok': True, 'by': ['Librarian'], 'denied_by': []}
+    assert tables['Book']['create'] == {'ok': True, 'by': ['Librarian'], 'denied_by': [],
+                                        'forced': None}
     assert tables['Book']['read']['by'] == ['Librarian']     # through `implies`
     assert tables['Book']['delete']['ok'] is False
     assert data['unknown'] == ['library.nobody']
@@ -287,7 +290,8 @@ def test_the_effective_access_names_the_role_that_gives_it(app):
 def test_the_effective_access_shows_a_denial_and_where_it_is(app):
     tables, _data = _effective(DESK)
 
-    assert tables['User']['label'] == {'ok': False, 'by': [], 'denied_by': ['Desk']}
+    assert tables['User']['label'] == {'ok': False, 'by': [], 'denied_by': ['Desk'],
+                                       'forced': None}
     assert tables['Book']['label']['by'] == ['Desk']
 
 
@@ -295,6 +299,48 @@ def test_the_administrator_has_everything(app):
     tables, _data = _effective([], is_admin=True)
 
     assert all(a['ok'] for t in tables.values() for a in t.values())
+
+
+# ── Exceptions for one user ──────────────────────────────────────────────────
+
+def test_an_exception_grants_what_no_role_gives(app):
+    create = {'table': 'Book', 'method': 'create', 'data': {'title': 'x'}}
+    assert as_user('db', create, MEMBER)['code'] == 403
+    assert as_user('db', create, MEMBER, exceptions=['+Book.create'])['status'] == 'success'
+
+
+def test_an_exception_denies_what_a_role_gives_and_wins(app):
+    query = {'query': {'table': 'Book'}}
+    assert as_user('query', query, LIBRARIAN, exceptions=['-Book.read'])['code'] == 403
+    assert as_user('query', query, LIBRARIAN,
+                   exceptions=['+Book.read', '-Book.read'])['code'] == 403
+
+
+def test_the_effective_access_shows_the_exceptions(app):
+    tables, data = _effective(MEMBER, exceptions=['+Book.create', '-Loan.read'])
+
+    assert tables['Book']['create'] == {'ok': True, 'by': [], 'denied_by': [], 'forced': '+'}
+    assert tables['Loan']['read'] == {'ok': False, 'by': ['Member'], 'denied_by': [],
+                                      'forced': '-'}
+
+
+def test_the_effective_access_names_the_pages_a_user_cannot_read(app):
+    _tables, data = _effective(['library.archive'], exceptions=['-Book.label'])
+
+    assert data['problems'] == [{'page': 'loan_list', 'title': None,
+                                 'what': 'Book.title', 'grant': 'Book.read or Book.label'}]
+
+
+def _set_exceptions(exceptions):
+    return as_user('db', {'table': 'User', 'method': 'update', 'id': 1,
+                          'data': {'acl_exceptions': exceptions}}, is_admin=True)
+
+
+def test_exceptions_are_signed_permissions_that_exist(app):
+    assert _set_exceptions(['+Book.create', '-Loan.*', '+*.label'])['status'] == 'success'
+    result = _set_exceptions(['Book.create', '+Book.publish'])
+    assert result['status'] == 'error'
+    assert 'Book.create' in str(result) and '+Book.publish' in str(result)
 
 
 def _set_roles(roles):
@@ -321,6 +367,14 @@ def test_roles_are_a_list_of_codes(app):
 
 
 # ── The token ────────────────────────────────────────────────────────────────
+
+def test_the_login_puts_the_exceptions_in_the_token(app):
+    _set_user(app, 'bea', acl_exceptions=['+Book.delete'])
+    auth = server_utils.AuthMiddleware(app.pm.config, 'secret')
+    token = auth.login(app.cp, {'username': 'bea', 'password': 'pw'})['data']['token']
+
+    assert jwt.decode(token, 'secret', algorithms=['HS256'])['acl_exceptions'] == ['+Book.delete']
+
 
 def test_the_login_puts_the_roles_in_the_token(app):
     auth = server_utils.AuthMiddleware(app.pm.config, 'secret')
