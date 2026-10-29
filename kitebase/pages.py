@@ -19,6 +19,7 @@ import copy
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from kitebase import access
 from kitebase.utils import deep_merge
 
 _JSON_SCALARS = (str, int, float, bool, type(None))
@@ -560,3 +561,65 @@ def _collections_below(app: Any, page_id: str, seen: frozenset) -> Dict[str, Col
     if not ((page.get('content') or {}).get('source') or {}).get('model'):
         return {}
     return page_aggregate(app, page_id, seen).collections
+
+
+# ── Access: what the current user may open ──────────────────────────────────
+#
+# Interface following security: the ports refuse whatever a descriptor asks
+# beyond the user's permissions, and these take out of the descriptor what
+# would only lead there — a menu entry, a command, a "Search more…".
+
+def page_permissions(app: Any, page_id: str) -> Optional[List[str]]:
+    """What opening a page asks: `<Model>.read` on the model it shows, then the
+    page's own `access:`, which can only narrow. None when no page answers."""
+    page = app.pm.get(f'pages.{page_id}')
+    if page is not None:
+        page = app.pm.resolve_refs(page)
+        if page.get(AUTO):
+            page = _on_auto(app, page_id, page)
+    else:
+        page = resolve_auto_page(app, page_id)
+    if page is None:
+        return None
+    model = ((page.get('content') or {}).get('source') or {}).get('model')
+    needs = [f'{model}.read'] if model else []
+    return needs + access.declared(page.get('access'))
+
+
+def can_open(app: Any, page_id: str) -> bool:
+    """Whether the current user may open a page. One that does not exist asks
+    nothing: it is a 404 for whoever follows it, and `check` reports it."""
+    return all(access.can(p) for p in page_permissions(app, page_id) or [])
+
+
+def restrict(app: Any, obj: Any) -> None:
+    """Take out of a resolved page what the current user cannot use: commands
+    whose endpoint or `access:` is refused, and the "Search more…" of foreign
+    keys whose lookup page is (`lookup.page: false`). In place, on the copy
+    `get_page` is about to send."""
+    if isinstance(obj, list):
+        for item in obj:
+            restrict(app, item)
+        return
+    if not isinstance(obj, dict):
+        return
+    fk = obj.get('foreign_key')
+    if isinstance(obj.get('name'), str) and isinstance(fk, dict) and fk.get('target'):
+        lookup = obj.get('lookup') if isinstance(obj.get('lookup'), dict) else {}
+        page = lookup.get('page')
+        if page is not False:
+            if not isinstance(page, str) or not page:
+                page = f"{str(fk['target']).lower()}_list"
+            if not can_open(app, page):
+                obj['lookup'] = {**lookup, 'page': False}
+    for key, value in obj.items():
+        if key == 'commands' and isinstance(value, list):
+            value[:] = [cmd for cmd in value if not isinstance(cmd, dict) or _can_run(cmd)]
+        restrict(app, value)
+
+
+def _can_run(command: Dict[str, Any]) -> bool:
+    endpoint = command.get('endpoint')
+    if isinstance(endpoint, str) and not access.can_call(endpoint):
+        return False
+    return all(access.can(p) for p in access.declared(command.get('access')))

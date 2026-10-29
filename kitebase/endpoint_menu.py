@@ -8,8 +8,8 @@ data into a rendered tree for one named root:
   get_menu(id) pipeline (docs/pending/menu.md §6):
     1. Compose         — already done by the loader (multi-plugin merge)
     2. Resolve default — root/parent filled via the config cascade (§4)
-    3. Auth filter ⏳  — recursively drop items whose `access:` isn't satisfied
-                         (server-side; slot only until RBAC lands)
+    3. Auth filter    — drop items the user cannot use (`_passes_access`), and
+                         the groups left without any of their children
     4. Build tree      — nest items by their effective `parent`, order by `order`
     5. Resolve $ref    — expand refs embedded in item props
 
@@ -26,6 +26,7 @@ import kitebase.utils
 from kitebase import access
 from kitebase.endpoints import endpoint
 from kitebase.i18n import translate_labels
+from kitebase.pages import can_open
 
 # Merge metadata (`$plugin`) plus keys consumed server-side (`parent`/`root` drive
 # tree/cascade; `access` gates visibility) — none of these are sent to the client.
@@ -33,15 +34,6 @@ _INTERNAL_KEYS = frozenset({'$plugin', 'parent', 'root', 'access'})
 
 # Items without an explicit `order` sort after ordered ones, then by label.
 _ORDER_LAST = 1_000_000
-
-
-def _current_context() -> Optional[Dict[str, Any]]:
-    """The active request context (JWT-derived), or None outside a request."""
-    try:
-        import kitebase.db
-        return kitebase.db.BaseApp.get_context()
-    except Exception:
-        return None
 
 
 def _app_default_root(app: Any) -> str:
@@ -79,13 +71,19 @@ def _effective_parent(app: Any, item: Dict[str, Any]) -> Optional[str]:
     return _plugin_menu_cfg(app, item.get('$plugin')).get('default_parent')
 
 
-def _passes_access(item: Dict[str, Any], context: Optional[Dict[str, Any]]) -> bool:
-    """Auth filter slot (§6 step 3). No ACL/RBAC system yet → allow everything.
-
-    When record-rule/RBAC lands this evaluates `item['access']` against `context`
-    (same server-side, non-bypassable filtering as get_page's role-filtering).
+def _passes_access(app: Any, item: Dict[str, Any]) -> bool:
+    """Auth filter (§6 step 3): an item that opens a page needs
+    what opening it asks — read on its model, the page's own `access:` — and
+    one that calls an endpoint needs to be allowed to call it; the item's own
+    `access:` can only narrow. An item with none of these is visible.
     """
-    return True
+    panel = item.get('panel')
+    if isinstance(panel, str) and not can_open(app, panel):
+        return False
+    op = item.get('op')
+    if isinstance(op, str) and not access.can_call(op):
+        return False
+    return all(access.can(p) for p in access.declared(item.get('access')))
 
 
 @endpoint('get_menu', access=access.AUTHENTICATED)
@@ -118,17 +116,19 @@ def get_menu(data: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(root_def, dict):
         return {'status': 'error', 'message': f"Menu not found: '{root_id}'", 'code': 404}
 
-    context = _current_context()
-
     # 2/3. Select the items of this root that pass the auth filter, resolving any
-    #      $ref embedded in their props along the way (§6 steps 2,3,5).
+    #      $ref embedded in their props along the way (§6 steps 2,3,5). The
+    #      groups are noted before the filter: one whose children were all
+    #      taken away goes too.
     selected: Dict[str, Dict[str, Any]] = {}
+    groups = set()
     for item_id, item in raw_items.items():
         if not isinstance(item, dict):
             continue
         if _effective_root(app, item) != root_id:
             continue
-        if not _passes_access(item, context):
+        groups.add(_effective_parent(app, item))
+        if not _passes_access(app, item):
             continue
         # Translated before the sort, so siblings without an order sort by
         # the label the user reads.
@@ -156,6 +156,8 @@ def get_menu(data: Dict[str, Any]) -> Dict[str, Any]:
             kids = build(item_id, _seen | {item_id})
             if kids:
                 node['children'] = kids
+            elif item_id in groups:
+                continue
             nodes.append(node)
         nodes.sort(key=lambda n: (n.get('order', _ORDER_LAST), str(n.get('label', ''))))
         return nodes

@@ -29,6 +29,8 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set
 
+from kitebase import access
+
 # Only plain identifiers ('title') and dotted fields ('Publisher.name') are
 # checkable against the schema; anything else (SQL expressions, aliases,
 # functions) is passed through to the querybuilder untouched.
@@ -87,6 +89,7 @@ def run_checks(app: Any) -> List[Dict[str, Any]]:
     _check_client(app, issues)
     _check_validators(app, issues)
     _check_vocabulary(app, issues)
+    issues.extend(access.diagnose(app))
 
     # Orphan views: defined but never targeted by a $ref
     views = pm.data.get('views') or {}

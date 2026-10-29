@@ -51,9 +51,33 @@ TABLES = {
 PAGES = {
     'book_form': {'content': {
         'type': 'form', 'source': {'model': 'Book'},
-        'layout': [{'type': 'collection', 'id': 'chapters', 'model': 'Chapter',
+        'layout': [{'name': 'title'}, {'name': 'author_id'},
+                   {'type': 'collection', 'id': 'chapters', 'model': 'Chapter',
                     'fk': 'book_id'}],
     }},
+    'chapter_list': {'content': {
+        'type': 'table', 'source': {'model': 'Chapter'},
+        'navigator': {'commands': [
+            {'id': 'renew', 'endpoint': 'bench.renew'},
+            {'id': 'stamp', 'access': 'bench.stamp'},
+            {'id': 'open'},
+        ]},
+    }},
+    'author_review': {'access': 'bench.review',
+                      'content': {'type': 'table', 'source': {'model': 'Author'}}},
+}
+
+MENUS = {
+    'menus': {'main': {'label': 'Bench'}},
+    'menu_items': {
+        'catalog':  {'label': 'Catalog'},
+        'books':    {'label': 'Books', 'parent': 'catalog', 'panel': 'book_list'},
+        'authors':  {'label': 'Authors', 'parent': 'catalog', 'panel': 'author_list'},
+        'review':   {'label': 'Review', 'panel': 'author_review'},
+        'renew':    {'label': 'Renew', 'op': 'bench.renew'},
+        'reports':  {'label': 'Reports', 'access': 'bench.reports'},
+        'home':     {'label': 'Home'},
+    },
 }
 
 
@@ -88,6 +112,7 @@ def app(tmp_path, monkeypatch):
     (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'bench', 'version': '0.0.1'}))
     (plugin / 'model.yaml').write_text(yaml.safe_dump({'tables': TABLES}))
     (plugin / 'pages.yaml').write_text(yaml.safe_dump({'pages': PAGES}))
+    (plugin / 'menu.yaml').write_text(yaml.safe_dump(MENUS))
 
     cfg = tmp_path / 'config.yaml'
     cfg.write_text(yaml.safe_dump({'name': 'bench', 'plugins': ['plugins']}))
@@ -167,11 +192,68 @@ def test_resolve_skips_behaviors_not_permissions(app):
 
 
 def test_a_joined_table_denied_refuses_the_whole_query(app):
-    guarded(app, denied={'Author.read'})
+    guarded(app, denied={'Author.read', 'Author.label'})
     result = send('query', {'query': {
         'table': 'Book', 'joins': [{'Author': 'Author.id = Book.author_id'}]}})
 
     assert result['code'] == 403
+
+
+# ── The label: a reference shown by name, the rest of the table closed ───────
+
+LABEL_ONLY = {'Author.read'}   # the recorder grants what it does not deny
+
+
+def test_the_label_of_a_joined_table_needs_only_label(app):
+    guard = guarded(app, denied=LABEL_ONLY)
+    result = send('query', {'query': {
+        'table': 'Book', 'select': ['Book.title', 'Author.name'],
+        'joins': [{'Author': 'Author.id = Book.author_id'}]}})
+
+    assert result['status'] == 'success'
+    assert result['data'][1] == [['Il barone rampante', 'Calvino']]
+    assert 'Author.label' in guard.asked
+
+
+def test_a_combobox_lookup_needs_only_label(app):
+    guarded(app, denied=LABEL_ONLY)
+    result = send('query', {'query': {
+        'table': 'Author', 'select': ['id', 'name'],
+        'filters': {'conditions': [{'name': ['ilike', '%calv%']}]}}})
+
+    assert result['status'] == 'success'
+    assert [r[1] for r in result['data'][1]] == ['Calvino']
+
+
+def test_a_column_beyond_the_label_needs_read(app):
+    guarded(app, denied={'Book.read'})
+    result = send('query', {'query': {
+        'table': 'Chapter', 'select': ['Chapter.title', 'Book.author_id'],
+        'joins': [{'Book': 'Book.id = Chapter.book_id'}]}})
+
+    assert result['code'] == 403
+    assert 'Book.read' in result['message']
+
+
+def test_a_filter_beyond_the_label_needs_read(app):
+    guarded(app, denied={'Book.read'})
+    result = send('query', {'query': {
+        'table': 'Chapter', 'filters': {'conditions': [{'book.author_id': 1}]}}})
+
+    assert result['code'] == 403
+
+
+def test_an_expression_counts_the_columns_it_names(app):
+    guarded(app, denied={'Book.read'})
+    ok = send('query', {'query': {
+        'table': 'Chapter', 'select': ['(Chapter.id + Book.id) as x'],
+        'joins': [{'Book': 'Book.id = Chapter.book_id'}]}})
+    refused = send('query', {'query': {
+        'table': 'Chapter', 'select': ['(Chapter.id + Book.author_id) as x'],
+        'joins': [{'Book': 'Book.id = Chapter.book_id'}]}})
+
+    assert ok['status'] == 'success'
+    assert refused['code'] == 403
 
 
 def test_the_count_is_checked_too(app):
@@ -189,7 +271,7 @@ def test_db_get_asks_read_by_id_and_as_a_list(app):
 
 
 def test_export_file_reads_through_the_query(app):
-    guarded(app, denied={'Book.read'})
+    guarded(app, denied={'Book.read', 'Book.label'})
     result = send('export_file', {
         'format': 'csv', 'query': {'table': 'Book'}, 'ids': [1],
         'columns': [{'field': 'title'}]})
@@ -289,6 +371,62 @@ def test_an_undeclared_endpoint_is_left_to_the_guard(app, declared):
     assert send('bench.silent', {})['code'] == 403
     assert guard.asked == ['undeclared:bench.silent']
     assert declared == []
+
+
+# ── The interface follows: what the ports would refuse is not offered ───────
+
+def menu_ids(nodes):
+    return {n['id']: menu_ids(n.get('children', [])) for n in nodes}
+
+
+def test_opening_a_page_asks_read_on_its_model(app):
+    guarded(app, denied={'Book.read'})
+    for page in ('book_form', 'book_list'):
+        result = send('get_page', {'id': page})
+        assert result['code'] == 403
+        assert 'Book.read' in result['message']
+
+
+def test_the_access_of_a_page_narrows_it(app):
+    guarded(app, denied={'bench.review'})
+    assert send('get_page', {'id': 'author_review'})['code'] == 403
+    assert send('get_page', {'id': 'author_list'})['status'] == 'success'
+
+
+def test_the_menu_shows_what_the_user_can_open(app, declared):
+    guarded(app)
+    assert menu_ids(send('get_menu', {'id': 'main'})['data']['items']) == {
+        'catalog': {'authors': {}, 'books': {}}, 'review': {}, 'renew': {},
+        'reports': {}, 'home': {}}
+
+    access._GUARD = access.OPEN
+    guarded(app, denied={'Book.read', 'bench.review', 'bench.renew', 'bench.reports'})
+    assert menu_ids(send('get_menu', {'id': 'main'})['data']['items']) == {
+        'catalog': {'authors': {}}, 'home': {}}
+
+
+def test_a_group_whose_children_are_all_hidden_goes(app):
+    guarded(app, denied={'Book.read', 'Author.read'})
+    assert 'catalog' not in menu_ids(send('get_menu', {'id': 'main'})['data']['items'])
+
+
+def test_commands_the_user_cannot_run_are_taken_out(app, declared):
+    guarded(app, denied={'bench.renew', 'bench.stamp'})
+    page = send('get_page', {'id': 'chapter_list'})['data']
+    assert [c['id'] for c in page['content']['navigator']['commands']] == ['open']
+
+
+def test_search_more_goes_when_the_lookup_page_is_closed(app):
+    def author_field():
+        page = send('get_page', {'id': 'book_form'})['data']
+        return next(f for f in page['content']['layout'] if f.get('name') == 'author_id')
+
+    guarded(app)
+    assert 'lookup' not in author_field()
+
+    access._GUARD = access.OPEN
+    guarded(app, denied={'Author.read'})
+    assert author_field()['lookup'] == {'page': False}
 
 
 def test_without_a_guard_everything_is_open(app, declared):

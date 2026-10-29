@@ -50,7 +50,20 @@ ACL = {
             'implies': ['library.member'],
             'grants': [{'Book': ['create', 'update']}, 'Loan.*', 'library.renew'],
         },
+        'library.desk': {
+            'label': 'Desk',
+            'grants': ['Loan.read', '*.label', '-User.label'],
+        },
+        'library.office': {'label': 'Office', 'grants': ['*.label']},
+        'library.archive': {'label': 'Archive', 'grants': ['Loan.read', 'Shelf.read', '*.lable']},
     },
+}
+
+PAGES = {
+    'loan_list': {'content': {
+        'type': 'table', 'source': {'model': 'Loan'},
+        'columns': [{'field': 'id'}, {'field': 'Book.title as title'}],
+    }},
 }
 
 
@@ -62,6 +75,7 @@ def app(tmp_path, monkeypatch):
         {'name': 'library', 'version': '0.0.1', 'depends_on': ['acl']}))
     (plugin / 'model.yaml').write_text(yaml.safe_dump({'tables': TABLES}))
     (plugin / 'acl.yaml').write_text(yaml.safe_dump(ACL))
+    (plugin / 'pages.yaml').write_text(yaml.safe_dump({'pages': PAGES}))
 
     cfg = tmp_path / 'config.yaml'
     cfg.write_text(yaml.safe_dump({
@@ -123,6 +137,7 @@ def as_user(operation, parameters, roles=(), is_admin=False):
 
 MEMBER = ['library.member']
 LIBRARIAN = ['library.librarian']
+DESK = ['library.desk']
 
 
 # ── Roles into permissions ───────────────────────────────────────────────────
@@ -175,6 +190,36 @@ def test_a_table_no_role_reaches_is_closed(app):
     assert as_user('query', {'query': {'table': 'User'}}, is_admin=True)['status'] == 'success'
 
 
+# ── The label ────────────────────────────────────────────────────────────────
+
+LOAN_WITH_TITLE = {'query': {
+    'table': 'Loan', 'select': ['Loan.id', 'Book.title'],
+    'joins': [{'Book': 'Book.id = Loan.book_id'}]}}
+
+
+def test_a_wildcard_label_shows_every_reference(app):
+    as_user('db', {'table': 'Loan', 'method': 'create', 'data': {'book_id': 1}}, LIBRARIAN)
+    result = as_user('query', LOAN_WITH_TITLE, DESK)
+
+    assert result['status'] == 'success'
+    assert result['data'][1] == [[1, 'Palomar']]
+
+
+def test_the_label_does_not_open_the_record(app):
+    assert as_user('db', {'table': 'Book', 'method': 'get', 'id': 1}, DESK)['code'] == 403
+
+
+def test_a_denial_in_the_role_wins_over_its_wildcard(app):
+    users = {'query': {'table': 'User', 'select': ['id', 'name']}}
+    assert as_user('query', users, DESK)['code'] == 403
+    assert as_user('query', users, ['library.office'])['status'] == 'success'
+
+
+def test_a_denial_does_not_reach_another_role(app):
+    users = {'query': {'table': 'User', 'select': ['id', 'name']}}
+    assert as_user('query', users, DESK + ['library.office'])['status'] == 'success'
+
+
 def test_an_authenticated_endpoint_needs_no_role(app):
     assert as_user('get_server_config', {})['status'] == 'success'
 
@@ -222,8 +267,45 @@ def test_the_login_puts_the_roles_in_the_token(app):
 def test_check_reads_the_roles_without_complaint(app):
     from kitebase.diagnostics import run_checks
     noise = [i for i in run_checks(app)
-             if str(i.get('path', '')).startswith(('roles', 'permissions'))]
+             if str(i.get('path', '')).startswith(('roles', 'permissions'))
+             and not i['code'].startswith('acl-')]
     assert noise == [], noise
+
+
+def acl_issues(app, code):
+    from kitebase.diagnostics import run_checks
+    return {i['path']: i['message'] for i in run_checks(app) if i['code'] == code}
+
+
+def test_check_names_a_grant_nothing_declares(app):
+    found = acl_issues(app, 'acl-grant-unknown')
+    assert set(found) == {'roles.library.archive'}
+    assert {"'Shelf.read'" in m or "'*.lable'" in m for m in found.values()} == {True}
+
+
+def test_check_names_a_table_no_role_reads(app):
+    assert acl_issues(app, 'acl-table-closed') == {}     # `*.label` reaches them all
+
+    guard = access._GUARD
+    roles = guard.roles
+    guard.roles = sys.modules['acl.guard'].resolve_roles(
+        {'a': {'grants': ['Book.read']}, 'b': {'grants': ['Loan.label']}})
+    try:
+        assert set(acl_issues(app, 'acl-table-closed')) == {'tables.User', 'tables.UserLog', 'tables.Config'}
+    finally:
+        guard.roles = roles
+
+
+def test_check_names_an_endpoint_without_access(app, plugin_endpoints):
+    found = acl_issues(app, 'acl-endpoint-undeclared')
+    assert 'endpoints.library.silent' in found
+    assert 'endpoints.library.renew' not in found      # assigned by the app's config
+
+
+def test_check_names_a_page_a_role_opens_and_cannot_read(app):
+    found = acl_issues(app, 'acl-page-unreadable')
+    assert list(found) == ['pages.loan_list']
+    assert "'library.archive'" in found['pages.loan_list']
 
 
 # ── Refresh: what the token says is read again ───────────────────────────────

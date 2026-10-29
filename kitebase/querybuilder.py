@@ -11,7 +11,7 @@ import re
 import datetime
 import decimal
 from uuid import UUID
-from typing import Any, Dict, List, Union, Optional, Type
+from typing import Any, Dict, List, Set, Tuple, Union, Optional, Type
 
 from sqlalchemy import and_, or_, desc, asc, false, select, func, text, TextClause, literal_column, inspect, String
 from sqlalchemy.engine import Engine
@@ -140,7 +140,7 @@ _EXPRESSION_TOKEN = re.compile(r"""
 
 
 def check_expression(expr: str, models: Dict[str, Any], main_table: str,
-                     aliases: Any = ()) -> None:
+                     aliases: Any = (), columns: Optional[Set[Tuple[Any, str]]] = None) -> None:
     """
     Refuse an expression that could say more than its columns.
 
@@ -148,6 +148,10 @@ def check_expression(expr: str, models: Dict[str, Any], main_table: str,
     table alone — a function or keyword of the lists above, or an alias the
     select defined; strings and numbers pass, comments and `;` do not. A
     column passes the same secret check as anywhere else.
+
+    The columns accepted are added to `columns` as (model, name): once the
+    expression is SQL text the statement no longer shows them, and the access
+    check needs to know which columns of each table a query reads.
 
     Raises:
         ValueError: naming what was refused
@@ -169,11 +173,15 @@ def check_expression(expr: str, models: Dict[str, Any], main_table: str,
                 if model is None or not hasattr(model, column):
                     raise ValueError(f"Expression {expr!r}: unknown column '{token}'")
                 _refuse_secret(model, column)
+                if columns is not None:
+                    columns.add((model, column))
             elif token.lower() not in EXPRESSION_FUNCTIONS | EXPRESSION_KEYWORDS \
                     and token not in aliases:
                 if main is None or token not in main.__table__.columns:
                     raise ValueError(f"Expression {expr!r}: '{token}' is not allowed")
                 _refuse_secret(main, token)
+                if columns is not None:
+                    columns.add((main, token))
         pos = match.end()
 
 
@@ -473,7 +481,7 @@ class DynamicQueryBuilder:
             for group_item in query_def['group_by']:
                 if isinstance(group_item, str):
                     check_expression(group_item, self.models, main_table,
-                                     select_builder.aliases)
+                                     select_builder.aliases, select_builder.expression_columns)
                     # First convert model references to table names
                     group_item = select_builder._process_column_references(group_item)
                     # Then handle database-specific functions like EXTRACT
@@ -516,11 +524,15 @@ class DynamicQueryBuilder:
         if 'offset' in query_def:
             query = query.offset(query_def['offset'])
 
-        # Access: `<Model>.read` on every table the statement reads, found in
-        # the statement itself. After everything else and regardless of
-        # `resolve`, which skips behaviors, never permissions.
-        for model_name in sorted(access.tables_read(query, self.models, self.covered)):
-            access.check_table(model_name, 'read')
+        # Access: every table the statement reads, found in the statement
+        # itself, with the columns it reads of each: `<Model>.read`, or
+        # `<Model>.label` when only the label columns are touched. After
+        # everything else and regardless of `resolve`, which skips behaviors,
+        # never permissions.
+        read = access.columns_read(query, self.models, self.covered,
+                                   select_builder.expression_columns)
+        for model_name in sorted(read):
+            access.check_read(model_name, read[model_name])
 
         return query
 
@@ -794,6 +806,8 @@ class SelectBuilder:
         self.models = models
         self.main_table = main_table
         self.aliases: Dict[str, Any] = {}  # Dictionary to track defined aliases
+        # Columns named inside textual expressions, which the statement hides
+        self.expression_columns: Set[Tuple[Any, str]] = set()
         self.engine = engine  # Reference to SQLAlchemy engine for detecting database type
 
     def build_select_columns(self, select_def: Optional[List[str]]) -> List[Any]:
@@ -836,7 +850,8 @@ class SelectBuilder:
             # The alias after the last " as " is a label, quoted as one.
             as_idx = col_expr.lower().rfind(" as ")
             check_expression(col_expr[:as_idx] if as_idx != -1 else col_expr,
-                             self.models, self.main_table, self.aliases)
+                             self.models, self.main_table, self.aliases,
+                             self.expression_columns)
 
             # Apply database-specific replacements if needed
             col_expr = self._apply_database_specific_replacements(col_expr)
@@ -2016,7 +2031,7 @@ class OrderBuilder:
             return alias_column
 
         check_expression(column_expr, self.models, self.main_table,
-                         self.select_builder.aliases)
+                         self.select_builder.aliases, self.select_builder.expression_columns)
         if "(" in column_expr and ")" in column_expr:
             # Function (e.g., "count(users.id)")
             return self.select_builder._parse_expression(column_expr)

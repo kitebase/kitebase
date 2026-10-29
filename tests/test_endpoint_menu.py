@@ -15,6 +15,7 @@ from kitebase.endpoint_menu import get_menu
 class FakeApp:
     def __init__(self, pm):
         self.pm = pm
+        self.tables = {}
 
 
 def make_app(menus, menu_items, plugin='menuplugin', app_config=None):
