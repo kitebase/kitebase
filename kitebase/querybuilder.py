@@ -139,6 +139,19 @@ _EXPRESSION_TOKEN = re.compile(r"""
 """, re.VERBOSE)
 
 
+def _is_column(model: Any, name: str) -> bool:
+    """A mapped column of `model`, or one of its hybrid properties (the virtual
+    columns): what an expression may name. Not a relationship, not any attribute
+    the class happens to have."""
+    from sqlalchemy.ext.hybrid import hybrid_property
+    try:
+        mapper = inspect(model)
+    except Exception:
+        return False
+    return (name in mapper.column_attrs.keys()
+            or isinstance(mapper.all_orm_descriptors.get(name), hybrid_property))
+
+
 def check_expression(expr: str, models: Dict[str, Any], main_table: str,
                      aliases: Any = (), columns: Optional[Set[Tuple[Any, str]]] = None) -> None:
     """
@@ -170,14 +183,14 @@ def check_expression(expr: str, models: Dict[str, Any], main_table: str,
             if '.' in token:
                 table, column = token.split('.', 1)
                 model = models.get(table) or by_table.get(table)
-                if model is None or not hasattr(model, column):
+                if model is None or not _is_column(model, column):
                     raise ValueError(f"Expression {expr!r}: unknown column '{token}'")
                 _refuse_secret(model, column)
                 if columns is not None:
                     columns.add((model, column))
             elif token.lower() not in EXPRESSION_FUNCTIONS | EXPRESSION_KEYWORDS \
                     and token not in aliases:
-                if main is None or token not in main.__table__.columns:
+                if main is None or not _is_column(main, token):
                     raise ValueError(f"Expression {expr!r}: '{token}' is not allowed")
                 _refuse_secret(main, token)
                 if columns is not None:

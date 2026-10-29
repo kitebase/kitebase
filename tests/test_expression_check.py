@@ -9,6 +9,7 @@ write keep working, and the ones that try to leave the columns are refused.
 """
 import pytest
 from sqlalchemy import Column, ForeignKey, Integer, String, create_engine
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Session, declarative_base
 
 import kitebase.utils
@@ -38,6 +39,10 @@ class Book(Base):
     title = Column(String)
     pages = Column(Integer)
     publisher_id = Column(Integer, ForeignKey('publisher.id'))
+
+    @hybrid_property
+    def double_pages(self):         # a virtual column
+        return self.pages * 2
 
 
 MODELS = {'Book': Book, 'Publisher': Publisher}
@@ -132,3 +137,15 @@ def test_ordering_by_a_secret_column_is_refused(run):
         run({'joins': JOIN, 'order_by': ['Publisher.secret_code']})
     with pytest.raises(ValueError, match='not readable'):
         run({'table': 'Publisher', 'order_by': ['secret_code']})
+
+
+@pytest.mark.parametrize('name', ['double_pages', 'Book.double_pages'])
+def test_a_virtual_column_is_a_column(run, name):
+    assert run({'select': ['title', name], 'order_by': ['id']}) == [
+        ('Palomar', 256), ('Marcovaldo', 320)]
+
+
+@pytest.mark.parametrize('expr', ['Book.metadata', 'Book.registry', 'metadata'])
+def test_an_attribute_that_is_not_a_column_is_refused(run, expr):
+    with pytest.raises(ValueError):
+        run({'select': [f'{expr} as x']})
