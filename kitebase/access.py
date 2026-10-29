@@ -15,13 +15,22 @@ Permission codes: a model in CamelCase followed by an action (`Book.read`,
 `Book.create`, `Book.update`, `Book.delete`); permissions of plugins in lower
 case with the plugin's prefix (`reports.run`).
 
+Code that reads for the user rather than for the system — a report loop —
+runs on a session given `guard_session()`: every SELECT it executes, lazy
+loads of relations included, asks `<Model>.read` on each table it reads. The
+rest of the server (defaults, triggers, validators) works for the system and
+is not checked; inside a guarded session `with system():` marks a read the
+code means to make beyond the user's permissions.
+
 `Book.label` is the narrow side of reading: the key, the label and the search
 columns of a table (`label_columns`), what a foreign key needs to show "Il nome
 della rosa" instead of 42 and a combobox to find it. A query that touches only
 those columns of a table asks `Book.label` when `Book.read` is refused; any
 other column, in the select, a filter, an ordering or a join, needs `Book.read`.
 """
-from typing import Any, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
+from contextlib import contextmanager
+from contextvars import ContextVar
+from typing import Any, Dict, FrozenSet, Iterable, Iterator, List, Optional, Set, Tuple
 
 # What an endpoint declares with `@endpoint(name, access=...)`, besides a
 # permission code. `$` marks them as framework values, never a permission.
@@ -37,11 +46,12 @@ DB_METHODS = {'get': 'read', 'create': 'create', 'update': 'update', 'delete': '
 
 
 class AccessDenied(Exception):
-    """A port refused a permission. The dispatcher answers it with a 403."""
+    """A port refused a permission. The dispatcher answers it with a 403;
+    `message` says what was refused in the caller's words."""
 
-    def __init__(self, permission: str) -> None:
+    def __init__(self, permission: str, message: Optional[str] = None) -> None:
         self.permission = permission
-        super().__init__(f"Not allowed: {permission}")
+        super().__init__(message or f"Not allowed: {permission}")
 
 
 class Guard:
@@ -150,6 +160,43 @@ def declared(value: Any) -> List[str]:
     if isinstance(value, list):
         return [v for v in value if isinstance(v, str)]
     return []
+
+
+# ── Sessions that read for the user ─────────────────────────────────────────
+
+_SYSTEM: ContextVar[bool] = ContextVar('kitebase_access_system', default=False)
+
+
+@contextmanager
+def system() -> Iterator[None]:
+    """Read beyond the user's permissions on a guarded session: a choice of the
+    code, written where it is made, never a default."""
+    token = _SYSTEM.set(True)
+    try:
+        yield
+    finally:
+        _SYSTEM.reset(token)
+
+
+def guard_session(session: Any) -> Any:
+    """
+    Check every SELECT `session` executes: `<Model>.read` on each table the
+    statement reads. The ORM loads whole rows, so the label is not enough.
+    Lazy and eager loads of relations go through the same event, which is
+    what makes this the guard of code that reads freely, like a report loop.
+    """
+    from sqlalchemy import event
+
+    def check_statement(state: Any) -> None:
+        if not state.is_select or _SYSTEM.get():
+            return
+        import kitebase.utils
+        models = kitebase.utils.get_app().models
+        for model_name in sorted(columns_read(state.statement, models)):
+            check_table(model_name, 'read')
+
+    event.listen(session, 'do_orm_execute', check_statement)
+    return session
 
 
 def check_endpoint(endpoint: str, access: Optional[str]) -> None:

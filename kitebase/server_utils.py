@@ -629,7 +629,11 @@ def handle_download(
         result = command_processor.send(command)
 
         if result.get('status') != 'success':
-            return _error_from_result(result, 'Operation failed')
+            # The endpoint's own code where it gave one: a refused permission
+            # stays a 403 on this route too.
+            code = result.get('code')
+            return _error_from_result(result, 'Operation failed',
+                                      code if isinstance(code, int) and code >= 400 else 400)
         if not isinstance(result.get('data'), FileResult):
             return _error_response(
                 f"Operation '{operation}' does not return a file",

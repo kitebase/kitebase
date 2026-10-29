@@ -429,6 +429,61 @@ def test_search_more_goes_when_the_lookup_page_is_closed(app):
     assert author_field()['lookup'] == {'page': False}
 
 
+# ── A guarded session: code that reads for the user ──────────────────────────
+
+def test_a_guarded_session_checks_what_the_orm_reads(app):
+    guard = guarded(app, denied={'Author.read'})
+    Book, Author = app.models['Book'], app.models['Author']
+    with app.get_session() as session:
+        access.guard_session(session)
+        assert session.query(Book).one().title == 'Il barone rampante'
+        assert guard.asked == ['Book.read']
+        with pytest.raises(access.AccessDenied):
+            session.query(Author).all()
+
+
+def test_a_lazy_load_is_checked_too(app):
+    guarded(app, denied={'Author.read'})
+    with app.get_session() as session:
+        access.guard_session(session)
+        book = session.query(app.models['Book']).one()
+        with pytest.raises(access.AccessDenied):
+            book.author
+
+
+def test_an_eager_load_is_checked_too(app):
+    from sqlalchemy.orm import selectinload
+    guarded(app, denied={'Author.read'})
+    Book = app.models['Book']
+    with app.get_session() as session:
+        access.guard_session(session)
+        with pytest.raises(access.AccessDenied):
+            session.query(Book).options(selectinload(Book.author)).all()
+
+
+def test_the_label_does_not_open_a_whole_row(app):
+    guarded(app, denied={'Author.read'})        # Author.label is granted
+    with app.get_session() as session:
+        access.guard_session(session)
+        with pytest.raises(access.AccessDenied):
+            session.query(app.models['Author']).all()
+
+
+def test_system_reads_beyond_the_permissions(app):
+    guarded(app, denied={'Author.read'})
+    with app.get_session() as session:
+        access.guard_session(session)
+        book = session.query(app.models['Book']).one()
+        with access.system():
+            assert book.author.name == 'Calvino'
+
+
+def test_a_session_not_guarded_works_for_the_system(app):
+    guarded(app, denied={'Author.read', 'Book.read'})
+    with app.get_session() as session:
+        assert session.query(app.models['Book']).one().author.name == 'Calvino'
+
+
 def test_without_a_guard_everything_is_open(app, declared):
     assert access._GUARD is access.OPEN
     assert send('bench.silent', {})['status'] == 'success'
