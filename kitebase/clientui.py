@@ -11,6 +11,9 @@ Kitebase has two natures, and an application says which one it has in the
       login: /login       # the host's login page; absent = the client's own login
       logout: /logout     # the host's page that ends its session
       base: /backoffice   # only to mount somewhere else than the role says
+      signin:             # what the client's own login page shows, before
+        subtitle: ...     # anyone is signed in: public by construction,
+        hint: ...         # a demo's "try admin / admin"
 
 The login is a second axis, not a consequence of the role: a host may have no
 users of its own (a public showcase), and then its admin logs people in itself.
@@ -63,6 +66,18 @@ def client_settings(config: Dict[str, Any]) -> ClientSettings:
     login = _page(section, 'login')
     logout = _page(section, 'logout')
     return ClientSettings(role, base, login, logout)
+
+
+SIGNIN_KEYS = ('subtitle', 'hint')
+
+
+def signin_texts(config: Dict[str, Any]) -> Dict[str, str]:
+    """The texts of `client.signin`, strings only: what the login page may
+    show to someone not signed in."""
+    section = (config.get('client') or {}).get('signin') or {}
+    if not isinstance(section, dict):
+        return {}
+    return {k: section[k] for k in SIGNIN_KEYS if isinstance(section.get(k), str)}
 
 
 def _page(section: Dict[str, Any], key: str) -> Optional[str]:

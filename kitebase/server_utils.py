@@ -795,9 +795,11 @@ def get_app_info(plugins_config: Dict[str, Any], api_prefix: str) -> Dict[str, A
     Returns:
         Dict with app information. `client` is the `client:` section, read by
         the client at startup: who logs people in follows config.yaml without
-        rebuilding it.
+        rebuilding it. It also carries what the login page shows before anyone
+        is signed in: the app's `title` and `client.signin` (subtitle, hint),
+        written to be public, and nothing else of the configuration.
     """
-    from kitebase.clientui import client_settings
+    from kitebase.clientui import client_settings, signin_texts
 
     return {
         'status': 'success',
@@ -805,7 +807,9 @@ def get_app_info(plugins_config: Dict[str, Any], api_prefix: str) -> Dict[str, A
             'application': plugins_config.get('name', 'Unknown'),
             'version': plugins_config.get('version', '0.0.0'),
             'description': plugins_config.get('description', ''),
-            'client': client_settings(plugins_config)._asdict(),
+            'client': {**client_settings(plugins_config)._asdict(),
+                       'title': plugins_config.get('title'),
+                       'signin': signin_texts(plugins_config)},
             'kitebase_api_prefix': api_prefix,
             'available_endpoints': {
                 'home': '/',

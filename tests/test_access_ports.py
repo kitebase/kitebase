@@ -63,6 +63,15 @@ PAGES = {
             {'id': 'open'},
         ]},
     }},
+    'book_desk': {
+        'content': {'type': 'table', 'source': {'model': 'Book'}},
+        'panels': [
+            {'id': 'side', 'type': 'tabs', 'tabs': [
+                {'id': 'chapters', 'type': 'table', 'source': {'model': 'Chapter'}},
+                {'id': 'authors', 'type': 'table', 'source': {'model': 'Author'}}]},
+            {'id': 'author', 'type': 'form', 'source': {'model': 'Author'}},
+        ],
+    },
     'author_review': {'access': 'bench.review',
                       'content': {'type': 'table', 'source': {'model': 'Author'}}},
 }
@@ -414,6 +423,18 @@ def test_commands_the_user_cannot_run_are_taken_out(app, declared):
     guarded(app, denied={'bench.renew', 'bench.stamp'})
     page = send('get_page', {'id': 'chapter_list'})['data']
     assert [c['id'] for c in page['content']['navigator']['commands']] == ['open']
+
+
+def test_panels_and_tabs_on_a_model_the_user_cannot_read_go(app):
+    guarded(app, denied={'Author.read'})
+    page = send('get_page', {'id': 'book_desk'})['data']
+    assert [p['id'] for p in page['panels']] == ['side']
+    assert [t['id'] for t in page['panels'][0]['tabs']] == ['chapters']
+
+    access._GUARD = access.OPEN
+    guarded(app, denied={'Author.read', 'Chapter.read'})
+    page = send('get_page', {'id': 'book_desk'})['data']
+    assert page['panels'] == []              # the tab set left empty goes too
 
 
 def test_search_more_goes_when_the_lookup_page_is_closed(app):

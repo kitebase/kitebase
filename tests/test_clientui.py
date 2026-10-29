@@ -12,7 +12,7 @@ import pytest
 
 import kitebase.server_utils as srv
 from kitebase.diagnostics import _check_client
-from kitebase.clientui import client_settings
+from kitebase.clientui import client_settings, signin_texts
 
 
 # -- The rule -----------------------------------------------------------------------
@@ -144,3 +144,22 @@ def test_without_a_build_nothing_is_registered(serve, tmp_path):
     served, client = serve(tmp_path, ADMIN)
     assert served is False
     assert client.get('/admin/').status_code == 404
+
+
+# -- What the login page shows before anyone is signed in --------------------------
+
+def test_the_signin_texts_are_strings_and_nothing_else():
+    config = {'client': {'signin': {'subtitle': 'A demo', 'hint': 'Try admin / admin',
+                                    'secret': 'x', 'title': 5}}}
+    assert signin_texts(config) == {'subtitle': 'A demo', 'hint': 'Try admin / admin'}
+    assert signin_texts({}) == {}
+    assert signin_texts({'client': {'signin': 'not a mapping'}}) == {}
+
+
+def test_info_carries_the_title_and_the_signin_texts():
+    info = srv.get_app_info({'name': 'bench', 'title': 'Bench',
+                             'client': {'role': 'app', 'signin': {'hint': 'Try it'}}},
+                            '/kitebase')
+    client = info['data']['client']
+    assert client['title'] == 'Bench'
+    assert client['signin'] == {'hint': 'Try it'}

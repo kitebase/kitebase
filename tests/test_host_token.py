@@ -128,4 +128,5 @@ def test_info_tells_the_client_who_logs_in(make, plugins):  # noqa: F811
     client = _json(make().get('/kitebase/info'))['data']['client']
 
     assert client == {'role': 'admin', 'base': '/admin',
-                      'login': '/login', 'logout': '/logout'}
+                      'login': '/login', 'logout': '/logout',
+                      'title': None, 'signin': {}}

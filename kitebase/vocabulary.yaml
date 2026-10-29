@@ -33,6 +33,7 @@ pages.*.content.navigator: [commands]
 pages.*.content.navigator.commands[]: [endpoint, id, key, label, scope]
 pages.*.content.policy: [button_style, editable]
 pages.*.content.props: '*'
+pages.*.content.props.*[]: '*'
 pages.*.content.rules[]: [field, op]
 pages.*.content.source: [defaults, domain, endpoint, id, joins, model, order_by, save_endpoint]
 pages.*.content.source.defaults: '*'

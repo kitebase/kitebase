@@ -594,9 +594,10 @@ def can_open(app: Any, page_id: str) -> bool:
 
 def restrict(app: Any, obj: Any) -> None:
     """Take out of a resolved page what the current user cannot use: commands
-    whose endpoint or `access:` is refused, and the "Search more…" of foreign
-    keys whose lookup page is (`lookup.page: false`). In place, on the copy
-    `get_page` is about to send."""
+    whose endpoint or `access:` is refused, the "Search more…" of foreign keys
+    whose lookup page is (`lookup.page: false`), and the side panels and tabs
+    showing a model the user cannot read — a panel left without tabs goes too.
+    In place, on the copy `get_page` is about to send."""
     if isinstance(obj, list):
         for item in obj:
             restrict(app, item)
@@ -616,6 +617,17 @@ def restrict(app: Any, obj: Any) -> None:
         if key == 'commands' and isinstance(value, list):
             value[:] = [cmd for cmd in value if not isinstance(cmd, dict) or _can_run(cmd)]
         restrict(app, value)
+        if key in ('panels', 'tabs') and isinstance(value, list):
+            value[:] = [item for item in value if not isinstance(item, dict) or _can_show(item)]
+
+
+def _can_show(area: Dict[str, Any]) -> bool:
+    """A side panel or a tab: readable model, and a tab set not left empty."""
+    model = (area.get('source') or {}).get('model') if isinstance(area.get('source'), dict) else None
+    if model and not access.can(f'{model}.read'):
+        return False
+    return not (area.get('type') == 'tabs' and isinstance(area.get('tabs'), list)
+                and not area['tabs'])
 
 
 def _can_run(command: Dict[str, Any]) -> bool:
