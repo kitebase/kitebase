@@ -5,7 +5,7 @@ Kitebase library.
 
 ## The shared plugins
 
-`devtest` takes `common` and `users` from the kitebase-commons repository, by
+`devtest` takes `common`, `users` and `acl` from the kitebase-commons repository, by
 path, as any application does (`config.yaml`, `plugins:`): it expects the
 checkout beside this one, in the layout of `docs/GETTING_STARTED.md`
 
@@ -21,6 +21,23 @@ types it needs (`SKU`, `Price`) from the shared ones, and `libapp/library` adds
 columns to `User` and methods to its own tables. The shared plugins are not
 copied and not edited here; a change to them is made in kitebase-commons, and
 moves the golden of the merged tree (`tests/golden/devtest.json`).
+
+## Users and access control
+
+`acl` is on, with the roles of the library in `plugins/libapp/library/acl.yaml`
+and one user per role; the password is the username. The home page lists them
+with what each is meant to see, and the login page says whom to try.
+
+| user | role | sees |
+|---|---|---|
+| `admin` | administrator | everything: not a role, it passes every check |
+| `catalog` | Cataloguer | the catalogue; no loans, no members |
+| `desk` | Loans desk | members and loans; books read only, other tables by their label |
+| `librarian` | Librarian | cataloguer and loans desk together, plus the reviews |
+| `stats` | Statistics | the loans without the members' names: the loan list answers 403 |
+
+A database made before them gets them with `devtest.seed_staff`; a new one has
+them from the seed. `kitebase check` lists what the roles leave uncovered.
 
 ## Testing
 

@@ -21,8 +21,11 @@ menu_items:
   catalog:    { label: Catalog,    icon: book,          order: 20 }
   library:    { label: Library,    icon: library,       order: 30 }
   playground: { label: Playground, icon: flask-conical, order: 90 }
+  account:    { label: Account,    icon: user-round,    order: 95 }
 
   # ── Commons pages (User/Config): the APP decides whether/where they surface ──
   users:    { label: Users,         icon: users,     parent: masters, order: 10, action: stack_push, panel: user_list }
   userlogs: { label: User logs,     icon: file-text, parent: masters, order: 20, action: stack_push, panel: userlog_list }
   config:   { label: Configuration, icon: settings,  parent: masters, order: 90, action: stack_push, panel: config_list }
+  # One's own password: every user, whatever the roles, since the page reads no table.
+  password: { label: Change password, icon: lock,  parent: account, order: 10, action: stack_push, panel: password_change }

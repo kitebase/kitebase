@@ -856,6 +856,12 @@
    "order": 90,
    "$plugin": "menu"
   },
+  "account": {
+   "label": "Account",
+   "icon": "user-round",
+   "order": 95,
+   "$plugin": "menu"
+  },
   "users": {
    "label": "Users",
    "icon": "users",
@@ -881,6 +887,15 @@
    "order": 90,
    "action": "stack_push",
    "panel": "config_list",
+   "$plugin": "menu"
+  },
+  "password": {
+   "label": "Change password",
+   "icon": "lock",
+   "parent": "account",
+   "order": 10,
+   "action": "stack_push",
+   "panel": "password_change",
    "$plugin": "menu"
   },
   "$plugin": "menu",
