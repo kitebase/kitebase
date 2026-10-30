@@ -163,10 +163,9 @@ client:
   role: app                # `app`: the client owns "/"; `admin`: under /admin/
 ```
 
-Optional sections (`schema`, `dataview`, `read_files`, `password_policy`,
-`locale`, ...) have sane defaults; add them only to override. A name provided by
-two plugin roots is refused: the scaffold's own `users` excludes the one in the
-shared plugins.
+Optional sections (`schema`, `dataview`, `password_policy`, `locale`, ...) have
+sane defaults; add them only to override. A name provided by two plugin roots is
+refused: the scaffold's own `users` excludes the one in the shared plugins.
 
 ---
 

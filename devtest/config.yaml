@@ -90,12 +90,6 @@ authentication:
   jwt_expiration_hours: 24           # Token lifetime
   jwt_refresh_interval_minutes: 20   # Auto-refresh after this inactivity
 
-# the endpoint `read_file` can send files to client we can decide the
-# directory white list and the extensions that has to be treated as text
-read_files:
-  allowed_dirs: ['data','images']
-  text_suffix: ['.txt', '.md', '.xml']
-
 # addiction imports for the source code generator
 # source_imports: ['import sys', 'import os']
 source_add: |

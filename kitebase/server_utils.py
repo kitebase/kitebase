@@ -818,7 +818,6 @@ def get_app_info(plugins_config: Dict[str, Any], api_prefix: str) -> Dict[str, A
                 'kitebase_auth_update': f'{api_prefix}/auth/update_context',
                 'kitebase_database': f'{api_prefix}/db/<table>',
                 'kitebase_query': f'{api_prefix}/query',
-                'kitebase_files': f'{api_prefix}/read_file',
                 'kitebase_commands': f'{api_prefix}/endpoint/<operation>'
             }
         },
