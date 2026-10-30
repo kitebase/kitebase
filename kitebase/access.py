@@ -27,6 +27,14 @@ columns of a table (`label_columns`), what a foreign key needs to show "Il nome
 della rosa" instead of 42 and a combobox to find it. A query that touches only
 those columns of a table asks `Book.label` when `Book.read` is refused; any
 other column, in the select, a filter, an ordering or a join, needs `Book.read`.
+
+Columns can be narrower than their table: a column of a group
+(`column_group: pricing`) asks `pricing.read` to be read and `pricing.write`
+to be written. Without `read` the column is left out of a wildcard select and
+of a serialised record, and naming it anywhere in a query is refused; without
+`write` a value sent for it is dropped, so a create gets the default and an
+update leaves it alone. The form that sends the whole record, read-only
+fields included, still saves.
 """
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -40,6 +48,9 @@ UNDECLARED = None                  # nothing declared: the guard decides
 
 # The permissions every table has, derived from the model.
 TABLE_ACTIONS = ('read', 'create', 'update', 'delete', 'label')
+
+# The permissions every column group has: `pricing.read`, `pricing.write`.
+COLUMN_ACTIONS = ('read', 'write')
 
 # The action each `db` method needs on its table.
 DB_METHODS = {'get': 'read', 'create': 'create', 'update': 'update', 'delete': 'delete'}
@@ -285,3 +296,46 @@ def check_read(model_name: str, columns: Iterable[str]) -> None:
     if set(columns) <= label_columns(model_name) and can(f'{model_name}.label'):
         return
     raise AccessDenied(f'{model_name}.read')
+
+
+# ── Column groups ───────────────────────────────────────────────────────────
+
+def column_groups(model: Any, app: Any = None) -> Dict[str, str]:
+    """The columns of a model that belong to a group, with their group. The
+    model by name, or its table definition."""
+    if not isinstance(model, str):
+        return getattr(model, 'column_groups', None) or {}
+    if app is None:
+        import kitebase.utils
+        app = kitebase.utils.get_app()
+    # an app with no table definitions (a bare query builder) has no groups
+    table = (getattr(app, 'tables', None) or {}).get(model)
+    return table.column_groups if table is not None else {}
+
+
+def _refused(model: Any, action: str, app: Any = None) -> FrozenSet[str]:
+    groups = column_groups(model, app)
+    if not groups:
+        return frozenset()
+    allowed = {g: can(f'{g}.{action}') for g in set(groups.values())}
+    return frozenset(c for c, g in groups.items() if not allowed[g])
+
+
+def unreadable_columns(model: Any, app: Any = None) -> FrozenSet[str]:
+    """The columns of a model (name or definition) the current user may not read."""
+    return _refused(model, 'read', app)
+
+
+def unwritable_columns(model: Any, app: Any = None) -> FrozenSet[str]:
+    """The columns of a model (name or definition) the current user may not write."""
+    return _refused(model, 'write', app)
+
+
+def check_columns(model_name: str, columns: Iterable[str]) -> None:
+    """Reading `columns` of a model: `<group>.read` for those in a group."""
+    groups = column_groups(model_name)
+    for column in sorted(set(columns) & set(groups)):
+        permission = f'{groups[column]}.read'
+        if not can(permission):
+            raise AccessDenied(permission,
+                               f"Not allowed: {permission} ({model_name}.{column})")

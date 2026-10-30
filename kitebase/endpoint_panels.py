@@ -3,7 +3,7 @@ import kitebase.utils
 from kitebase import access
 from kitebase.endpoints import endpoint
 from kitebase.i18n import translate_labels
-from kitebase.pages import load_page, page_permissions, restrict, strip_meta
+from kitebase.pages import load_page, page_permissions, restrict, restrict_columns, strip_meta
 # Note: context is set globally via BaseApp.set_context() before each call —
 # endpoint functions receive only (data).
 
@@ -50,5 +50,6 @@ def get_page(data: Dict[str, Any]) -> Dict[str, Any]:
     for permission in page_permissions(app, page_id) or []:
         access.check(permission)
     restrict(app, page)
+    restrict_columns(app, page)
 
     return {'status': 'success', 'data': translate_labels(strip_meta(page)), 'code': 200}

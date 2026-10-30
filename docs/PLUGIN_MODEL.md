@@ -933,6 +933,14 @@ log in by typing the digest itself.
 > `TypeDecorator` (see `CaseString`), which covers every consumer of the models
 > rather than just HTTP requests.
 
+A column of a `column_group` gets the rule of `secret`, made per user. Without
+`<group>.read` (`acl.read`, `pricing.read`) the column is left out of `*` and of
+every record, and naming it in a select, filter or ordering is refused with a
+403; without `<group>.write` a value sent for it is dropped, so a create gets
+the default and an update leaves it alone. `get_page` takes the field out of
+the descriptor, or makes it read only. The core reads the attribute and asks
+the access guard: without an access control plugin every group is open.
+
 ### 3.7 Query Behaviors
 
 A **query behavior** is a class that the querybuilder applies automatically
@@ -1118,6 +1126,7 @@ hybrid carries an SQL expression. A table that declares nothing searchable
 | `case` | string | `upper` / `lower` / `neutral` — case fixed by the column type (§ 3.3.1) |
 | `virtual` | bool | Not mapped to the database — a hybrid property in `model.py` (§ 3.5) |
 | `secret` | bool | Never leaves the server, on any read path (§ 3.6) |
+| `column_group` | string | The group access control grants on the column: `<group>.read` shows it, `<group>.write` changes it (§ 3.6) |
 | `on_write` | string | Registered transform applied before the value is stored (§ 3.6) |
 | `editable` | bool | Client hint: the column is not writable in generated forms |
 | `label` | string | UI label (overrides type-level label) |

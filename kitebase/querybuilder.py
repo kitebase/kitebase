@@ -541,11 +541,15 @@ class DynamicQueryBuilder:
         # itself, with the columns it reads of each: `<Model>.read`, or
         # `<Model>.label` when only the label columns are touched. After
         # everything else and regardless of `resolve`, which skips behaviors,
-        # never permissions.
-        read = access.columns_read(query, self.models, self.covered,
+        # never permissions. The columns of a group answer for themselves, in
+        # the rows of a collection too: its root's permission covers the
+        # table, not what a group keeps apart.
+        read = access.columns_read(query, self.models, (),
                                    select_builder.expression_columns)
         for model_name in sorted(read):
-            access.check_read(model_name, read[model_name])
+            if model_name not in self.covered:
+                access.check_read(model_name, read[model_name])
+            access.check_columns(model_name, read[model_name])
 
         return query
 
@@ -934,7 +938,8 @@ class SelectBuilder:
         Expand a model class into a list of all its columns.
 
         Columns marked `secret: true` are left out: a wildcard is a request for
-        "what this table holds", not a way around what it never sends.
+        "what this table holds", not a way around what it never sends. So are
+        the columns of a group the user may not read.
 
         Args:
             model_class: SQLAlchemy model class
@@ -944,7 +949,7 @@ class SelectBuilder:
         """
         # Get table metadata to access individual columns
         if hasattr(model_class, '__table__') and hasattr(model_class.__table__, 'columns'):
-            secrets = _secret_names(model_class)
+            secrets = _secret_names(model_class) | access.unreadable_columns(model_class.__name__)
             return [getattr(model_class, column.key)
                     for column in model_class.__table__.columns
                     if column.key not in secrets]

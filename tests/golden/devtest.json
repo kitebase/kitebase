@@ -341,7 +341,8 @@
      "type": "Boolean",
      "default": false,
      "nullable": false,
-     "$plugin": "users"
+     "$plugin": "acl",
+     "column_group": "acl"
     },
     {
      "name": "roles",
@@ -349,6 +350,7 @@
      "type": "Json",
      "default": [],
      "validate": "acl_roles",
+     "column_group": "acl",
      "$plugin": "acl"
     },
     {
@@ -357,6 +359,7 @@
      "type": "Json",
      "default": [],
      "validate": "acl_exceptions",
+     "column_group": "acl",
      "$plugin": "acl"
     },
     {
@@ -3386,7 +3389,9 @@
    ],
    "grants": [
     "Review.*",
-    "playground.demos"
+    "playground.demos",
+    "User.*",
+    "acl.read"
    ],
    "$plugin": "library"
   },

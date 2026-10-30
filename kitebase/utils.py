@@ -268,7 +268,8 @@ def serialize_model(model, include_relationships=False, db_table=None):
 
     Columns marked `secret: true` are left out: they must never reach a client,
     and the definition is resolved from the model itself when the caller has
-    none at hand, so forgetting to pass one cannot turn into a leak.
+    none at hand, so forgetting to pass one cannot turn into a leak. So are the
+    columns of a group the current user may not read (kitebase.access).
 
     Args:
         model: SQLAlchemy model instance
@@ -278,8 +279,11 @@ def serialize_model(model, include_relationships=False, db_table=None):
     Returns:
         Dictionary representation of the model
     """
+    from kitebase import access
     db_table = table_definition(model.__class__, db_table)
     secrets = secret_columns(db_table)
+    if db_table is not None:
+        secrets = secrets | access.unreadable_columns(db_table)
 
     result = {}
     # Add real + mixin columns (SQLAlchemy introspection covers both)

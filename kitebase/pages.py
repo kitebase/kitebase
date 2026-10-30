@@ -17,7 +17,7 @@ descriptor.
 """
 import copy
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from kitebase import access
 from kitebase.utils import deep_merge
@@ -647,6 +647,63 @@ def restrict(app: Any, obj: Any, in_collection: bool = False) -> None:
         restrict(app, value, in_collection)
         if key in ('panels', 'tabs') and isinstance(value, list):
             value[:] = [item for item in value if not isinstance(item, dict) or _can_show(item)]
+
+
+# The lists of a descriptor that hold its content: a container left without
+# any of them, after its fields were taken out, has nothing left to show.
+_CONTENT_LISTS = ('fields', 'columns', 'layout', 'pages', 'tabs', 'children')
+
+
+def restrict_columns(app: Any, obj: Any, model: Optional[str] = None) -> bool:
+    """
+    The columns of a group, as the current user may use them. In place, on the
+    copy `get_page` is about to send:
+
+    - a field or a list column the user may not read goes, and so does a
+      section, a column or a tab its removal leaves empty;
+    - a field the user may read but not write becomes `readonly`.
+
+    The model is the page's `source.model`, then the `model` of what lies
+    below (a collection, what a card opens); a `Model.column` names its own.
+    Returns whether `obj` was emptied, for the caller to take out.
+    """
+    if not isinstance(obj, dict):
+        return False
+
+    source = obj.get('source')
+    if isinstance(source, dict) and source.get('model') in app.tables:
+        model = source['model']
+    elif obj.get('model') in app.tables:
+        model = obj['model']
+
+    for key in ('name', 'field'):
+        if isinstance(obj.get(key), str) and model:
+            owner, column = _column_of(app, model, obj[key])
+            if column in access.unreadable_columns(owner, app):
+                return True
+            if key == 'name' and column in access.unwritable_columns(owner, app):
+                obj['readonly'] = True
+            return False
+
+    emptied = False
+    for key, value in obj.items():
+        if isinstance(value, dict):
+            restrict_columns(app, value, model)
+        elif isinstance(value, list):
+            before = len(value)
+            value[:] = [item for item in value if not restrict_columns(app, item, model)]
+            if before and not value and key in _CONTENT_LISTS:
+                emptied = True
+    return emptied and not any(obj.get(k) for k in _CONTENT_LISTS)
+
+
+def _column_of(app: Any, model: str, name: str) -> Tuple[str, str]:
+    """The model and the column a field names: `Book.cost`, or a column of
+    `model`, the first step of a path (`member_id.name`) included."""
+    head, _, rest = name.partition('.')
+    if rest and head in app.tables:
+        return head, rest.partition('.')[0]
+    return model, head
 
 
 # The views that are lists of rows, with a navigator unless they say `false`.

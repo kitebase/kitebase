@@ -7,7 +7,9 @@
 #   desk       the loans counter: members and loans, books read only, every
 #              other table shown by its label
 #   librarian  both, through `implies`, plus the reviews and the demos of
-#              the Playground (playground.demos, declared by panels)
+#              the Playground (playground.demos, declared by panels); edits
+#              the users and sees their roles, read only: `acl.write`, which
+#              changes roles and administrators, stays with the administrator
 #   stats      the loans with every label but the members': Loan statistics
 #              (stats.yaml) is its page, through a permission no other role
 #              holds; the loan list answers 403, and `check` says so beforehand
@@ -39,6 +41,8 @@ roles:
     grants:
       - Review.*
       - playground.demos
+      - User.*
+      - acl.read
 
   library.stats:
     label: Statistics

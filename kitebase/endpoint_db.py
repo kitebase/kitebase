@@ -82,7 +82,9 @@ def write_values(db_table, record_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Prepare incoming values for storage, following what the columns declare.
 
-    Three rules, all from `kitebase.transforms`:
+    A column of a group the user may not write is dropped first: a create gets
+    its default, an update leaves it alone (kitebase.access). Then three
+    rules, all from `kitebase.transforms`:
     - a `secret` column arriving empty is dropped — it is never read back, so a
       client cannot echo it, and an empty value means "leave it alone" rather
       than "clear it";
@@ -99,9 +101,12 @@ def write_values(db_table, record_data: Dict[str, Any]) -> Dict[str, Any]:
         return dict(record_data)
 
     attributes = {col.name: col.attributes for col in db_table.effective_columns}
+    unwritable = access.unwritable_columns(db_table)
     result = {}
     errors = {}
     for key, value in record_data.items():
+        if key in unwritable:
+            continue
         attrs = attributes.get(key, {})
         is_empty = value is None or value == ''
 
@@ -168,10 +173,14 @@ def handle_get(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[
                 if filter_conditions is not None:
                     query = query.filter(filter_conditions)
 
-            # Apply ordering
+            # Apply ordering: on a column the client could not read, the
+            # order would tell what the values are.
             if order_by:
                 column = getattr(model_class, order_by, None)
                 if column:
+                    if order_by in kitebase.utils.secret_columns(db_table):
+                        raise ValueError(f"Column '{order_by}' is not sortable")
+                    access.check_columns(model_class.__name__, [order_by])
                     if order_dir.lower() == 'desc':
                         query = query.order_by(desc(column))
                     else:
@@ -401,6 +410,7 @@ def build_filters(model_class, query_filters: Dict[str, Any]) -> Optional[Any]:
 
         if field in secrets:
             raise ValueError(f"Column '{field}' is not filterable")
+        access.check_columns(model_class.__name__, [field])
 
         column = getattr(model_class, field)
         period = kitebase.utils.temporal_condition(

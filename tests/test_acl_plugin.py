@@ -101,6 +101,8 @@ def app(tmp_path, monkeypatch):
     pm.load_plugins()
     instance = DB()
     monkeypatch.setattr(kitebase.utils, 'get_app', lambda: instance)
+    # what a model asks for its definition (secret columns, groups), as in an app
+    monkeypatch.setattr(Base, '__kitebase_app__', instance)
     instance.calc_db(pm)
 
     source = tmp_path / 'model.py'
@@ -479,3 +481,129 @@ def test_what_the_host_vouched_for_is_not_read_again(app):
     assert error is None
     assert payload['roles'] == MEMBER
     assert jwt.decode(new_token, 'secret', algorithms=['HS256'])['src'] == 'host'
+
+
+# ── Column groups: who edits users does not raise anyone's privileges ───────
+
+# Users without the `acl` group, and with it read only.
+KEEPER = ['+User.*']
+VIEWER = ['+User.*', '+acl.read']
+
+
+def _user(app, user_id):
+    with app.get_session() as session:
+        user = session.get(app.models['User'], user_id)
+        return {'name': user.name, 'roles': user.roles, 'is_admin': user.is_admin}
+
+
+def test_a_column_of_a_group_is_not_written_without_its_permission(app):
+    result = as_user('db', {'table': 'User', 'method': 'update', 'id': 1, 'data': {
+        'name': 'Ada', 'roles': ['library.librarian'], 'is_admin': True}}, exceptions=KEEPER)
+
+    assert result['status'] == 'success'
+    assert _user(app, 1) == {'name': 'Ada', 'roles': ['library.member'], 'is_admin': False}
+
+
+def test_a_new_user_gets_the_default_of_a_column_it_cannot_write(app):
+    result = as_user('db', {'table': 'User', 'method': 'create', 'data': {
+        'username': 'dee', 'name': 'dee', 'password': 'a long secret', 'email': 'dee@example.com',
+        'roles': ['library.librarian'], 'is_admin': True}}, exceptions=VIEWER)
+
+    assert result['status'] == 'success'
+    assert _user(app, result['data']['id']) == {'name': 'dee', 'roles': [], 'is_admin': False}
+
+
+def test_the_group_written_with_its_permission(app):
+    as_user('db', {'table': 'User', 'method': 'update', 'id': 1,
+                   'data': {'roles': ['library.desk']}},
+            exceptions=KEEPER + ['+acl.write'])
+    assert _user(app, 1)['roles'] == ['library.desk']
+
+
+def test_a_record_leaves_out_the_columns_it_cannot_read(app):
+    hidden = as_user('db', {'table': 'User', 'method': 'get', 'id': 1}, exceptions=KEEPER)['data']
+    shown = as_user('db', {'table': 'User', 'method': 'get', 'id': 1}, exceptions=VIEWER)['data']
+
+    assert hidden['name'] == 'ada'
+    assert not {'roles', 'acl_exceptions', 'is_admin'} & set(hidden)
+    assert {'roles', 'acl_exceptions', 'is_admin'} <= set(shown)
+
+
+def test_a_wildcard_query_leaves_them_out(app):
+    result = as_user('query', {'format': 'dict', 'query': {'table': 'User'}}, exceptions=KEEPER)
+
+    assert result['status'] == 'success'
+    assert 'name' in result['data']['headers']
+    assert not {'roles', 'acl_exceptions', 'is_admin'} & set(result['data']['headers'])
+
+
+def test_naming_them_in_a_query_is_refused(app):
+    """In the select, a filter or an ordering: a filter on `is_admin` would
+    tell who the administrators are as surely as the column."""
+    for query in ({'table': 'User', 'select': ['User.id', 'User.roles']},
+                  {'table': 'User', 'select': ['User.id'],
+                   'filters': {'conditions': [{'User.is_admin': True}]}},
+                  {'table': 'User', 'select': ['User.id'], 'order_by': ['User.is_admin']}):
+        result = as_user('query', {'query': query}, exceptions=KEEPER)
+        assert result['code'] == 403, query
+        assert 'acl.read' in result['message']
+    assert as_user('query', {'query': {'table': 'User', 'select': ['User.id', 'User.roles']}},
+                   exceptions=VIEWER)['status'] == 'success'
+
+
+def test_a_list_of_db_get_refuses_them_too(app):
+    assert as_user('db', {'table': 'User', 'method': 'get', 'query': {'is_admin': True}},
+                   exceptions=KEEPER)['code'] == 403
+    assert as_user('db', {'table': 'User', 'method': 'get', 'order_by': 'is_admin'},
+                   exceptions=KEEPER)['code'] == 403
+
+
+def _fields(page):
+    found = {}
+
+    def walk(obj):
+        if isinstance(obj, dict):
+            if isinstance(obj.get('name'), str):
+                found.setdefault(obj['name'], []).append(obj)
+            for value in obj.values():
+                walk(value)
+        elif isinstance(obj, list):
+            for item in obj:
+                walk(item)
+
+    walk(page)
+    return found
+
+
+def _tabs(page):
+    sections = next(item for item in page['content']['layout'] if item.get('id') == 'sections')
+    return [tab['id'] for tab in sections['pages']]
+
+
+def test_the_user_form_hides_what_cannot_be_read(app):
+    page = as_user('get_page', {'id': 'user_form'}, exceptions=KEEPER)['data']
+
+    assert _tabs(page) == ['account']
+    assert 'name' in _fields(page)
+    assert not {'roles', 'acl_exceptions', 'is_admin'} & set(_fields(page))
+
+
+def test_the_user_form_shows_read_only_what_cannot_be_written(app):
+    page = as_user('get_page', {'id': 'user_form'}, exceptions=VIEWER)['data']
+    fields = _fields(page)
+
+    assert _tabs(page) == ['account', 'roles', 'access']
+    assert all(f.get('readonly') for name in ('roles', 'acl_exceptions', 'is_admin')
+               for f in fields[name])
+    assert not fields['name'][0].get('readonly')
+
+
+def test_a_table_wildcard_does_not_open_a_column_group(app):
+    from acl.guard import granted
+    assert granted('Book.read', ['*.read'])
+    assert not granted('acl.read', ['*.read'])
+
+
+def test_check_knows_the_permissions_of_the_groups(app):
+    from acl.guard import _known_permissions
+    assert {'acl.read', 'acl.write'} <= _known_permissions(app, _ACCESS)

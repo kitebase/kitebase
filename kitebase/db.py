@@ -754,6 +754,7 @@ class DbTable:
         self.virtual_columns: List[DbColumn] = []
         self._effective_columns: Optional[List['DbColumn']] = None
         self._secret_columns: Optional[frozenset] = None
+        self._column_groups: Optional[Dict[str, str]] = None
         self._search_info: Optional[Dict[str, Any]] = None
 
         self.update(attributes, plugin)
@@ -799,6 +800,21 @@ class DbTable:
                 col.name for col in self.effective_columns
                 if col.attributes.get('secret'))
         return self._secret_columns
+
+    @property
+    def column_groups(self) -> Dict[str, str]:
+        """
+        The columns that belong to a group (`column_group: pricing`), by name.
+
+        A group is what access control grants on columns: `pricing.read` shows
+        them, `pricing.write` lets them change (kitebase.access). Columns
+        outside any group follow their table.
+        """
+        if self._column_groups is None:
+            self._column_groups = {
+                col.name: col.attributes['column_group'] for col in self.effective_columns
+                if col.attributes.get('column_group')}
+        return self._column_groups
 
     @property
     def search_info(self) -> Dict[str, Any]:
