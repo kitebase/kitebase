@@ -835,3 +835,33 @@ def test_a_value_the_context_lacks_hides_the_rows(loans, guarded):
     session = guarded(loans, ['library.branch'])
     assert session.query(loans.models['Loan']).all() == []
     assert session.query(loans.models['Book']).count() == 2
+
+
+# ── check reads the conditions ───────────────────────────────────────────────
+
+def _with_role(app, monkeypatch, where):
+    roles = dict(app.pm.data['roles'])
+    roles['library.probe'] = {'label': 'Probe', '$plugin': 'library',
+                              'grants': ['Book.read', {'Loan.read': {'where': where}}]}
+    monkeypatch.setitem(app.pm.data, 'roles', roles)
+
+
+def test_check_names_a_condition_that_does_not_compile(app, monkeypatch):
+    _with_role(app, monkeypatch, {'membr_id': 1, 'book.titel': 'x'})
+    found = acl_issues(app, 'acl-condition-invalid')
+    assert 'membr_id' in found['roles.library.probe']
+
+
+def test_check_reads_a_condition_from_the_definition_without_models(app, monkeypatch):
+    _with_role(app, monkeypatch, {'membr_id': 1, 'book.titel': 'x'})
+    monkeypatch.setattr(app, 'models', {})
+    found = acl_issues(app, 'acl-condition-invalid')
+    assert found['roles.library.probe'].endswith('Loan has no column membr_id')
+
+
+def test_check_names_a_context_field_the_token_lacks(app, monkeypatch):
+    _with_role(app, monkeypatch, {'member_id': '$ctx.branch_id', 'book.title': 'x'})
+    assert 'roles.library.probe' not in acl_issues(app, 'acl-condition-invalid')
+    found = acl_issues(app, 'acl-condition-context')
+    assert '$ctx.branch_id' in found['roles.library.probe']
+    assert 'roles.library.reader' not in found          # $ctx.id is in every token
