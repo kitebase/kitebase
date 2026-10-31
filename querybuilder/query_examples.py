@@ -153,7 +153,18 @@ EXAMPLES = [
         "order_by": ["Customer.country", "year"],
     }),
 
-    ("Expressions: days to ship, and a count with case", {
+    ("Expressions in the select: arithmetic and a case", {
+        "from": "Product",
+        "select": [
+            "product_name",
+            "units_in_stock * unit_price as stock_value",
+            "case when units_in_stock = 0 then 'out' when units_in_stock < reorder_level then 'low' "
+            "else 'ok' end as stock",
+        ],
+        "order_by": [["stock_value", "desc"]],
+    }),
+
+    ("Expressions in aggregates: days to ship, and a count with case", {
         "from": "Order",
         "select": [
             "Shipper.company_name as shipper",

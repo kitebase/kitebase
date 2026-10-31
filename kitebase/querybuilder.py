@@ -277,6 +277,8 @@ EXPRESSION_KEYWORDS = frozenset({
     'bigint', 'boolean', 'char', 'decimal', 'float', 'int', 'integer', 'numeric',
     'real', 'text', 'timestamp', 'varchar',
 })
+_IDENTIFIER = re.compile(r"[A-Za-z_]\w*")
+_COLUMN_NAME = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?")
 _EXPRESSION_TOKEN = re.compile(r"""
     (?P<space>\s+)
   | (?P<string>'(?:[^']|'')*')
@@ -1189,14 +1191,15 @@ class SelectBuilder:
         expr = expr.strip()
 
         # Case 1: Simple column expression (e.g., "Model.column")
-        if "(" not in expr:
+        if _COLUMN_NAME.fullmatch(expr):
             return self._get_column(expr)
 
-        # Case 2: Simple SQL function (e.g., "count(Model.id)")
-        if expr.count("(") == 1 and ")" in expr and not any(op in expr for op in ["+", "-", "*", "/"]):
-            # Handle function with simple argument
-            func_name, arg = expr.split("(", 1)
-            arg = arg.rstrip(")")
+        # Case 2: Simple SQL function (e.g., "count(Model.id)"): a name, then
+        # the only pair of parentheses, closing the expression
+        func_name, _, arg = expr.partition("(")
+        if (_IDENTIFIER.fullmatch(func_name.strip()) and expr.count("(") == 1
+                and expr.endswith(")") and not any(op in expr for op in ["+", "-", "*", "/"])):
+            arg = arg[:-1]
 
             # Process the argument in case it's a column reference
             processed_arg = self._process_column_references(arg)
