@@ -20,7 +20,9 @@ runs on a session given `guard_session()`: every SELECT it executes, lazy
 loads of relations included, asks `<Model>.read` on each table it reads. The
 rest of the server (defaults, triggers, validators) works for the system and
 is not checked; inside a guarded session `with system():` marks a read the
-code means to make beyond the user's permissions.
+code means to make beyond the user's permissions. A conditional `read`
+narrows the rows the session loads, wherever the model appears: a many-to-one
+towards a hidden row is None, a collection holds the visible rows only.
 
 `Book.label` is the narrow side of reading: the key, the label and the search
 columns of a table (`label_columns`), what a foreign key needs to show "Il nome
@@ -219,14 +221,45 @@ def guard_session(session: Any) -> Any:
     what makes this the guard of code that reads freely, like a report loop.
     """
     from sqlalchemy import event
+    from sqlalchemy.orm import with_loader_criteria
+
+    def row_criteria(app: Any) -> List[Tuple[Any, Any]]:
+        # Once per session: the context, and so the conditions, do not change
+        # while it lives. Every model, not only those the statement names: a
+        # joined eager load is not in the statement yet when this runs.
+        if 'kitebase_row_criteria' not in session.info:
+            found = []
+            for model_name in getattr(app, 'tables', None) or {}:
+                model_class = app.models.get(model_name)
+                if model_class is None:
+                    continue
+                try:
+                    clause = row_clause(model_name, 'read', app)
+                except AccessDenied:
+                    # a value the context lacks: no row, rather than a
+                    # refusal of a session that may never read the model
+                    from sqlalchemy import false
+                    clause = false()
+                if clause is not None:
+                    found.append((model_class, clause))
+            session.info['kitebase_row_criteria'] = found
+        return session.info['kitebase_row_criteria']
 
     def check_statement(state: Any) -> None:
         if not state.is_select or _SYSTEM.get():
             return
         import kitebase.utils
-        models = kitebase.utils.get_app().models
-        for model_name in sorted(columns_read(state.statement, models)):
+        app = kitebase.utils.get_app()
+        for model_name in sorted(columns_read(state.statement, app.models)):
             check_table(model_name, 'read')
+        # The rows a conditional read reaches, wherever the entity appears:
+        # relationship loads included, so a hidden row is not there to follow.
+        # After the check: the condition is the policy's, not the user's.
+        criteria = row_criteria(app)
+        if criteria:
+            state.statement = state.statement.options(
+                *(with_loader_criteria(model_class, clause)
+                  for model_class, clause in criteria))
 
     event.listen(session, 'do_orm_execute', check_statement)
     return session

@@ -775,3 +775,63 @@ def test_save_tree_judges_the_root(loans):
     assert created['code'] == 403
     with loans.get_session() as session:
         assert session.query(loans.models['Loan']).count() == 4
+
+
+# ── Record rules in a guarded session: code that reads for the user ─────────
+
+@pytest.fixture
+def guarded():
+    """Open guarded sessions under a reader's context; all closed at the end."""
+    from contextlib import ExitStack
+    from kitebase.db import BaseApp
+    stack = ExitStack()
+
+    def open_session(app, roles=READER, member=1, **context):
+        BaseApp.set_context({'id': member, 'username': 'x', 'roles': list(roles),
+                             'is_admin': False, 'acl_exceptions': [], **context})
+        return access.guard_session(stack.enter_context(app.get_session()))
+
+    yield open_session
+    stack.close()
+    BaseApp.set_context(None)
+
+
+def _relation(app, owner, target):
+    from sqlalchemy import inspect
+    return next(name for name, rel in inspect(app.models[owner]).relationships.items()
+                if rel.mapper.class_ is app.models[target])
+
+
+def test_a_guarded_session_loads_only_the_rows_it_reaches(loans, guarded):
+    session = guarded(loans)
+    Loan = loans.models['Loan']
+    assert sorted(l.id for l in session.query(Loan)) == [1, 2, 4]
+    assert session.get(Loan, 3) is None
+
+
+def test_a_collection_holds_the_visible_rows_only(loans, guarded):
+    session = guarded(loans)
+    book = session.get(loans.models['Book'], 1)
+    assert sorted(l.id for l in getattr(book, _relation(loans, 'Book', 'Loan'))) == [1, 2]
+
+
+def test_an_eager_load_is_narrowed_too(loans, guarded):
+    from sqlalchemy.orm import joinedload, selectinload
+    Book = loans.models['Book']
+    name = _relation(loans, 'Book', 'Loan')
+    for option in (selectinload, joinedload):
+        session = guarded(loans)
+        book = session.query(Book).options(option(getattr(Book, name))).filter(Book.id == 1).one()
+        assert sorted(l.id for l in getattr(book, name)) == [1, 2], option.__name__
+
+
+def test_system_reads_every_row(loans, guarded):
+    session = guarded(loans)
+    with access.system():
+        assert session.query(loans.models['Loan']).count() == 4
+
+
+def test_a_value_the_context_lacks_hides_the_rows(loans, guarded):
+    session = guarded(loans, ['library.branch'])
+    assert session.query(loans.models['Loan']).all() == []
+    assert session.query(loans.models['Book']).count() == 2
