@@ -42,8 +42,8 @@ else:
             return {}
 
         @staticmethod
-        def check_read(*args: Any) -> None:
-            pass
+        def check_read(*args: Any, **kwargs: Any) -> None:
+            return None
 
         @staticmethod
         def check_columns(*args: Any) -> None:
@@ -345,6 +345,17 @@ def check_expression(expr: str, models: Dict[str, Any], main_table: str,
                 if columns is not None:
                     columns.add((main, token))
         pos = match.end()
+
+
+def condition_clause(models: Dict[str, Type[DeclarativeMeta]], main_table: str,
+                     conditions: Any) -> Optional[ClauseElement]:
+    """
+    A filter condition in the builder's syntax, compiled on its own for
+    `main_table`: bare names are its columns, dotted ones the paths through
+    its relationships. For code that filters an ORM query or checks one row.
+    """
+    select_builder = SelectBuilder(models, main_table, None)
+    return FilterBuilder(models, select_builder)._build_filter_conditions(conditions)
 
 
 class DynamicQueryBuilder:
@@ -689,10 +700,20 @@ class DynamicQueryBuilder:
         # table, not what a group keeps apart.
         read = access.columns_read(query, self.models, (),
                                    select_builder.expression_columns)
+        rule = None
         for model_name in sorted(read):
             if model_name not in self.covered:
-                access.check_read(model_name, read[model_name])
+                found = access.check_read(model_name, read[model_name],
+                                          main=model_name == main_table)
+                if model_name == main_table:
+                    rule = found
             access.check_columns(model_name, read[model_name])
+
+        # The rows the user may read, when the permission holds only on some:
+        # after the check above, because the condition is the policy's, not the
+        # user's, and must not ask for the tables its paths go through.
+        if rule is not None:
+            query = query.where(filter_builder._build_filter_conditions(rule))
 
         return query
 

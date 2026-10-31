@@ -37,6 +37,8 @@ TABLES = {
         'columns': [
             {'name': 'id', 'type': 'Integer', 'primary_key': True, 'autoincrement': True},
             {'name': 'book_id', 'type': 'Integer', 'foreign_key': {'target': 'Book.id'}},
+            {'name': 'member_id', 'type': 'Integer'},
+            {'name': 'state', 'type': 'String', 'length': 10},
         ],
     },
 }
@@ -56,10 +58,28 @@ ACL = {
         },
         'library.office': {'label': 'Office', 'grants': ['*.label']},
         'library.archive': {'label': 'Archive', 'grants': ['Loan.read', 'Shelf.read', '*.lable']},
+        # record rules: a reader sees, opens and writes only their own loans
+        'library.reader': {'label': 'Reader', 'grants': [
+            'Book.read',
+            {'Loan.read': {'where': {'member_id': '$ctx.id'}}},
+            {'Loan.create': {'where': {'member_id': '$ctx.id'}}},
+            {'Loan.update': {'where': {'member_id': '$ctx.id', 'state': 'draft'}}},
+            {'Loan.delete': {'where': {'book.title': 'Palomar'}}},
+        ]},
+        'library.closed': {'label': 'Closed loans', 'grants': [
+            'Book.read',
+            {'Loan.read': {'where': {'state': 'closed'}}}]},
+        'library.branch': {'label': 'Branch', 'grants': [
+            'Book.read',
+            {'Loan.read': {'where': {'member_id': '$ctx.branch_id'}}}]},
     },
 }
 
 PAGES = {
+    'loan_form': {'content': {
+        'type': 'form', 'source': {'model': 'Loan'},
+        'layout': [{'name': 'member_id'}, {'name': 'state'}],
+    }},
     'loan_list': {'content': {
         'type': 'table', 'source': {'model': 'Loan'},
         'columns': [{'field': 'id'}, {'field': 'Book.title as title'}],
@@ -88,12 +108,12 @@ def app(tmp_path, monkeypatch):
     # Registries a plugin module fills once per process: put back what the
     # first load did, and take it away after, for the tests that follow.
     fields = list(server_utils._REGISTERED_CONTEXT_FIELDS)
+    owners = dict(server_utils._CONTEXT_FIELD_OWNERS)
     loaded = sys.modules.get('acl.guard')
     if loaded is not None:
         access._GUARD = loaded.GUARD
-        server_utils.add_context_field('roles')
-        server_utils.add_context_field('is_admin')
-        server_utils.add_context_field('acl_exceptions')
+        for field in ('roles', 'is_admin', 'acl_exceptions'):
+            server_utils.add_context_field(field, owner='acl.guard')
 
     pm = PluginsManager()
     pm.load_config(str(cfg))
@@ -130,6 +150,8 @@ def app(tmp_path, monkeypatch):
     Base.metadata.clear()
     access._GUARD = access.OPEN
     server_utils._REGISTERED_CONTEXT_FIELDS[:] = fields
+    server_utils._CONTEXT_FIELD_OWNERS.clear()
+    server_utils._CONTEXT_FIELD_OWNERS.update(owners)
 
 
 def as_user(operation, parameters, roles=(), is_admin=False, exceptions=()):
@@ -159,10 +181,17 @@ def test_a_cycle_stops_the_start(app):
         acl_guard.resolve_roles({'a': {'implies': ['b']}, 'b': {'implies': ['a']}})
 
 
-def test_a_condition_is_refused_until_it_is_supported(app):
+@pytest.mark.parametrize('grant, message', [
+    ({'Loan.*': {'where': {'id': 1}}}, 'cannot take a condition'),
+    ({'Loan.label': {'where': {'id': 1}}}, 'cannot take a condition'),
+    ({'library.renew': {'where': {'id': 1}}}, 'cannot take a condition'),
+    ({'Loan.read': {'where': {}}}, 'needs a `where`'),
+    ({'Loan.read': {'where': {'id': 1}, 'when': 'x'}}, 'takes only `where`'),
+])
+def test_a_condition_goes_only_on_a_row_action(app, grant, message):
     acl_guard = sys.modules['acl.guard']
-    with pytest.raises(ValueError, match='condition'):
-        acl_guard.resolve_roles({'a': {'grants': [{'Loan.read': {'where': {'id': 1}}}]}})
+    with pytest.raises(ValueError, match=message):
+        acl_guard.resolve_roles({'a': {'grants': [grant]}})
 
 
 # ── At the ports ─────────────────────────────────────────────────────────────
@@ -607,3 +636,142 @@ def test_a_table_wildcard_does_not_open_a_column_group(app):
 def test_check_knows_the_permissions_of_the_groups(app):
     from acl.guard import _known_permissions
     assert {'acl.read', 'acl.write'} <= _known_permissions(app, _ACCESS)
+
+
+# ── Record rules ─────────────────────────────────────────────────────────────
+
+READER = ['library.reader']
+
+
+def as_member(operation, parameters, roles=READER, member=1, **context):
+    return CommandProcessor().send({
+        'operation': operation, 'parameters': parameters,
+        'context': {'id': member, 'username': 'x', 'roles': list(roles),
+                    'is_admin': False, 'acl_exceptions': [], **context}})
+
+
+@pytest.fixture
+def loans(app):
+    """Loans 1-2 of member 1 (draft, closed), 3 of member 2; 4 of member 1 on
+    another book."""
+    with app.get_session() as session:
+        Book, Loan = app.models['Book'], app.models['Loan']
+        other = Book(title='Marcovaldo')
+        session.add(other)
+        session.flush()
+        session.add_all([Loan(book_id=1, member_id=1, state='draft'),
+                         Loan(book_id=1, member_id=1, state='closed'),
+                         Loan(book_id=1, member_id=2, state='draft'),
+                         Loan(book_id=other.id, member_id=1, state='draft')])
+        session.commit()
+    return app
+
+
+def loan_ids(result):
+    assert result['status'] == 'success', result.get('message')
+    return sorted(row['id'] for row in result['data'])
+
+
+def query_loans(roles=READER, member=1, **query):
+    return as_member('query', {'format': 'records', 'query': {'table': 'Loan', **query}},
+                     roles, member)
+
+
+def test_a_condition_narrows_the_rows_of_a_query(loans):
+    assert loan_ids(query_loans()) == [1, 2, 4]
+    assert loan_ids(query_loans(member=2)) == [3]
+
+
+def test_resolve_does_not_skip_the_condition(loans):
+    assert loan_ids(query_loans(resolve=True)) == [1, 2, 4]
+
+
+def test_conditions_from_two_roles_add_up(loans):
+    assert loan_ids(query_loans(READER + ['library.closed'], member=2)) == [2, 3]
+
+
+def test_a_grant_on_every_row_takes_the_conditions_in(loans):
+    assert loan_ids(query_loans(READER + MEMBER, member=2)) == [1, 2, 3, 4]
+
+
+def test_the_administrator_and_an_exception_see_every_row(loans):
+    admin = CommandProcessor().send({'operation': 'query', 'parameters': {
+        'format': 'records', 'query': {'table': 'Loan'}},
+        'context': {'id': 2, 'roles': READER, 'is_admin': True}})
+    assert loan_ids(admin) == [1, 2, 3, 4]
+    granted = CommandProcessor().send({'operation': 'query', 'parameters': {
+        'format': 'records', 'query': {'table': 'Loan'}},
+        'context': {'id': 2, 'roles': READER, 'acl_exceptions': ['+Loan.read']}})
+    assert loan_ids(granted) == [1, 2, 3, 4]
+
+
+def test_a_field_missing_from_the_context_refuses(loans):
+    result = query_loans(['library.branch'])
+    assert result['code'] == 403
+    assert 'branch_id' in result['message']
+    assert loan_ids(as_member('query', {'format': 'records', 'query': {'table': 'Loan'}},
+                              ['library.branch'], branch_id=2)) == [3]
+
+
+def test_a_joined_table_with_a_condition_is_refused(loans):
+    result = as_member('query', {'query': {
+        'table': 'Book', 'select': ['Book.title', 'Loan.state'],
+        'joins': [{'Loan': 'Loan.book_id = Book.id'}]}})
+    assert result['code'] == 403
+    assert 'only on some rows' in result['message']
+
+
+def test_db_get_lists_and_opens_only_the_rows_it_reaches(loans):
+    listed = as_member('db', {'table': 'Loan', 'method': 'get'})
+    assert sorted(r['id'] for r in listed['data']['records']) == [1, 2, 4]
+    assert listed['data']['total'] == 3
+    assert as_member('db', {'table': 'Loan', 'method': 'get', 'id': 1})['status'] == 'success'
+    assert as_member('db', {'table': 'Loan', 'method': 'get', 'id': 3})['code'] == 404
+
+
+def _state(app, loan_id):
+    with app.get_session() as session:
+        return session.get(app.models['Loan'], loan_id).state
+
+
+def test_an_update_is_judged_on_the_row_before_the_change(loans):
+    update = lambda i, data: as_member('db', {'table': 'Loan', 'method': 'update',
+                                              'id': i, 'data': data})
+    assert update(1, {'state': 'closed'})['status'] == 'success'
+    # closed now: the same change again is outside the condition
+    assert update(1, {'state': 'draft'})['code'] == 403
+    assert _state(loans, 1) == 'closed'
+    # and a row the user cannot read does not exist for them
+    assert update(3, {'state': 'closed'})['code'] == 404
+    assert _state(loans, 3) == 'draft'
+
+
+def test_a_condition_can_follow_a_relation(loans):
+    delete = lambda i: as_member('db', {'table': 'Loan', 'method': 'delete', 'id': i})
+    assert delete(4)['code'] == 403       # Marcovaldo
+    assert delete(2)['status'] == 'success'
+
+
+def test_a_created_row_must_satisfy_the_condition(loans):
+    create = lambda data: as_member('db', {'table': 'Loan', 'method': 'create', 'data': data})
+    assert create({'book_id': 1, 'member_id': 1})['status'] == 'success'
+    refused = create({'book_id': 1, 'member_id': 2})
+    assert refused['code'] == 403
+    with loans.get_session() as session:
+        assert session.query(loans.models['Loan']).count() == 5
+
+
+def test_load_tree_opens_only_a_root_it_reaches(loans):
+    assert as_member('load_tree', {'page': 'loan_form', 'id': 1})['status'] == 'success'
+    assert as_member('load_tree', {'page': 'loan_form', 'id': 3})['code'] == 404
+
+
+def test_save_tree_judges_the_root(loans):
+    save = lambda root: as_member('save_tree', {'page': 'loan_form', 'root': root})
+    assert save({'op': 'update', 'id': 2, 'values': {'state': 'draft'}})['code'] == 403
+    assert save({'op': 'update', 'id': 3, 'values': {'state': 'closed'}})['code'] == 404
+    assert save({'op': 'update', 'id': 1, 'values': {'state': 'closed'}})['status'] == 'success'
+    created = save({'op': 'create', 'id': -1, 'values': {'book_id': 1, 'member_id': 2}})
+    assert created['code'] == 403
+    with loans.get_session() as session:
+        assert session.query(loans.models['Loan']).count() == 4

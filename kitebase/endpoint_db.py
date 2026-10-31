@@ -153,7 +153,7 @@ def handle_get(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[
         if record_id:
             # Get single record
             record = session.get(model_class, record_id)
-            if not record:
+            if not record or not access.row_visible(session, model_class, record_id):
                 return {"status": "error", "message": _f('Record with id {id} not found', id=record_id), "code": 404}
 
             return {
@@ -164,6 +164,11 @@ def handle_get(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[
         else:
             # List records with filtering and pagination
             query = session.query(model_class)
+
+            # The rows the user may read, when the permission holds only on some
+            rule = access.row_clause(model_class.__name__, 'read', app)
+            if rule is not None:
+                query = query.filter(rule)
 
             # Apply filters
             if query_filters:
@@ -250,6 +255,10 @@ def handle_create(app, model_class, params: Dict[str, Any], db_table=None) -> Di
 
         with app.get_session() as session:
             session.add(new_record)
+            # The row as inserted, defaults included, must be one the user may create
+            session.flush()
+            access.check_row(session, model_class,
+                             sa_inspect(new_record).identity[0], 'create')
             session.commit()
 
             # Refresh to get generated IDs and other database defaults
@@ -263,6 +272,8 @@ def handle_create(app, model_class, params: Dict[str, Any], db_table=None) -> Di
             }
     except kitebase.transforms.ValidationError as e:
         return _invalid(e)
+    except AccessDenied:
+        raise
     except Exception as e:
         return {"status": "error", "message": f"Creation failed: {str(e)}", "code": 400}
 
@@ -285,8 +296,10 @@ def handle_update(app, model_class, params: Dict[str, Any], db_table=None) -> Di
     with app.get_session() as session:
         # Find the record
         record = session.get(model_class, record_id)
-        if not record:
+        if not record or not access.row_visible(session, model_class, record_id):
             return {"status": "error", "message": f"Record with id {record_id} not found", "code": 404}
+        # On the row as stored: otherwise the change itself could satisfy it
+        access.check_row(session, model_class, record_id, 'update')
 
         # Update record attributes (skip read-only hybrid/virtual properties)
         for key, value in record_data.items():
@@ -318,8 +331,9 @@ def handle_delete(app, model_class, params: Dict[str, Any], db_table=None) -> Di
     with app.get_session() as session:
         # Find the record
         record = session.get(model_class, record_id)
-        if not record:
+        if not record or not access.row_visible(session, model_class, record_id):
             return {"status": "error", "message": f"Record with id {record_id} not found", "code": 404}
+        access.check_row(session, model_class, record_id, 'delete')
 
         try:
             session.delete(record)

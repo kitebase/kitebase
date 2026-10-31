@@ -473,8 +473,23 @@ def save_tree(data: Dict[str, Any]) -> Dict[str, Any]:
         deletes: List[Tuple[int, str, Any]] = []
 
         with app.get_session() as session:
+            root_class, _, _ = _table_of(app, aggregate.model)
+            action = _root_action(root_node)
+            # A row condition is judged on the root as stored, before the change
+            root_key = root_node.get('id')
+            # a malformed root is _save_node's to refuse, in its own words
+            if action != 'create' and isinstance(root_key, int) and root_key > 0 \
+                    and str(root_node.get('op') or 'update').lower() in _OPS:
+                if not access.row_visible(session, root_class, root_key):
+                    return {'status': 'error', 'code': 404,
+                            'message': f"No record {root_key} in '{aggregate.model}'"}
+                access.check_row(session, root_class, root_key, action)
+
             root_id = _save_node(app, session, aggregate, root_node, {}, {},
                                  id_map, deletes, 0)
+            # and a created root as inserted, before anything is committed
+            if action == 'create':
+                access.check_row(session, root_class, root_id, 'create')
 
             # Backwards: a grandchild before its child, a child before its parent.
             for _depth, model_name, record_id in sorted(deletes, key=lambda d: -d[0]):

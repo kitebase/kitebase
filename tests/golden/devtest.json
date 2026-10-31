@@ -3373,7 +3373,33 @@
   "library.desk": {
    "label": "Loans desk",
    "grants": [
-    "Loan.*",
+    {
+     "Loan": [
+      "read",
+      "create"
+     ],
+     "$plugin": "library"
+    },
+    {
+     "Loan.update": {
+      "where": {
+       "returned_at": [
+        "is null"
+       ]
+      }
+     },
+     "$plugin": "library"
+    },
+    {
+     "Loan.delete": {
+      "where": {
+       "returned_at": [
+        "is null"
+       ]
+      }
+     },
+     "$plugin": "library"
+    },
     "LibraryUser.*",
     "Book.read",
     "Review.read",
@@ -3388,6 +3414,7 @@
     "library.desk"
    ],
    "grants": [
+    "Loan.*",
     "Review.*",
     "playground.demos",
     "User.*",

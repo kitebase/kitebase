@@ -101,3 +101,34 @@ def test_get_session_restores_context_on_exception(db):
             raise RuntimeError('boom')
 
     assert BaseApp.get_context() is None
+
+
+# ── Context fields registered by plugins ─────────────────────────────────────
+
+@pytest.fixture
+def context_registry():
+    from kitebase import server_utils
+    fields = list(server_utils._REGISTERED_CONTEXT_FIELDS)
+    owners = dict(server_utils._CONTEXT_FIELD_OWNERS)
+    yield server_utils
+    server_utils._REGISTERED_CONTEXT_FIELDS[:] = fields
+    server_utils._CONTEXT_FIELD_OWNERS.clear()
+    server_utils._CONTEXT_FIELD_OWNERS.update(owners)
+
+
+def test_a_field_registered_again_by_its_owner_is_harmless(context_registry):
+    context_registry.add_context_field('branch_id', owner='a')
+    context_registry.add_context_field('branch_id', owner='a')
+    assert context_registry._REGISTERED_CONTEXT_FIELDS.count('branch_id') == 1
+
+
+def test_two_owners_of_one_field_collide(context_registry):
+    context_registry.add_context_field('branch_id', owner='a')
+    with pytest.raises(ValueError, match='both a and b'):
+        context_registry.add_context_field('branch_id', owner='b')
+
+
+@pytest.mark.parametrize('name', ['exp', 'src', 'username'])
+def test_a_field_cannot_take_a_name_of_the_token(context_registry, name):
+    with pytest.raises(ValueError, match='token uses that name'):
+        context_registry.add_context_field(name, owner='a')

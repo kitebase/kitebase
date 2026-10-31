@@ -35,6 +35,17 @@ of a serialised record, and naming it anywhere in a query is refused; without
 `write` a value sent for it is dropped, so a create gets the default and an
 update leaves it alone. The form that sends the whole record, read-only
 fields included, still saves.
+
+Rows can be narrower than their table: the guard may hold a table permission
+only where a condition holds (`Guard.conditions`), in the querybuilder's
+filter syntax, with `$ctx.<field>` standing for a value of the user's
+context. A query applies the condition of `read` to its main table; another
+table it reads with a conditional `read` is refused, unless only its label is
+read and the label is held without condition. By key, a row outside the
+condition of `read` does not exist (404), and one outside the condition of
+the action is refused (403), judged on the row before the change; a created
+row must satisfy the condition of `create` as it was inserted. The rows of a
+collection follow their root, as they do for the table permissions.
 """
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -80,6 +91,17 @@ class Guard:
     def allows_undeclared(self, endpoint: str, context: Optional[Dict[str, Any]]) -> bool:
         """An endpoint that declared no access: code that may reach the data unchecked."""
         raise NotImplementedError
+
+    def conditions(self, permission: str,
+                   context: Optional[Dict[str, Any]]) -> Optional[List[Any]]:
+        """
+        For a permission `allows()` grants: None when it holds on every row,
+        or the conditions it holds under, any one of them enough. Each is a
+        filter in the querybuilder's syntax: a mapping of column to value
+        (all must hold) or a list of conditions. Only asked of the four row
+        actions of a table, `read`, `create`, `update` and `delete`.
+        """
+        return None
 
     def diagnose(self, app: Any) -> List[Dict[str, Any]]:
         """What `check` should report about the policy, as diagnostics issues:
@@ -285,17 +307,124 @@ def label_columns(model_name: str, app: Any = None) -> FrozenSet[str]:
     return frozenset(names - set(table.secret_columns))
 
 
-def check_read(model_name: str, columns: Iterable[str]) -> None:
+def check_read(model_name: str, columns: Iterable[str], main: bool = False) -> Optional[List[Any]]:
     """
     Reading `columns` of a model: `<Model>.read`, or `<Model>.label` when
     every column is a label column. The refusal names `read`, the permission
     that would have answered.
+
+    Returns the row condition the read holds under, for the `main` table of
+    a query, which the caller applies; None when every row may be read. A
+    conditional read of any other table is refused: the condition would have
+    to go into its join, and outside the main table nothing applies it.
     """
-    if can(f'{model_name}.read'):
-        return
-    if set(columns) <= label_columns(model_name) and can(f'{model_name}.label'):
-        return
-    raise AccessDenied(f'{model_name}.read')
+    permission = f'{model_name}.read'
+    if can(permission):
+        rule = row_conditions(model_name, 'read')
+        if rule is None:
+            return None
+    else:
+        rule = None
+    if (set(columns) <= label_columns(model_name) and can(f'{model_name}.label')):
+        return None
+    if rule is not None and main:
+        return rule
+    if rule is not None:
+        raise AccessDenied(permission, f"Not allowed: {permission} holds only on some "
+                                       f"rows, and {model_name} is not the table queried")
+    raise AccessDenied(permission)
+
+
+# ── Row conditions ──────────────────────────────────────────────────────────
+
+ROW_ACTIONS = ('read', 'create', 'update', 'delete')
+CTX_PREFIX = '$ctx.'
+
+
+def _bind_context(value: Any, permission: str, context: Dict[str, Any]) -> Any:
+    """`$ctx.<field>` replaced by the context's value. A field that is missing,
+    or null, refuses: a null in a security condition can come to mean no
+    condition at all."""
+    if isinstance(value, str) and value.startswith(CTX_PREFIX):
+        field = value[len(CTX_PREFIX):]
+        if context.get(field) is None:
+            raise AccessDenied(permission, f"Not allowed: {permission} holds under a "
+                                           f"condition on '{field}', which the context "
+                                           f"does not carry")
+        return context[field]
+    if isinstance(value, list):
+        return [_bind_context(v, permission, context) for v in value]
+    if isinstance(value, dict):
+        return {k: _bind_context(v, permission, context) for k, v in value.items()}
+    return value
+
+
+def _as_conditions(where: Any) -> List[Any]:
+    """A `where` as one AND group: a mapping is one condition per column."""
+    if isinstance(where, dict):
+        return [{k: v} for k, v in where.items()]
+    if isinstance(where, list):
+        return list(where)
+    raise ValueError(f"A row condition is a mapping or a list, not {where!r}")
+
+
+def row_conditions(model_name: str, action: str) -> Optional[List[Any]]:
+    """
+    The condition the current user holds `<Model>.<action>` under, as one
+    querybuilder condition group with the context's values in place; None
+    when the permission holds on every row. Asked after the permission
+    itself: it does not say whether the user holds it.
+    """
+    if action not in ROW_ACTIONS:
+        return None
+    permission = f'{model_name}.{action}'
+    context = _context() or {}
+    wheres = _guard().conditions(permission, context)
+    if not wheres:
+        return None
+    return ['op', 'or'] + [_as_conditions(_bind_context(w, permission, context))
+                           for w in wheres]
+
+
+def row_clause(model_name: str, action: str, app: Any = None) -> Any:
+    """`row_conditions` compiled for the model: a clause, or None."""
+    rule = row_conditions(model_name, action)
+    if rule is None:
+        return None
+    return compile_conditions(model_name, rule, app)
+
+
+def compile_conditions(model_name: str, rule: List[Any], app: Any = None) -> Any:
+    from kitebase.querybuilder import condition_clause
+    if app is None:
+        import kitebase.utils
+        app = kitebase.utils.get_app()
+    return condition_clause(app.models, model_name, rule)
+
+
+def _row_matches(session: Any, model_class: Any, record_id: Any, clause: Any) -> bool:
+    from sqlalchemy import inspect, literal, select
+    key = inspect(model_class).primary_key[0]
+    statement = (select(literal(1)).select_from(model_class)
+                 .where(key == record_id).where(clause))
+    return session.execute(statement).first() is not None
+
+
+def row_visible(session: Any, model_class: Any, record_id: Any) -> bool:
+    """Whether the current user's `read` reaches the row with this key. A row
+    outside it is not found, rather than refused: it does not exist for them."""
+    clause = row_clause(model_class.__name__, 'read')
+    return clause is None or _row_matches(session, model_class, record_id, clause)
+
+
+def check_row(session: Any, model_class: Any, record_id: Any, action: str) -> None:
+    """Raise AccessDenied unless the row with this key satisfies the condition
+    of `action`. Before a change, on the row as stored; after a create, on
+    the row as inserted (flushed, not committed)."""
+    clause = row_clause(model_class.__name__, action)
+    if clause is not None and not _row_matches(session, model_class, record_id, clause):
+        permission = f'{model_class.__name__}.{action}'
+        raise AccessDenied(permission, f"Not allowed: {permission} on this record")
 
 
 # ── Column groups ───────────────────────────────────────────────────────────

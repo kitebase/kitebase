@@ -343,10 +343,33 @@ def handle_auth(
 # Fields a plugin adds to every login context, beside the configured ones: the
 # plugin that reads a column off the user puts it in the token itself.
 _REGISTERED_CONTEXT_FIELDS: list = []
+# Who registered each field, by module: two owners of one name is a collision.
+_CONTEXT_FIELD_OWNERS: Dict[str, str] = {}
+
+# The claims the token carries for itself: a field by one of these names would
+# overwrite them, or be overwritten.
+RESERVED_CONTEXT_FIELDS = frozenset({'username', 'src', 'exp', 'last_refresh', 'op_date'})
 
 
-def add_context_field(name: str) -> None:
-    """Put a column of the user table in every login context and token."""
+def add_context_field(name: str, owner: Optional[str] = None) -> None:
+    """
+    Put a column of the user table in every login context and token.
+
+    The context is what a row condition compares with (`$ctx.<name>`), so its
+    names are not shared: a name another module already registered, or one
+    the token uses for itself, is refused naming both. `owner` defaults to
+    the calling module; registering again from the same one is harmless.
+    """
+    if owner is None:
+        owner = sys._getframe(1).f_globals.get('__name__', '?')
+    if name in RESERVED_CONTEXT_FIELDS:
+        raise ValueError(f"Context field '{name}' ({owner}): the token uses that name "
+                         f"for itself")
+    known = _CONTEXT_FIELD_OWNERS.get(name)
+    if known is not None and known != owner:
+        raise ValueError(f"Context field '{name}' is registered by both {known} "
+                         f"and {owner}")
+    _CONTEXT_FIELD_OWNERS[name] = owner
     if name not in _REGISTERED_CONTEXT_FIELDS:
         _REGISTERED_CONTEXT_FIELDS.append(name)
 

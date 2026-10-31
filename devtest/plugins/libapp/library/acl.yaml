@@ -5,8 +5,10 @@
 #   catalog    the catalogue and nothing of the loans: a smaller menu, and the
 #              Loans tab of "Book + reviews" taken out of the page
 #   desk       the loans counter: members and loans, books read only, every
-#              other table shown by its label
-#   librarian  both, through `implies`, plus the reviews and the demos of
+#              other table shown by its label; a loan changes or goes only
+#              while it is open, a record rule (a returned one answers 403)
+#   librarian  both, through `implies`, and every loan: a grant with no
+#              condition takes in the desk's; plus the reviews and the demos of
 #              the Playground (playground.demos, declared by panels); edits
 #              the users and sees their roles, read only: `acl.write`, which
 #              changes roles and administrators, stays with the administrator
@@ -29,7 +31,9 @@ roles:
   library.desk:
     label: Loans desk
     grants:
-      - Loan.*
+      - Loan: [read, create]
+      - Loan.update: { where: { returned_at: [is null] } }
+      - Loan.delete: { where: { returned_at: [is null] } }
       - LibraryUser.*
       - Book.read
       - Review.read
@@ -39,6 +43,7 @@ roles:
     label: Librarian
     implies: [library.catalog, library.desk]
     grants:
+      - Loan.*
       - Review.*
       - playground.demos
       - User.*
