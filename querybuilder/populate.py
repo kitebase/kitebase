@@ -61,7 +61,13 @@ def populate_sample_data(db_path):
                               units_in_stock=53, units_on_order=0, reorder_level=0, discontinued=False),
             models['Product'](product_id=5, product_name="Grandma's Boysenberry Spread", supplier_id=3, category_id=2,
                               quantity_per_unit="12 - 8 oz jars", unit_price=Decimal("25.00"),
-                              units_in_stock=120, units_on_order=0, reorder_level=25, discontinued=False)
+                              units_in_stock=120, units_on_order=0, reorder_level=25, discontinued=False),
+            models['Product'](product_id=6, product_name="Uncle Bob's Organic Dried Pears", supplier_id=3,
+                              category_id=3, quantity_per_unit="12 - 1 lb pkgs.", unit_price=Decimal("30.00"),
+                              units_in_stock=15, units_on_order=0, reorder_level=10, discontinued=False),
+            models['Product'](product_id=7, product_name="Queso Cabrales", supplier_id=2, category_id=4,
+                              quantity_per_unit="1 kg pkg.", unit_price=Decimal("21.00"),
+                              units_in_stock=0, units_on_order=0, reorder_level=30, discontinued=True)
         ]
         session.add_all(products)
 
@@ -77,7 +83,12 @@ def populate_sample_data(db_path):
             models['Customer'](customer_id="ANTON", company_name="Antonio Moreno Taquería",
                                contact_name="Antonio Moreno", contact_title="Owner",
                                address="Mataderos 2312", city="México D.F.",
-                               postal_code="05023", country="Mexico", phone="(5) 555-3932")
+                               postal_code="05023", country="Mexico", phone="(5) 555-3932"),
+            # No orders: the left join example keeps it, an inner join would not
+            models['Customer'](customer_id="BLAUS", company_name="Blauer See Delikatessen",
+                               contact_name="Hanna Moos", contact_title="Sales Representative",
+                               address="Forsterstr. 57", city="Mannheim",
+                               postal_code="68306", country="Germany", phone="0621-08460")
         ]
         session.add_all(customers)
 
@@ -104,8 +115,8 @@ def populate_sample_data(db_path):
                                region="WA", postal_code="98033", country="USA",
                                home_phone="(206) 555-3412", extension="3355")
         ]
-        employees[1].reports_to = 2  # Nancy reports to Andrew
-        employees[2].reports_to = 2  # Janet riporta ad Andrew
+        employees[0].reports_to = 2  # Nancy reports to Andrew
+        employees[2].reports_to = 2  # Janet reports to Andrew
 
         session.add_all(employees)
 
@@ -116,56 +127,58 @@ def populate_sample_data(db_path):
         ]
         session.add_all(shippers)
 
-        orders = [
-            models['Order'](order_id=10248, customer_id="ALFKI", employee_id=1,
-                            order_date=datetime.datetime(1996, 7, 4),
-                            required_date=datetime.datetime(1996, 8, 1),
-                            shipped_date=datetime.datetime(1996, 7, 16),
-                            ship_via=3, freight=Decimal("32.38"),
-                            ship_name="Alfreds Futterkiste",
-                            ship_address="Obere Str. 57", ship_city="Berlin",
-                            ship_postal_code="12209", ship_country="Germany"),
-            models['Order'](order_id=10249, customer_id="ANATR", employee_id=3,
-                            order_date=datetime.datetime(1996, 7, 5),
-                            required_date=datetime.datetime(1996, 8, 16),
-                            shipped_date=datetime.datetime(1996, 7, 10),
-                            ship_via=1, freight=Decimal("11.61"),
-                            ship_name="Ana Trujillo Emparedados y helados",
-                            ship_address="Avda. de la Constitución 2222",
-                            ship_city="México D.F.", ship_postal_code="05021",
-                            ship_country="Mexico"),
-            models['Order'](order_id=10250, customer_id="ANTON", employee_id=2,
-                            order_date=datetime.datetime(1996, 7, 8),
-                            required_date=datetime.datetime(1996, 8, 5),
-                            shipped_date=datetime.datetime(1996, 7, 12),
-                            ship_via=2, freight=Decimal("65.83"),
-                            ship_name="Antonio Moreno Taquería",
-                            ship_address="Mataderos 2312",
-                            ship_city="México D.F.", ship_postal_code="05023",
-                            ship_country="Mexico")
+        # order_id, customer, employee, ordered, shipped (None: not yet), shipper, freight,
+        # lines as (product, unit price, quantity, discount). Two orders on 5 March
+        # 1997 at different hours show that a day in a filter is a whole day, the one
+        # on the afternoon of 31 March that an upper bound "le 31 March" keeps it.
+        order_rows = [
+            (10248, "ALFKI", 1, (1997, 1, 6), (1997, 1, 14), 3, "32.38",
+             [(1, "14.00", 12, 0), (3, "9.80", 10, 0)]),
+            (10249, "ANATR", 3, (1997, 1, 20), (1997, 1, 24), 1, "11.61",
+             [(2, "15.20", 5, 0), (4, "17.60", 9, 0)]),
+            (10250, "ANTON", 2, (1997, 2, 11), (1997, 2, 15), 2, "65.83",
+             [(5, "16.80", 20, 0.15)]),
+            (10251, "ALFKI", 1, (1997, 3, 5, 10, 15), (1997, 3, 12), 2, "41.34",
+             [(1, "18.00", 30, 0.05), (6, "30.00", 6, 0)]),
+            (10252, "ANTON", 3, (1997, 3, 5, 16, 40), (1997, 3, 7), 1, "51.30",
+             [(4, "22.00", 15, 0.05), (7, "21.00", 10, 0)]),
+            (10253, "ANATR", 1, (1997, 3, 31, 14, 20), (1997, 4, 8), 3, "58.17",
+             [(2, "19.00", 40, 0.1), (5, "25.00", 12, 0)]),
+            (10254, "ALFKI", 2, (1997, 6, 10), (1997, 6, 23), 2, "22.98",
+             [(3, "10.00", 25, 0), (7, "21.00", 8, 0.05)]),
+            (10255, "ANTON", 1, (1997, 9, 2), (1997, 9, 5), 1, "148.33",
+             [(1, "18.00", 50, 0.1), (2, "19.00", 30, 0.1), (4, "22.00", 20, 0)]),
+            (10256, "ANATR", 3, (1997, 11, 18), (1997, 11, 28), 3, "13.97",
+             [(5, "25.00", 10, 0)]),
+            (10257, "ALFKI", 3, (1998, 1, 15), (1998, 1, 21), 2, "81.91",
+             [(1, "18.00", 20, 0), (5, "25.00", 15, 0.05)]),
+            (10258, "ANTON", 2, (1998, 2, 3), None, 1, "140.51",
+             [(2, "19.00", 50, 0.2), (6, "30.00", 6, 0)]),
         ]
-        session.add_all(orders)
-
-        order_details = [
-            models['OrderDetail'](order_id=10248, product_id=1, unit_price=Decimal("14.00"),
-                                  quantity=12, discount=0),
-            models['OrderDetail'](order_id=10248, product_id=3, unit_price=Decimal("9.80"),
-                                  quantity=10, discount=0),
-            models['OrderDetail'](order_id=10249, product_id=2, unit_price=Decimal("15.20"),
-                                  quantity=5, discount=0),
-            models['OrderDetail'](order_id=10249, product_id=4, unit_price=Decimal("17.60"),
-                                  quantity=9, discount=0),
-            models['OrderDetail'](order_id=10250, product_id=5, unit_price=Decimal("16.80"),
-                                  quantity=20, discount=0)
-        ]
-        session.add_all(order_details)
+        customers_by_id = {c.customer_id: c for c in customers}
+        for (order_id, customer_id, employee_id, ordered, shipped, shipper, freight,
+             lines) in order_rows:
+            customer = customers_by_id[customer_id]
+            ordered = datetime.datetime(*ordered)
+            session.add(models['Order'](
+                order_id=order_id, customer_id=customer_id, employee_id=employee_id,
+                order_date=ordered, required_date=ordered + datetime.timedelta(days=28),
+                shipped_date=datetime.datetime(*shipped) if shipped else None,
+                ship_via=shipper, freight=Decimal(freight),
+                ship_name=customer.company_name, ship_address=customer.address,
+                ship_city=customer.city, ship_postal_code=customer.postal_code,
+                ship_country=customer.country))
+            for product_id, price, quantity, discount in lines:
+                session.add(models['OrderDetail'](
+                    order_id=order_id, product_id=product_id, unit_price=Decimal(price),
+                    quantity=quantity, discount=discount))
 
         session.commit()
         return True
 
     except Exception as e:
         session.rollback()
-        print(f"Errore durante l'inserimento dei dati: {e}")
+        print(f"Error while inserting the sample data: {e}")
         return False
 
     finally:

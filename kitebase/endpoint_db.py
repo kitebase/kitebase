@@ -4,7 +4,7 @@ import kitebase.transforms
 from kitebase import access
 from kitebase.access import AccessDenied
 from kitebase.endpoints import endpoint
-from kitebase.querybuilder import DynamicQueryBuilder
+from kitebase.querybuilder import DynamicQueryBuilder, coerce_temporal, temporal_condition
 from kitebase.i18n import _, _f
 from typing import Dict, Any, Optional
 from sqlalchemy import and_, or_, desc, asc
@@ -413,12 +413,12 @@ def build_filters(model_class, query_filters: Dict[str, Any]) -> Optional[Any]:
         access.check_columns(model_class.__name__, [field])
 
         column = getattr(model_class, field)
-        period = kitebase.utils.temporal_condition(
+        period = temporal_condition(
             column, _PERIOD_OPS.get(operator, operator), value)
         if period is not None:
             conditions.append(period)
             continue
-        value = kitebase.utils.coerce_temporal(column, value)
+        value = coerce_temporal(column, value)
 
         if operator == 'eq':
             conditions.append(column == value)

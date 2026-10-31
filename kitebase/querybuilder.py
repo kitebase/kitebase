@@ -4,6 +4,10 @@ Dynamic Query Builder for SQLAlchemy.
 This module provides a flexible and powerful way to build SQLAlchemy queries from JSON objects.
 It supports various SQL features including joins, filters, grouping, and ordering,
 with both verbose and concise syntax options, and works with dynamic table names.
+
+The file also works on its own, copied out of kitebase next to any SQLAlchemy
+models: it then needs nothing but SQLAlchemy. Everything it takes from the
+framework is imported in the block below and nowhere else.
 """
 
 import json
@@ -17,17 +21,160 @@ from sqlalchemy import and_, or_, desc, asc, false, select, func, text, TextClau
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import Select
+from sqlalchemy.sql import Select, sqltypes
 from sqlalchemy.sql.elements import ClauseElement
 from sqlalchemy.ext.declarative import DeclarativeMeta
 
-from kitebase import access
-from kitebase.utils import coerce_temporal, search_info, secret_columns, table_definition, temporal_condition
+# Inside the package the framework is required: a broken import must fail here,
+# not fall back to "everything allowed". Copied out alone, the module has no
+# access control, no table definitions and no query behaviors to apply.
+if __name__.startswith('kitebase.'):
+    from kitebase import access
+    from kitebase import utils as _kitebase_utils
+    from kitebase.utils import search_info, secret_columns, table_definition
+
+    def _query_behaviors() -> List[Any]:
+        return _kitebase_utils.get_app().query_behaviors
+else:
+    class access:  # noqa: N801 - stands in for the module
+        @staticmethod
+        def columns_read(*args: Any, **kwargs: Any) -> Dict[str, Set[str]]:
+            return {}
+
+        @staticmethod
+        def check_read(*args: Any) -> None:
+            pass
+
+        @staticmethod
+        def check_columns(*args: Any) -> None:
+            pass
+
+        @staticmethod
+        def unreadable_columns(*args: Any) -> frozenset:
+            return frozenset()
+
+    def table_definition(model_class: Any, db_table: Any = None) -> Any:
+        return db_table
+
+    def secret_columns(db_table: Any) -> frozenset:
+        return frozenset()
+
+    def search_info(db_table: Any) -> Dict[str, Any]:
+        return {'display_field': None, 'search_fields': [], 'search_pk': None}
+
+    def _query_behaviors() -> List[Any]:
+        return []
+
 
 # The escape character LIKE patterns are built with. Postgres already reads a
 # backslash this way; stating it makes every backend agree, and makes the
 # escaping a caller does to a user's own '%' actually take effect.
 LIKE_ESCAPE = '\\'
+
+
+_TEMPORAL_PARSERS = (
+    (sqltypes.DateTime, datetime.datetime.fromisoformat),
+    (sqltypes.Date, lambda s: datetime.date.fromisoformat(s[:10])),
+    (sqltypes.Time, datetime.time.fromisoformat),
+)
+
+
+def coerce_temporal(column, value):
+    """
+    Turn ISO strings into the date/time objects a temporal column compares with.
+
+    A filter value arrives from JSON as text. Bound as text, SQLite compares it
+    with the stored text, and the two spellings differ: stored values use a
+    space between date and time, a browser sends a 'T', so every timestamp of a
+    day sorts before that day's '2026-09-29T08:10' and ranges miss it silently.
+    Other values and columns pass through unchanged; a list is coerced item by
+    item (between, in).
+    """
+    kind = getattr(column, 'type', None)
+    if isinstance(kind, sqltypes.TypeDecorator):
+        kind = kind.impl
+    parse = next((p for t, p in _TEMPORAL_PARSERS if isinstance(kind, t)), None)
+    if parse is None:
+        return value
+
+    def one(v):
+        return parse(v) if isinstance(v, str) and v else v
+
+    if isinstance(value, (list, tuple)):
+        return [one(v) for v in value]
+    return one(value)
+
+
+# Precision of an ISO datetime string, read from its length: a day, a minute
+# ('2026-09-29T08:10') or a second. Anything finer is an instant.
+_SPAN_STEPS = {
+    10: datetime.timedelta(days=1),
+    16: datetime.timedelta(minutes=1),
+    19: datetime.timedelta(seconds=1),
+}
+
+
+def _datetime_span(value):
+    """(start, end) of the period an ISO string names, end excluded; None for an instant."""
+    if not isinstance(value, str):
+        return None
+    step = _SPAN_STEPS.get(len(value))
+    if step is None:
+        return None
+    start = datetime.datetime.fromisoformat(value)
+    return start, start + step
+
+
+def temporal_condition(column, op: str, value):
+    """
+    A filter on a DateTime column whose value is a period, or None.
+
+    A value counts for its precision: '2026-09-29' is the whole day, '08:10'
+    the whole minute. Equality becomes "within the period", and each bound
+    takes the side of the period that keeps it inclusive: `le 30/9` ends where
+    1/10 starts, so nobody writes 23:59 and loses 23:59:30. The upper end is
+    always excluded, which is what makes consecutive periods tile exactly.
+
+    Returns None when the column is not a DateTime, the operator is not a
+    comparison, or a value is an instant: the caller then compares as usual.
+    """
+    kind = getattr(column, 'type', None)
+    if isinstance(kind, sqltypes.TypeDecorator):
+        kind = kind.impl
+    if not isinstance(kind, sqltypes.DateTime):
+        return None
+
+    if op == 'between':
+        if not isinstance(value, (list, tuple)) or len(value) != 2:
+            return None
+        lo, hi = _datetime_span(value[0]), _datetime_span(value[1])
+        if lo is None or hi is None:
+            return None
+        return and_(column >= lo[0], column < hi[1])
+
+    if op == 'in':
+        spans = [_datetime_span(v) for v in value] if isinstance(value, (list, tuple)) else [None]
+        if not spans or None in spans:
+            return None
+        return or_(*(and_(column >= s, column < e) for s, e in spans))
+
+    span = _datetime_span(value)
+    if span is None:
+        return None
+    start, end = span
+    if op == 'eq':
+        return and_(column >= start, column < end)
+    if op == 'ne':
+        return or_(column < start, column >= end)
+    if op == 'lt':
+        return column < start
+    if op == 'le':
+        return column < end
+    if op == 'gt':
+        return column >= end
+    if op == 'ge':
+        return column >= start
+    return None
 
 
 def _escape_like(text: str) -> str:
@@ -465,13 +612,7 @@ class DynamicQueryBuilder:
         # check at the end of this method, which `resolve` does not skip.
         main_model = self.models[main_table]
         if not query_def.get('resolve'):
-            # Lazy import: keeps querybuilder usable standalone without kitebase stack
-            try:
-                import kitebase.utils
-                behaviors = kitebase.utils.get_app().query_behaviors
-            except Exception:
-                behaviors = []
-            for behavior in behaviors:
+            for behavior in _query_behaviors():
                 if behavior.applies_to(main_model):
                     query = behavior.apply(main_model, query_def, query)
 
