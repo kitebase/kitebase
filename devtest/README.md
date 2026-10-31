@@ -1,7 +1,9 @@
-# Kitebase Testing and Flask Server
+# devtest
 
-Under the `devtest` directory you will find useful scripts written to test
-Kitebase library.
+The sandbox application of the library: a small book catalogue with loans,
+members and reviews, where every feature is tried and shown before an
+application uses it. It is a regular application (`docs/APPLICATION.md`),
+with `devtest.py` in the place of `kite.py`.
 
 ## The shared plugins
 
@@ -39,106 +41,49 @@ with what each is meant to see, and the login page says whom to try.
 A database made before them gets them with `devtest.seed_staff`; a new one has
 them from the seed. `kitebase check` lists what the roles leave uncovered.
 
-## Testing
+## Running it
 
-The `devtest.py` script, starts Kitebase and if needed regenerate the source
-code for `model.py` and the database `devtest.sqlite`.
-
-The perform some tests on the kitebase system.
-
-### Usage
+From this directory, in the environment of the `server` repository:
 
 ```bash
-python devtest.py
+uv run devtest.py            # generate model.py, seed the database, print a smoke test
+uv run server_fastapi.py     # the API on http://localhost:8300
+uv run server_flask.py       # the same routes, on Flask
 ```
 
-## Flask Server
+`devtest.py` is the bootstrap both servers import: it loads the plugins,
+regenerates `model.py` from the YAML schema and fills an empty
+`devtest.sqlite` with the sample data, so the tests and the two servers always
+run the same application. Run on its own, it also prints the merged panels and
+a few queries.
 
-The `server_flask.py` script provides a Flask-based API server for interacting
-with Kitebase.
-
-Please read the main README.md file.
-
-### Features
-
-- RESTful API for Kitebase functionality
-- Authentication with JWT tokens
-- CRUD operations for all database models
-- Dynamic query builder support
-
-### Setup and Installation
-
-#### Prerequisites
-
-- Python 3.7+
-- Required dependencies (see requirements.txt)
-
-#### Installation
-
-Read the main README.md file.
-
-#### Configuration
-
-The server is configured via `config.yaml`. Key sections include:
-
-- Basic application info (name, version, etc.)
-- Database connection settings
-- Authentication configuration
-
-### Usage
-
-#### Starting the Server
+It carries the library commands as well (`cli: devtest.py` in `config.yaml`):
 
 ```bash
-python flask_server.py
+uv run kitebase db-check           # what differs between the database and the schema
+uv run kitebase db-sync --dry-run  # the DDL it would run
+uv run kitebase db-sync            # apply it: adds only, never drops
 ```
 
-The server will start on port 5000 by default.
+## The API
 
-### API Endpoints
+Every server of the library exposes the same routes, under the `prefix` of
+`config.yaml` (`kitebase` here):
 
-#### Authentication
+```
+GET  /kitebase/info                    public: name, title, sign-in text
+POST /kitebase/auth/login              username and password -> JWT
+POST /kitebase/auth/update_context     a new JWT with the context changed
+POST /kitebase/endpoint/{op}           the dispatcher: every other operation
+POST /kitebase/download/{op}           an operation that answers with a file
+```
 
-- `POST /api/auth/login`: Authenticate with username and password
+`db`, `query`, `get_page` and the rest are operations of the dispatcher, not
+routes of their own. A new one is a function with the `@endpoint` decorator,
+in a plugin or, as `add`, in `devtest.py` itself; nothing is added to the servers.
 
-#### Database Operations
+## The client
 
-- `GET /api/db/<table>`: Get all records from a table
-- `GET /api/db/<table>/<id>`: Get a single record by ID
-- `POST /api/db/<table>`: Create a new record
-- `PUT /api/db/<table>/<id>`: Update a record
-- `DELETE /api/db/<table>/<id>`: Delete a record
-
-#### Query Builder
-
-- `POST /api/query`: Execute a dynamic query
-
-#### Generic Endpoint
-
-- `POST /api/endpoint/<operation>`: Call any Kitebase operation
-readmet user profile
-- `GET /api/users/me`: Alias for profile
-
-#### Testing with Jupyter Notebook
-
-The included Jupyter notebook (`server-test.ipynb`) demonstrates how to interact with the API. It covers:
-
-1. Authentication and token management
-2. Basic CRUD operations
-3. Advanced queries with the query builder
-4. Using the generic endpoint
-5. Error handling
-6. Batch operations
-7. Filtering and aggregations
-8. Working with relationships
-
-### Extending the Server
-
-#### Adding New Endpoints
-
-To add a new endpoint, update the Flask server (`flask_server.py`) with your new route.
-
-#### Adding Kitebase Endpoints
-
-To add new Kitebase endpoints, create a Python file with the `@endpoint` decorator and place it in your plugins directory.
-
+`pnpm dev` in the `client` repository opens the playground on this
+application; `pnpm build` puts the compiled shell in `clientui/`, which both
+servers then serve at `/`.
