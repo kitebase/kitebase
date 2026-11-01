@@ -29,14 +29,14 @@ tables:
         length: 50
         unique: false
 
-      # Uploaded before the book is saved too: covers lay out by date.
+      # Uploaded before the book is saved too: book files lay out by date.
       - name: cover
         type: Image
-        root: covers
+        root: books
 
       - name: sample
         type: File
-        root: covers
+        root: books
         accept: [pdf]
         label: Sample chapter
 

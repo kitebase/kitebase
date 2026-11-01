@@ -192,6 +192,18 @@ pages:
                 - name: price
                   width: 15%
 
+        # The media bench: a cover uploaded on a new book too, a PDF that
+        # opens in the browser's viewer. A section of its own, so the fields
+        # above keep the full width.
+        - id: media
+          type: section
+          label: Files
+          columns:
+            - id: files
+              fields:
+                - name: cover
+                - name: sample
+
         # ── Buttons: a face of this buffer, or something to do ──────────────
         #    A button opens what belongs to the record being edited, and never
         #    another record — the FK combobox already carries that gesture
@@ -343,6 +355,10 @@ views:
       order_by: [title]
     columns:
       - field: id
+      # The rendition the server makes on the first request, never the original.
+      - field: cover
+        variant: thumb
+        width: 64
       - field: title
       - field: Publisher.name      # joined field — Model.field notation
         title: Publisher
@@ -404,6 +420,7 @@ views:
       model: Book
       id: $trigger.id              # set from trigger (row_click event)
     fields:
+      - name: cover
       - name: title
       - name: isbn
       - name: publisher_id

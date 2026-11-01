@@ -552,7 +552,98 @@ def test_a_bad_signature_is_403_and_a_missing_file_404(signed, tmp_path):
     assert get(signed, split(signed.url('covers:gone.png'))).status == 404
 
 
-def test_a_variant_is_never_answered_with_the_original(signed, tmp_path):
+def test_without_a_cache_a_variant_is_501_never_the_original(signed, tmp_path):
     stored(signed, tmp_path, 'a.png', PNG)
     reply = get(signed, split(signed.url('covers:a.png', 'thumb')))
     assert reply.status == 501 and reply.path is None
+
+
+# ── renditions ────────────────────────────────────────────────────────────────
+
+def image_bytes(size, fmt='PNG', mode='RGB'):
+    from io import BytesIO
+    from PIL import Image
+    buf = BytesIO()
+    Image.new(mode, size, 'red').save(buf, fmt)
+    return buf.getvalue()
+
+
+@pytest.fixture
+def cached(tmp_path):
+    m = Media({'roots': {'covers': {'path': str(tmp_path / 'covers')},
+                         'thumbs': {'path': str(tmp_path / 'thumbs')}},
+               'variants': {'thumb': {'fit': '96x96'}},
+               'cache': 'thumbs'})
+    m.set_signing_key('the-app-secret')
+    return m
+
+
+def test_a_variant_is_made_in_the_cache_and_fits_its_box(cached, tmp_path):
+    from PIL import Image
+    stored(cached, tmp_path, '2026/11/a.png', image_bytes((800, 400)))
+    reply = get(cached, split(cached.url('covers:2026/11/a.png', 'thumb')))
+    assert reply.status == 200
+    assert reply.path == tmp_path / 'thumbs' / 'thumb' / 'covers' / '2026/11/a.png'
+    assert reply.headers['Content-Type'] == 'image/png'
+    with Image.open(reply.path) as im:
+        assert im.size == (96, 48)
+
+
+def test_a_variant_is_made_once_and_again_when_the_original_is_newer(cached, tmp_path):
+    import os
+    stored(cached, tmp_path, 'a.jpg', image_bytes((300, 300), 'JPEG'))
+    url = split(cached.url('covers:a.jpg', 'thumb'))
+    made = get(cached, url).path.stat()
+    assert get(cached, url).path.stat().st_ino == made.st_ino
+    original = tmp_path / 'covers' / 'a.jpg'
+    os.utime(original, (made.st_mtime + 10, made.st_mtime + 10))
+    assert get(cached, url).path.stat().st_ino != made.st_ino
+
+
+def test_a_png_variant_keeps_its_transparency(cached, tmp_path):
+    from PIL import Image
+    stored(cached, tmp_path, 'a.png', image_bytes((200, 200), 'PNG', 'RGBA'))
+    with Image.open(get(cached, split(cached.url('covers:a.png', 'thumb'))).path) as im:
+        assert im.mode == 'RGBA'
+
+
+def test_a_variant_of_what_is_not_an_image_is_415(cached, tmp_path):
+    stored(cached, tmp_path, 'a.pdf', PDF)
+    assert get(cached, split(cached.url('covers:a.pdf', 'thumb'))).status == 415
+    stored(cached, tmp_path, 'lies.png', PNG)        # a PNG header and nothing more
+    assert get(cached, split(cached.url('covers:lies.png', 'thumb'))).status == 415
+
+
+def test_an_image_over_max_pixels_is_413_before_it_is_decoded(cached, tmp_path):
+    cached.max_pixels = 100 * 100
+    stored(cached, tmp_path, 'big.png', image_bytes((101, 100)))
+    reply = get(cached, split(cached.url('covers:big.png', 'thumb')))
+    assert reply.status == 413 and reply.path is None
+
+
+@pytest.mark.parametrize('config, why', [
+    ({'variants': {'thumb': {'fit': 'small'}}}, 'WIDTHxHEIGHT'),
+    ({'variants': {'thumb': {}}}, 'WIDTHxHEIGHT'),
+    ({'variants': {'thumb': {'fit': '0x10'}}}, 'WIDTHxHEIGHT'),
+    ({'cache': 'nowhere'}, 'not in media.roots'),
+])
+def test_variants_and_cache_are_checked_when_they_load(tmp_path, config, why):
+    with pytest.raises(MediaError, match=why):
+        Media({'roots': {'covers': {'path': str(tmp_path)}}, **config})
+
+
+def test_check_keeps_columns_out_of_the_cache_and_asks_for_one(cached, signed):
+    app = _App(cached, Book=_Table(_Col('cover', media='image', root='thumbs')))
+    assert codes(app) == [('cover', 'media-cache', 'error')]
+    app = _App(signed, Book=_Table(_Col('cover', media='image', root='covers')))
+    assert codes(app) == [('cache', 'media-cache', 'warning')]
+
+
+def test_the_client_learns_the_kind_limits_and_whether_to_save_first(media):
+    from kitebase.media import column_schema
+    image = column_schema(media, {'media': 'image', 'root': 'uploads', 'accept': ['png'],
+                                  'max_size': '1MB', 'resize': 2048, 'length': 255})
+    assert image == {'media': 'image', 'root': 'uploads', 'accept': ['png'],
+                     'resize': 2048, 'max_size': 1024 ** 2, 'needs_record': False}
+    assert column_schema(media, {'media': 'image', 'root': 'records'})['needs_record']
+    assert column_schema(media, {'media': 'files', 'root': 'records'})['needs_record']

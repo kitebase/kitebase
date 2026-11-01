@@ -66,7 +66,9 @@ dependencies = [
 flask = ["flask>=3.0"]
 # python-multipart: FastAPI reads the upload of a media file with it
 fastapi = ["fastapi", "uvicorn", "python-multipart"]
-dev = ["pytest", "flask>=3.0", "fastapi", "uvicorn", "httpx", "python-multipart"]
+# Pillow: the renditions of an image (thumb, medium), made on the first request
+media = ["Pillow>=10"]
+dev = ["pytest", "flask>=3.0", "fastapi", "uvicorn", "httpx", "python-multipart", "Pillow>=10"]
 
 [project.urls]
 Homepage = "https://github.com/kitebase/kitebase"

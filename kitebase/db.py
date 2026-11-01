@@ -453,6 +453,8 @@ class DB:
                 fk = col.attributes.get('foreign_key')
                 if fk and 'table' in fk:
                     col_dict['foreign_key'] = {'target': fk['table'].name, 'field': fk['id']}
+                if col.attributes.get('media'):
+                    col_dict.update(kitebase.media.column_schema(self.media, col.attributes))
                 cols.append(col_dict)
 
             # The key is read from the columns that declare it — junctions

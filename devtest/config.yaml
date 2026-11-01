@@ -30,8 +30,11 @@ db_engine: "sqlite:///devtest.sqlite"
 # stores `root:path`; the bytes stay here, out of the database.
 media:
   roots:
-    covers:  { type: fs, path: media/covers }                        # yyyymm
+    books:   { type: fs, path: media/books }                         # yyyymm
     records: { type: fs, path: media/records, allocate: by_record }
+    cache:   { type: fs, path: media/cache }
+  # Where the variants are made, on the first request: it can be emptied.
+  cache: cache
   # Sizes a view names (`variant: thumb`), never free in a URL.
   variants:
     thumb:  { fit: 96x96 }

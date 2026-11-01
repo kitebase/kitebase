@@ -462,6 +462,17 @@ class Root:
         return MediaRef(self.name, rel)
 
 
+_FIT = re.compile(r'^\s*(\d+)\s*x\s*(\d+)\s*$')
+
+
+def _parse_fit(variant: str, value: Any) -> tuple:
+    """`fit: 96x96`, the box a rendition fits in, keeping its proportions."""
+    m = _FIT.match(str(value or ''))
+    if not m or not all(int(n) > 0 for n in m.groups()):
+        raise MediaError(f'media.variants.{variant}: fit must be WIDTHxHEIGHT, e.g. 96x96')
+    return int(m.group(1)), int(m.group(2))
+
+
 class Media:
     """The roots an application declared under `media:` in config.yaml."""
 
@@ -474,9 +485,20 @@ class Media:
         # Named variants only: a size free in the URL would let anyone make the
         # server resize anything to anything.
         self.variants: Dict[str, Dict[str, Any]] = dict(config.get('variants') or {})
-        for name in self.variants:
+        self.fits: Dict[str, tuple] = {}
+        for name, decl in self.variants.items():
             if not _ROOT_NAME.match(name):
                 raise MediaError(f'media.variants: {name!r} is not a variant name')
+            self.fits[name] = _parse_fit(name, (decl or {}).get('fit'))
+        # The root renditions are written to: a declared root like the others,
+        # never one a column stores in, so it can be emptied at any time.
+        self.cache: Optional[str] = config.get('cache')
+        if self.cache is not None:
+            if self.cache not in self.roots:
+                raise MediaError(f'media.cache: {self.cache!r} is not in media.roots')
+            if not isinstance(self.roots[self.cache].provider, FsProvider):
+                raise MediaError(f'media.cache: root {self.cache!r} must be of type fs')
+        self.max_pixels: int = int(config.get('max_pixels', 40_000_000))
         self.url_days: int = int(config.get('url_days', 1))
         self._key: Optional[bytes] = None
 
@@ -591,6 +613,23 @@ def media_columns(table: Any) -> List[Any]:
     return [c for c in table.effective_columns if c.attributes.get('media')]
 
 
+def column_schema(media: Optional[Media], attrs: Dict[str, Any]) -> Dict[str, Any]:
+    """What the client knows of a media column: its kind and its limits.
+
+    `max_size` leaves in bytes; `needs_record` says whether an upload waits
+    for the record to be saved, which only the root's layout knows. A column
+    `check` would refuse leaves with what it has, and its uploads fail there.
+    """
+    out: Dict[str, Any] = {k: attrs[k] for k in ('media', 'root', 'accept', 'resize') if k in attrs}
+    try:
+        out['max_size'] = parse_size(attrs.get('max_size'))
+    except MediaError:
+        pass
+    root = (media.roots.get(attrs.get('root')) if media else None)
+    out['needs_record'] = attrs['media'] == 'files' or bool(root and root.needs_record)
+    return out
+
+
 def diagnose(app: Any) -> List[Dict[str, Any]]:
     """What `check` reports on the media columns, against the declared roots.
 
@@ -626,6 +665,10 @@ def diagnose(app: Any) -> List[Dict[str, Any]]:
             if not root_name:
                 error('media-root', 'a media column names its root: root: <name of media.roots>')
                 continue
+            if root_name == media.cache:
+                error('media-cache', f"root '{root_name}' is media.cache, where renditions "
+                      f"are written and emptied: a column stores elsewhere")
+                continue
             root = media.roots.get(root_name)
             if root is None:
                 known = ', '.join(sorted(media.roots)) or 'none declared'
@@ -639,6 +682,11 @@ def diagnose(app: Any) -> List[Dict[str, Any]]:
                 issues.append(make_issue(
                     'warning', 'media-accept', path,
                     'declare accept: [extensions]; until then every upload is refused'))
+    if media.variants and media.cache is None:
+        issues.append(make_issue(
+            'warning', 'media-cache', 'media.cache',
+            'media.variants are declared but media.cache names no root: '
+            'every variant is refused until it does'))
     return issues
 
 
@@ -838,10 +886,6 @@ def serve(media: Media, root: str, path: str, params: Dict[str, str],
         ref = media.verify(root, path, variant, params.get('e', ''), params.get('s', ''))
     except MediaError as e:
         return MediaReply(403, {}, message=str(e))
-    if variant:
-        # Renditions are not generated yet, and the full original is never
-        # sent in place of a thumbnail.
-        return MediaReply(501, {}, message=f"Variant '{variant}' cannot be generated yet")
     provider = media.root(ref.root).provider
     try:
         target = provider.locate(ref.path)
@@ -849,6 +893,13 @@ def serve(media: Media, root: str, path: str, params: Dict[str, str],
         return MediaReply(404, {}, message=str(e))
     if not target.is_file():
         return MediaReply(404, {}, message='No such file')
+    if variant:
+        # A variant that cannot be made is an error, never the full original
+        # in place of a thumbnail.
+        try:
+            target = rendition(media, ref, variant, target)
+        except MediaError as e:
+            return MediaReply(e.status, {}, message=str(e))
 
     st = target.stat()
     etag = f'"{st.st_size:x}-{int(st.st_mtime):x}"'
@@ -872,3 +923,62 @@ def serve(media: Media, root: str, path: str, params: Dict[str, str],
 def _disposition(kind: str, name: str) -> str:
     ascii_name = name.encode('ascii', 'replace').decode('ascii').replace('"', '_').replace('?', '_')
     return f"{kind}; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(name, safe='')}"
+
+
+# ── Renditions ────────────────────────────────────────────────────────────────
+
+# What Pillow writes a rendition as, by the extension of the original: the
+# rendition keeps the original's format and path, so its MIME type and its
+# headers are those of an image like the original.
+_RENDITION_FORMATS = {'jpg': 'JPEG', 'jpeg': 'JPEG', 'png': 'PNG', 'gif': 'GIF',
+                      'webp': 'WEBP', 'bmp': 'BMP'}
+
+
+def rendition(media: Media, ref: MediaRef, variant: str, source: Path) -> Path:
+    """The file of a named variant of an image, made on the first request.
+
+    It lives in the root `media.cache` at `<variant>/<root>/<path>`, and is
+    made again when the original is newer. The pixels are counted before the
+    image is decoded, against `media.max_pixels`. Raises MediaError: 501 when
+    the server cannot make variants (no cache root, no Pillow), 415 for an
+    original that is not a raster image it can write, 413 for one too large.
+    """
+    if media.cache is None:
+        raise MediaError('media.cache names no root: variants cannot be made', 501)
+    ext = source.suffix[1:].lower()
+    fmt = _RENDITION_FORMATS.get(ext)
+    if fmt is None:
+        raise MediaError(f"A {ext or 'file'} has no variant '{variant}': not an image", 415)
+    try:
+        from PIL import Image, ImageOps
+    except ImportError:
+        raise MediaError('Variants need Pillow: install kitebase[media]', 501) from None
+
+    target = media.root(media.cache).provider.locate(f'{variant}/{ref.root}/{ref.path}')
+    if target.is_file() and target.stat().st_mtime >= source.stat().st_mtime:
+        return target
+
+    try:
+        with Image.open(source) as im:
+            width, height = im.size
+            if width * height > media.max_pixels:
+                raise MediaError(f'Image of {width}x{height} pixels is over media.max_pixels', 413)
+            im.seek(0)          # an animated GIF gives its first frame
+            out = ImageOps.exif_transpose(im)
+            if fmt == 'JPEG' and out.mode not in ('RGB', 'L'):
+                out = out.convert('RGB')
+            out.thumbnail(media.fits[variant])
+            target.parent.mkdir(parents=True, exist_ok=True)
+            # Written aside and renamed: two requests making the same
+            # rendition never serve a half-written file.
+            fd, tmp = tempfile.mkstemp(dir=target.parent, prefix='.rendition-')
+            try:
+                with os.fdopen(fd, 'wb') as f:
+                    out.save(f, fmt)
+                os.replace(tmp, target)
+            except BaseException:
+                Path(tmp).unlink(missing_ok=True)
+                raise
+    except (Image.DecompressionBombError, Image.UnidentifiedImageError, OSError) as e:
+        raise MediaError(f"Variant '{variant}' cannot be made: {e}", 415) from None
+    return target

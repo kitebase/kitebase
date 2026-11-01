@@ -84,6 +84,7 @@
     "gif"
    ],
    "max_size": "10MB",
+   "resize": 2048,
    "$plugin": "common"
   },
   "File": {
@@ -661,13 +662,13 @@
     {
      "name": "cover",
      "type": "Image",
-     "root": "covers",
+     "root": "books",
      "$plugin": "library"
     },
     {
      "name": "sample",
      "type": "File",
-     "root": "covers",
+     "root": "books",
      "accept": [
       "pdf"
      ],
@@ -1583,6 +1584,25 @@
       "$plugin": "bookshop"
      },
      {
+      "id": "media",
+      "type": "section",
+      "label": "Files",
+      "columns": [
+       {
+        "id": "files",
+        "fields": [
+         {
+          "name": "cover"
+         },
+         {
+          "name": "sample"
+         }
+        ]
+       }
+      ],
+      "$plugin": "panels"
+     },
+     {
       "id": "actions",
       "type": "row",
       "children": [
@@ -2135,6 +2155,12 @@
      "$plugin": "panels"
     },
     {
+     "field": "cover",
+     "variant": "thumb",
+     "width": 64,
+     "$plugin": "panels"
+    },
+    {
      "field": "title",
      "$plugin": "panels"
     },
@@ -2261,6 +2287,10 @@
     "$plugin": "panels"
    },
    "fields": [
+    {
+     "name": "cover",
+     "$plugin": "panels"
+    },
     {
      "name": "title",
      "$plugin": "panels"
