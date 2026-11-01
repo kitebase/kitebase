@@ -60,9 +60,18 @@ def _error(e: MediaError) -> Dict[str, Any]:
 
 
 def _entry(app: Any, folder: media.MediaRef, entry: media.FileEntry) -> Dict[str, Any]:
-    return {'name': entry.name, 'size': entry.size, 'mime': entry.mime,
-            'modified': entry.modified, 'description': entry.description,
-            'url': app.media.url(f'{folder}{entry.name}')}
+    """A file of a folder as the client lists it.
+
+    An image also carries `thumb`, the URL of the variant `media.list_variant`
+    names: a list of photos would otherwise download every original.
+    """
+    ref = f'{folder}{entry.name}'
+    out = {'name': entry.name, 'size': entry.size, 'mime': entry.mime,
+           'modified': entry.modified, 'description': entry.description,
+           'url': app.media.url(ref)}
+    if app.media.list_variant and entry.mime.startswith('image/'):
+        out['thumb'] = app.media.url(ref, app.media.list_variant)
+    return out
 
 
 @endpoint('media_upload', access=access.PER_TABLE)

@@ -675,3 +675,38 @@ def test_check_asks_a_grid_for_an_existing_variant_of_its_images(cached):
     assert issues({'field': 'title'}, {'field': 'cover', 'variant': 'thumb'}) == []
     assert issues({'field': 'cover'}) == [('media-variant', 'warning')]
     assert issues({'field': 'cover', 'variant': 'huge'}) == [('media-variant', 'error')]
+
+
+def test_a_files_column_stays_out_of_grids(cached):
+    from kitebase.diagnostics import _check_view
+    from kitebase.pages import auto_list_page
+    table = _Table(_Col('name'), _Col('documents', media='files', root='covers', virtual=True))
+    assert [c['field'] for c in auto_list_page('Author', table, cached)['content']['columns']] == ['name']
+
+    found = []
+    _check_view(_App(cached, Author=table),
+                {'source': {'model': 'Author'}, 'columns': [{'field': 'documents'}]},
+                'views.authors', None, found)
+    assert [(i['code'], i['severity']) for i in found] == [('media-files', 'error')]
+
+
+def test_a_listed_image_carries_the_thumb_of_the_list_variant(cached):
+    from kitebase.endpoint_media import _entry
+    from kitebase.media import FileEntry, parse_ref
+    folder = parse_ref('covers:Author/000/1/documents/')
+    app = _App(cached)
+    photo = FileEntry('photo.jpg', 10, 'image/jpeg', 0.0, '')
+    paper = FileEntry('paper.pdf', 10, 'application/pdf', 0.0, '')
+
+    assert 'thumb' not in _entry(app, folder, photo)
+    cached.list_variant = 'thumb'
+    assert split(_entry(app, folder, photo)['thumb'])[2] == 'thumb'
+    assert 'thumb' not in _entry(app, folder, paper)
+
+
+def test_a_generated_form_lists_a_files_column_and_no_other_virtual(cached):
+    from kitebase.pages import auto_form_page
+    table = _Table(_Col('name'), _Col('label', virtual=True),
+                   _Col('documents', media='files', root='covers', virtual=True))
+    names = [f['name'] for f in auto_form_page('Author', table)['content']['fields']]
+    assert names == ['name', 'documents']

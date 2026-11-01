@@ -250,11 +250,18 @@ def _check_variant(app: Any, table: Any, col: Dict[str, Any], path: str,
     """An image column of a grid names the variant it shows, and one that exists.
 
     Without one the grid gets the originals, each photo at full size; an
-    unknown one makes the query fail.
+    unknown one makes the query fail, as a Files column does: its files are in
+    a folder, not in the row.
     """
     media = getattr(app, 'media', None)
     variants = getattr(media, 'variants', None) or {}
     column = next((c for c in table.effective_columns if c.name == col['field']), None)
+    if column is not None and column.attributes.get('media') == 'files':
+        issues.append(make_issue(
+            'error', 'media-files', path,
+            f"'{col['field']}' is a Files column: a grid has no value to show "
+            f"for it, and its query fails; the form lists its files", plugin))
+        return
     if column is None or column.attributes.get('media') != 'image':
         return
     variant = col.get('variant')
