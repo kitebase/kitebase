@@ -49,7 +49,15 @@ from kitebase import apptime
 
 
 class MediaError(ValueError):
-    """A media reference, template or operation the core refuses."""
+    """A media reference, template or operation the core refuses.
+
+    `status` is the HTTP answer it becomes at a route: 400 by default, 413 for
+    a file too large, 415 for one of a type the column does not take.
+    """
+
+    def __init__(self, message: str, status: int = 400):
+        super().__init__(message)
+        self.status = status
 
 
 # ── References ────────────────────────────────────────────────────────────────
@@ -317,7 +325,7 @@ class FsProvider:
                 for chunk in chunks:
                     written += len(chunk)
                     if max_size is not None and written > max_size:
-                        raise MediaError(f'File larger than {max_size} bytes')
+                        raise MediaError(f'File larger than {max_size} bytes', 413)
                     f.write(chunk)
         except BaseException:
             candidate.unlink(missing_ok=True)
@@ -729,3 +737,139 @@ def incoming(media: Media, attrs: Dict[str, Any], value: Any) -> Any:
 
 
 KEEP = object()
+
+
+# ── What an upload really is ──────────────────────────────────────────────────
+
+@dataclass
+class UploadedFile:
+    """A file arriving at the upload route: its name and its bytes, in chunks.
+
+    Only the route builds one: a JSON payload cannot hold it, so the upload
+    endpoint called through the dispatcher refuses itself.
+    """
+    filename: str
+    chunks: Iterable[bytes]
+
+
+# Spellings of one format: what the extension says and what the bytes say
+# must agree up to these.
+_SAME_FORMAT = {'jpeg': 'jpg', 'tif': 'tiff', 'htm': 'html'}
+
+# Formats with no signature in their first bytes: accepted on the word of
+# their extension only, and always served as an attachment.
+TEXT_EXTENSIONS = frozenset({'txt', 'csv', 'tsv', 'xml', 'json', 'md', 'eml', 'log', 'yaml', 'yml'})
+
+# Served inline: the formats a browser shows without running anything.
+INLINE_TYPES = frozenset({'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+                          'image/avif', 'image/bmp', 'application/pdf'})
+
+_RASTER = frozenset({'jpg', 'png', 'gif', 'webp', 'avif', 'bmp', 'tiff', 'heic'})
+_HEAD = 512
+
+
+def _format(ext: str) -> str:
+    ext = ext.lower()
+    return _SAME_FORMAT.get(ext, ext)
+
+
+def checked_upload(kind: str, accept: Iterable[str], upload: UploadedFile) -> Iterable[bytes]:
+    """The chunks of an upload, after its first bytes have said what it is.
+
+    The extension must be in `accept`, and the content must be what the
+    extension says: the type is read from the bytes, never from the client.
+    An image column takes raster formats only, whatever `accept` says.
+    Raises MediaError(415) before anything is written.
+    """
+    import filetype
+
+    name = sanitize_name(upload.filename)
+    _, _, ext = name.rpartition('.')
+    ext = _format(ext) if '.' in name else ''
+    allowed = {_format(a) for a in (accept or ())}
+    if not ext or ext not in allowed:
+        raise MediaError(f"'{upload.filename}': this field takes {', '.join(sorted(allowed)) or 'no file'}", 415)
+
+    chunks = iter(upload.chunks)
+    head = b''
+    for chunk in chunks:
+        head += chunk
+        if len(head) >= _HEAD:
+            break
+    guess = filetype.guess(head) if head else None
+    if guess is not None:
+        if _format(guess.extension) != ext:
+            raise MediaError(f"'{upload.filename}' is a {guess.extension} file, not {ext}", 415)
+    elif ext not in TEXT_EXTENSIONS:
+        raise MediaError(f"'{upload.filename}' is not a {ext} file", 415)
+    if kind == 'image' and ext not in _RASTER:
+        raise MediaError(f"'{upload.filename}' is not an image this field can show", 415)
+
+    def stream():
+        if head:
+            yield head
+        yield from chunks
+
+    return stream()
+
+
+# ── The GET route, without a framework ────────────────────────────────────────
+
+@dataclass
+class MediaReply:
+    """What the GET route answers: a file to send, or a status with a message."""
+    status: int
+    headers: Dict[str, str]
+    path: Optional[Path] = None
+    message: str = ''
+
+
+def serve(media: Media, root: str, path: str, params: Dict[str, str],
+          if_none_match: Optional[str] = None) -> MediaReply:
+    """Answer `GET media/<root>/<path>?v=&e=&s=`.
+
+    The signature is the permission; the path is checked inside its root
+    again, because the signature protects the URL, not a value written in the
+    database some other way. A type that could run in the browser (HTML,
+    SVG, anything not in INLINE_TYPES) leaves as an attachment, and nothing
+    is ever sniffed or framed.
+    """
+    variant = params.get('v', '')
+    try:
+        ref = media.verify(root, path, variant, params.get('e', ''), params.get('s', ''))
+    except MediaError as e:
+        return MediaReply(403, {}, message=str(e))
+    if variant:
+        # Renditions come with their first consumer (docs/pending/media.md §8):
+        # never the full original in place of a thumbnail.
+        return MediaReply(501, {}, message=f"Variant '{variant}' cannot be generated yet")
+    provider = media.root(ref.root).provider
+    try:
+        target = provider.locate(ref.path)
+    except MediaError as e:
+        return MediaReply(404, {}, message=str(e))
+    if not target.is_file():
+        return MediaReply(404, {}, message='No such file')
+
+    st = target.stat()
+    etag = f'"{st.st_size:x}-{int(st.st_mtime):x}"'
+    mime = mime_type(target.name)
+    inline = mime in INLINE_TYPES
+    headers = {
+        'ETag': etag,
+        'Cache-Control': f'private, max-age={media.url_days * 86400}',
+        'X-Content-Type-Options': 'nosniff',
+        # The PDF viewer of a browser does not run in a sandbox; everything
+        # else gets one, and no file can load anything.
+        'Content-Security-Policy': "default-src 'none'" + ('' if mime == 'application/pdf' else '; sandbox'),
+        'Content-Type': mime,
+        'Content-Disposition': _disposition('inline' if inline else 'attachment', target.name),
+    }
+    if if_none_match and etag in [t.strip() for t in if_none_match.split(',')]:
+        return MediaReply(304, {k: headers[k] for k in ('ETag', 'Cache-Control')})
+    return MediaReply(200, headers, path=target)
+
+
+def _disposition(kind: str, name: str) -> str:
+    ascii_name = name.encode('ascii', 'replace').decode('ascii').replace('"', '_').replace('?', '_')
+    return f"{kind}; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(name, safe='')}"

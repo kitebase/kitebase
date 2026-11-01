@@ -54,6 +54,9 @@ dependencies = [
     "alembic",
     # Export to XLSX, and reading one back for the import. Pure Python.
     "openpyxl",
+    # What an uploaded file really is, from its first bytes (kitebase.media).
+    # Pure Python, unlike python-magic, which needs libmagic on the system.
+    "filetype>=1.2.0",
 ]
 
 # The web frameworks are imported inside the registration functions, never at
@@ -61,8 +64,9 @@ dependencies = [
 # does not drag the other into its environment.
 [project.optional-dependencies]
 flask = ["flask>=3.0"]
-fastapi = ["fastapi", "uvicorn"]
-dev = ["pytest", "flask>=3.0", "fastapi", "uvicorn", "httpx"]
+# python-multipart: FastAPI reads the upload of a media file with it
+fastapi = ["fastapi", "uvicorn", "python-multipart"]
+dev = ["pytest", "flask>=3.0", "fastapi", "uvicorn", "httpx", "python-multipart"]
 
 [project.urls]
 Homepage = "https://github.com/kitebase/kitebase"

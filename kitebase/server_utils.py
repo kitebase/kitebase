@@ -667,6 +667,52 @@ def handle_download(
         return _error_from_exc(e)
 
 
+def handle_upload(command_processor, fields: Dict[str, Any], upload: Any,
+                  context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Framework-agnostic handler of the upload route.
+
+    The form fields and the file go to `media_upload` through the command
+    processor, so the upload runs with the same context, permissions and log
+    line as any operation. Unlike the dispatcher (docs/pending/backend.md),
+    the answer keeps the status the operation gave: 403, 404, 413, 415.
+    """
+    from kitebase.media import UploadedFile
+
+    if not isinstance(upload, UploadedFile):
+        return _error_response("The upload has no 'file' part", status_code=400)
+    try:
+        command = {"operation": "media_upload", "parameters": {**fields, 'file': upload}}
+        if context:
+            command["context"] = context
+        result = command_processor.send(command)
+        if result.get('status') == 'success':
+            return {'status': 'success', 'data': result.get('data'), 'status_code': 200}
+        code = result.get('code')
+        return _error_from_result(result, 'Upload failed',
+                                  code if isinstance(code, int) and code >= 400 else 400)
+    except Exception as e:
+        return _error_from_exc(e)
+
+
+def handle_media_get(kitebase_app, root: str, path: str, params: Dict[str, str],
+                     if_none_match: Optional[str] = None):
+    """Framework-agnostic handler of `GET media/<root>/<path>`: a MediaReply."""
+    from kitebase.media import MediaReply, serve
+
+    media = getattr(kitebase_app, 'media', None)
+    if media is None or root not in media.roots:
+        return MediaReply(404, {}, message='No such file')
+    return serve(media, root, path, params, if_none_match)
+
+
+def media_chunks(path, size: int = 64 * 1024):
+    """The bytes of a served file, a chunk at a time."""
+    with open(path, 'rb') as f:
+        while chunk := f.read(size):
+            yield chunk
+
+
 def file_headers(file: FileResult) -> Dict[str, str]:
     """
     The headers a file leaves with, the same for both frameworks.
@@ -1058,6 +1104,32 @@ def register_flask(target, kitebase_app, plugins, secret_key: str, *,
             return reply(result)
         return Response(result.content, mimetype=result.mime, headers=file_headers(result))
 
+    @target.route(f'{prefix}/upload', methods=['POST'])
+    @authenticated
+    def kitebase_upload():
+        """A media file, multipart: table, field, id and the file (handle_upload)."""
+        from kitebase.media import UploadedFile
+
+        part = request.files.get('file')
+        upload = None
+        if part is not None:
+            upload = UploadedFile(part.filename or '', iter(lambda: part.stream.read(64 * 1024), b''))
+        return reply(handle_upload(command_processor, request.form.to_dict(), upload,
+                                   context=g.user_context))
+
+    @target.route(f'{prefix}/media/<root>/<path:path>', methods=['GET'])
+    def kitebase_media(root: str, path: str):
+        """A file by its signed URL: no login, the signature is the permission."""
+        answer = handle_media_get(kitebase_app, root, path, request.args.to_dict(),
+                                  request.headers.get('If-None-Match'))
+        if answer.path is None:
+            if answer.status == 304:
+                return Response(status=304, headers=answer.headers)
+            return reply({'status': 'error', 'message': answer.message}, answer.status)
+        headers = {**answer.headers, 'Content-Length': str(answer.path.stat().st_size)}
+        return Response(media_chunks(answer.path), status=200, headers=headers,
+                        mimetype=answer.headers['Content-Type'], direct_passthrough=True)
+
     return auth
 
 
@@ -1192,6 +1264,47 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
         if new_token:
             headers['X-New-Token'] = new_token
         return Response(content=result.content, media_type=result.mime, headers=headers)
+
+    @target.post(f'{prefix}/upload', dependencies=cleanup)
+    async def kitebase_upload(request: Request):
+        """A media file, multipart: table, field, id and the file (handle_upload).
+
+        Async because reading a form is; the operation itself runs in the
+        thread pool, like the sync routes, so a write never holds the loop.
+        """
+        from starlette.concurrency import run_in_threadpool
+        from starlette.datastructures import UploadFile
+        from kitebase.media import UploadedFile
+
+        user, refused, new_token = identify(request)
+        if refused is not None:
+            return refused
+        form = await request.form()
+        part = form.get('file')
+        fields = {k: v for k, v in form.items() if isinstance(v, str)}
+        upload = None
+        if isinstance(part, UploadFile):
+            upload = UploadedFile(part.filename or '', iter(lambda: part.file.read(64 * 1024), b''))
+        try:
+            result = await run_in_threadpool(handle_upload, command_processor, fields, upload, user)
+        finally:
+            await form.close()
+        return reply(result, new_token=new_token)
+
+    @target.get(f'{prefix}/media/{{root}}/{{path:path}}', dependencies=cleanup)
+    def kitebase_media(root: str, path: str, request: Request):
+        """A file by its signed URL: no login, the signature is the permission."""
+        from fastapi.responses import StreamingResponse
+
+        answer = handle_media_get(kitebase_app, root, path, dict(request.query_params),
+                                  request.headers.get('if-none-match'))
+        if answer.path is None:
+            if answer.status == 304:
+                return Response(status_code=304, headers=answer.headers)
+            return reply({'status': 'error', 'message': answer.message}, answer.status)
+        headers = {**answer.headers, 'Content-Length': str(answer.path.stat().st_size)}
+        return StreamingResponse(media_chunks(answer.path), headers=headers,
+                                 media_type=answer.headers['Content-Type'])
 
     return auth
 

@@ -462,3 +462,97 @@ def test_a_write_refuses_a_file_that_is_not_there(writes, value):
     from kitebase.transforms import ValidationError
     with pytest.raises(ValidationError):
         writes(value)
+
+
+# ── what an upload really is ──────────────────────────────────────────────────
+
+from kitebase.media import UploadedFile, checked_upload, serve
+
+PNG = b'\x89PNG\r\n\x1a\n' + b'\x00' * 600
+JPG = b'\xff\xd8\xff\xe0' + b'\x00' * 600
+PDF = b'%PDF-1.7\n' + b'x' * 600
+HTML = b'<html><script>alert(1)</script></html>'
+
+
+def upload(name, data, kind='file', accept=('pdf', 'jpg', 'png', 'txt')):
+    return b''.join(checked_upload(kind, accept, UploadedFile(name, chunks(data, 100))))
+
+
+def test_an_upload_passes_whole_when_its_bytes_agree_with_its_name():
+    assert upload('scan.png', PNG) == PNG
+    assert upload('photo.JPEG', JPG) == JPG          # jpeg and jpg are one format
+    assert upload('notes.txt', b'plain text') == b'plain text'
+
+
+@pytest.mark.parametrize('name, data, why', [
+    ('cover.png', JPG, 'is a jpg file, not png'),      # renamed
+    ('invoice.pdf', HTML, 'is not a pdf file'),         # a page dressed as a PDF
+    ('page.html', HTML, 'takes'),                       # not accepted at all
+    ('noextension', PDF, 'takes'),
+])
+def test_an_upload_that_lies_about_itself_is_refused(name, data, why):
+    with pytest.raises(MediaError, match=why) as e:
+        upload(name, data)
+    assert e.value.status == 415
+
+
+def test_an_image_column_takes_raster_images_only():
+    assert upload('a.png', PNG, kind='image') == PNG
+    with pytest.raises(MediaError, match='image'):
+        upload('a.pdf', PDF, kind='image')
+
+
+# ── the GET route ─────────────────────────────────────────────────────────────
+
+def stored(signed, tmp_path, rel, data):
+    target = tmp_path / 'covers' / rel
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(data)
+    return split(signed.url(f'covers:{rel}'))
+
+
+def get(signed, parts, **extra):
+    root, path, variant, e, s = parts
+    params = {'e': e, 's': s, **({'v': variant} if variant else {})}
+    return serve(signed, root, path, params, **extra)
+
+
+def test_a_signed_url_serves_its_file(signed, tmp_path):
+    reply = get(signed, stored(signed, tmp_path, '2026/11/a.png', PNG))
+    assert reply.status == 200 and reply.path.read_bytes() == PNG
+    h = reply.headers
+    assert h['Content-Type'] == 'image/png'
+    assert h['Content-Disposition'].startswith('inline;')
+    assert h['X-Content-Type-Options'] == 'nosniff'
+    assert 'sandbox' in h['Content-Security-Policy']
+    assert h['Cache-Control'].startswith('private, max-age=')
+
+
+def test_an_unchanged_file_answers_304(signed, tmp_path):
+    parts = stored(signed, tmp_path, 'a.png', PNG)
+    etag = get(signed, parts).headers['ETag']
+    assert get(signed, parts, if_none_match=etag).status == 304
+
+
+@pytest.mark.parametrize('name', ['page.html', 'logo.svg', 'data.xml'])
+def test_what_could_run_in_the_browser_leaves_as_an_attachment(signed, tmp_path, name):
+    reply = get(signed, stored(signed, tmp_path, name, HTML))
+    assert reply.headers['Content-Disposition'].startswith('attachment;')
+
+
+def test_a_pdf_opens_in_the_browser_viewer(signed, tmp_path):
+    h = get(signed, stored(signed, tmp_path, 'a.pdf', PDF)).headers
+    assert h['Content-Disposition'].startswith('inline;')
+    assert 'sandbox' not in h['Content-Security-Policy']
+
+
+def test_a_bad_signature_is_403_and_a_missing_file_404(signed, tmp_path):
+    root, path, variant, e, s = stored(signed, tmp_path, 'a.png', PNG)
+    assert get(signed, (root, 'b.png', variant, e, s)).status == 403
+    assert get(signed, split(signed.url('covers:gone.png'))).status == 404
+
+
+def test_a_variant_is_never_answered_with_the_original(signed, tmp_path):
+    stored(signed, tmp_path, 'a.png', PNG)
+    reply = get(signed, split(signed.url('covers:a.png', 'thumb')))
+    assert reply.status == 501 and reply.path is None
