@@ -1,6 +1,5 @@
 import copy
 import inspect
-import threading
 import contextvars
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Union, Iterator
@@ -1230,45 +1229,36 @@ class BaseApp:
     Base class for all SQLAlchemy models.
     Provides access to the database schema information.
 
-    Context management supports both threading (Flask, CLI sync)
-    and asyncio (FastAPI, CLI async) execution models.
+    The context (who is asking: user, tenant, locale, op_date) lives in one
+    ContextVar, which serves both execution models. A WSGI thread has a context
+    of its own that lasts across the requests it serves, so whoever sets it
+    clears it on the way out (the Flask adapter's teardown). An ASGI server runs
+    a sync handler on a copy of the request's context, so what the handler sets
+    is discarded with the copy. A thread or a process started by hand begins
+    with no context: background work sets its own with BaseApp.context().
     """
     __kitebase_app__: DB = DB()
 
-    # Dual-mode context storage
-    _context_local = threading.local()  # For threading-based execution (Flask, WSGI)
-    _context_var: contextvars.ContextVar = contextvars.ContextVar('app_context', default=None)  # (FastAPI, ASGI)
+    _context_var: contextvars.ContextVar = contextvars.ContextVar('kitebase_context', default=None)
 
     @classmethod
     def get_context(cls):
         """
-        Get current context (threading or asyncio aware).
-
-        Tries async context first (FastAPI/asyncio), then falls back
-        to thread-local storage (Flask/threading).
+        Get the current context.
 
         Returns:
             Current context dictionary or None
         """
-        # Try async context first (FastAPI, async CLI)
-        ctx = cls._context_var.get()
-
-        # Fallback to thread-local context (Flask, sync CLI)
-        if ctx is None:
-            ctx = getattr(cls._context_local, 'value', None)
-
-        return ctx
+        return cls._context_var.get()
 
     @classmethod
     def set_context(cls, context):
         """
-        Set current context (writes to both backends for compatibility).
+        Set the current context, replacing the whole value.
 
         Args:
-            context: Context dictionary with user/tenant info
+            context: Context dictionary with user/tenant info, or None to clear
         """
-        # Write to both backends for maximum compatibility
-        cls._context_local.value = context
         cls._context_var.set(context)
 
     @classmethod
@@ -1282,7 +1272,9 @@ class BaseApp:
         host application — where nothing else sets the context on the way in.
         Restores unconditionally, including back to None: leaving a context
         behind means the next user of that thread inherits an identity nobody
-        chose, and query behaviors filter by it.
+        chose, and query behaviors filter by it. The block must close in the
+        context it was opened in; closing it elsewhere raises ValueError
+        instead of restoring the wrong value.
 
         Args:
             context: Context dictionary with user/tenant info
@@ -1290,12 +1282,11 @@ class BaseApp:
         Yields:
             The context that was set
         """
-        previous = cls.get_context()
-        cls.set_context(context)
+        token = cls._context_var.set(context)
         try:
             yield context
         finally:
-            cls.set_context(previous)
+            cls._context_var.reset(token)
 
     # ==========================================
     # Model ↔ DB Definition Bridge

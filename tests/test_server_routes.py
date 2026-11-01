@@ -341,16 +341,47 @@ def test_fastapi_as_a_guest_on_a_router(kitebase_app, plugins):
                        headers=bearer()).json()['data'] == {'seen': {'a': 1}}
 
 
-def test_fastapi_leaves_the_thread_as_it_was_found(fastapi_client):
-    BaseApp.set_context(None)
-    fastapi_client.post('/kitebase/endpoint/who', json={}, headers=bearer())
+def test_a_fastapi_host_route_after_a_kitebase_one_has_no_identity(kitebase_app, plugins):
+    """An API request, then a sync route of the host on the same worker thread.
 
-    assert not BaseApp.get_context()
+    The client is entered (`with`) so that the event loop and its thread pool
+    outlive a single request, as under uvicorn: without it every request gets
+    fresh threads and a context left on a worker could never be seen.
+    """
+    import threading
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    app = FastAPI()
+
+    @app.get('/api/v1/whoami')
+    def whoami():
+        return {'thread': threading.get_ident(), 'context': BaseApp.get_context()}
+
+    srv.register_fastapi(app, kitebase_app, plugins, SECRET)
+    _ENDPOINTS['where'] = lambda params: threading.get_ident()
+    kitebase_app.cp.endpoints['where'] = _ENDPOINTS['where']
+
+    shared_thread = False
+    try:
+        with TestClient(app) as client:
+            for _ in range(5):
+                served_on = client.post('/kitebase/endpoint/where', json={},
+                                        headers=bearer()).json()['data']
+                host = client.get('/api/v1/whoami').json()
+                shared_thread |= host['thread'] == served_on
+                assert host['context'] is None
+    finally:
+        _ENDPOINTS.pop('where', None)
+
+    assert shared_thread, 'the two routes never met on one worker: nothing was tested'
 
 
 def test_the_host_route_after_a_kitebase_one_has_no_identity(host_app):
-    """The scenario the cleanup exists for, end to end: an API request, then a
-    page of the host on the same worker."""
+    """The same scenario on Flask, where the test client serves the request on
+    the calling thread: what the host's next request would find is what is
+    left here."""
     client = host_app.test_client()
 
     client.post('/kitebase/endpoint/who', json={}, headers=bearer())

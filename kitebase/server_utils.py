@@ -1151,12 +1151,14 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
     than through the application's encoder. A refusal is *returned* and not
     raised for the same reason — an HTTPException would go through the host's
     exception handlers and come back in the host's error shape.
+
+    Unlike Flask, nothing clears the context on the way out: a sync handler
+    runs on a copy of the request's context, and what it sets goes with it.
     """
     import json
 
-    from fastapi import Depends, Request, Response
+    from fastapi import Request, Response
 
-    from kitebase.db import BaseApp
     from kitebase.i18n import set_locale
     from kitebase.querybuilder import JSONEncoder
 
@@ -1187,13 +1189,6 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
             headers={'X-New-Token': new_token} if new_token else None,
         )
 
-    async def clear_context():
-        """Leave the worker as it was found — see register_flask's teardown."""
-        yield
-        BaseApp.set_context(None)
-
-    cleanup = [Depends(clear_context)]
-
     def identify(request: Request) -> Tuple[Optional[Dict[str, Any]],
                                             Optional[Response], Optional[str]]:
         """Validate the bearer token, refresh it when due, set the locale.
@@ -1214,18 +1209,18 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
         set_locale(payload.get('locale') or config.get('locale', 'en'))
         return payload, None, new_token
 
-    @target.get(f'{prefix}/info', dependencies=cleanup)
+    @target.get(f'{prefix}/info')
     def kitebase_info():
         return reply(get_app_info(config, prefix))
 
-    @target.post(f'{prefix}/auth/login', dependencies=cleanup)
+    @target.post(f'{prefix}/auth/login')
     def kitebase_login(data: dict):
         try:
             return reply(auth.login(command_processor, data))
         except Exception as e:
             return reply({'status': 'error', 'message': str(e)}, 500)
 
-    @target.post(f'{prefix}/auth/update_context', dependencies=cleanup)
+    @target.post(f'{prefix}/auth/update_context')
     def kitebase_update_context(data: dict, request: Request):
         user, refused, new_token = identify(request)
         if refused is not None:
@@ -1233,7 +1228,7 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
         return reply(auth.update_context(user, data), new_token=new_token)
 
     if host_session is not None:
-        @target.post(f'{prefix}/auth/token', dependencies=cleanup)
+        @target.post(f'{prefix}/auth/token')
         def kitebase_host_token(request: Request):
             """A JWT for the user of the host's session (see handle_host_token)."""
             content_type = request.headers.get('content-type', '')
@@ -1241,7 +1236,7 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
                 return reply(HOST_TOKEN_NOT_JSON, 415)
             return reply(handle_host_token(host_session, request, auth))
 
-    @target.post(f'{prefix}/{endpoint_prefix}/{{operation}}', dependencies=cleanup)
+    @target.post(f'{prefix}/{endpoint_prefix}/{{operation}}')
     def kitebase_dispatch(operation: str, data: dict, request: Request):
         """Everything that is not authentication: db, query, get_page, get_menu…"""
         user, refused, new_token = identify(request)
@@ -1251,7 +1246,7 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
             handle_generic_endpoint(command_processor, operation, data, context=user),
             new_token=new_token)
 
-    @target.post(f'{prefix}/download/{{operation}}', dependencies=cleanup)
+    @target.post(f'{prefix}/download/{{operation}}')
     def kitebase_download(operation: str, data: dict, request: Request):
         """An operation whose answer is a file (FileResult): the bytes, not JSON."""
         user, refused, new_token = identify(request)
@@ -1265,7 +1260,7 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
             headers['X-New-Token'] = new_token
         return Response(content=result.content, media_type=result.mime, headers=headers)
 
-    @target.post(f'{prefix}/upload', dependencies=cleanup)
+    @target.post(f'{prefix}/upload')
     async def kitebase_upload(request: Request):
         """A media file, multipart: table, field, id and the file (handle_upload).
 
@@ -1291,7 +1286,7 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
             await form.close()
         return reply(result, new_token=new_token)
 
-    @target.get(f'{prefix}/media/{{root}}/{{path:path}}', dependencies=cleanup)
+    @target.get(f'{prefix}/media/{{root}}/{{path:path}}')
     def kitebase_media(root: str, path: str, request: Request):
         """A file by its signed URL: no login, the signature is the permission."""
         from fastapi.responses import StreamingResponse
