@@ -39,6 +39,7 @@ this becomes the only write path is a decision for the day the client moves.
 from typing import Any, Dict, List, Optional, Tuple
 
 import kitebase.utils
+import kitebase.media
 from kitebase import access
 from kitebase.access import AccessDenied
 from kitebase.endpoints import endpoint
@@ -119,7 +120,8 @@ def _select(app, session, model_name: str, conditions: List[Any],
     `covered` names the models whose read permission is already answered: the
     rows of a collection follow their root, and have no permission of their own.
     """
-    builder = DynamicQueryBuilder(session, app.models, covered=list(covered))
+    builder = DynamicQueryBuilder(session, app.models, covered=list(covered),
+                                  value_transform=kitebase.media.query_transform(app))
     query_def: Dict[str, Any] = {'table': model_name, 'resolve': True}
     if conditions:
         query_def['filters'] = {'conditions': conditions}

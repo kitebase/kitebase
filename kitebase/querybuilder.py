@@ -15,7 +15,7 @@ import re
 import datetime
 import decimal
 from uuid import UUID
-from typing import Any, Dict, List, Set, Tuple, Union, Optional, Type
+from typing import Any, Callable, Dict, List, Set, Tuple, Union, Optional, Type
 
 from sqlalchemy import and_, or_, desc, asc, false, select, func, text, TextClause, literal_column, inspect, String
 from sqlalchemy.engine import Engine
@@ -538,7 +538,9 @@ class DynamicQueryBuilder:
     """
 
     def __init__(self, session: Session, models: Dict[str, Type[DeclarativeMeta]],
-                 covered: Optional[List[str]] = None) -> None:
+                 covered: Optional[List[str]] = None,
+                 value_transform: Optional[Callable[[str, Any], Optional[Callable[[Any], Any]]]] = None
+                 ) -> None:
         """
         Initialize the builder with a SQLAlchemy session and a dictionary of models.
 
@@ -548,11 +550,17 @@ class DynamicQueryBuilder:
             covered: models whose read permission the caller already answered
                      for — the collections of an aggregate follow their root.
                      Server code only: never from a client's payload.
+            value_transform: called once per selected column with its output
+                     name and its SQL element; a callable it returns rewrites
+                     every value of that column in the formatted results (the
+                     stored reference of a file becomes its URL, for one).
         """
         self.session = session
         self.models = models
         self.engine = session.get_bind() if session else None
         self.covered = list(covered or [])
+        self.value_transform = value_transform
+        self._converters: List[Optional[Callable[[Any], Any]]] = []
 
     def build_query(self, query_def: Union[Dict[str, Any], str]) -> Select:
         """
@@ -744,6 +752,10 @@ class DynamicQueryBuilder:
 
         # Get column headers
         headers = result.keys()
+        self._converters = []
+        if self.value_transform is not None:
+            self._converters = [self.value_transform(name, element)
+                                for name, element in zip(headers, query.selected_columns)]
 
         if result_format == 'dict':
             # Return a dictionary with 'headers' and 'data'
@@ -820,6 +832,9 @@ class DynamicQueryBuilder:
         if isinstance(row, Row):
             # If it's a SQLAlchemy Row object, convert it to tuple
             row = tuple(row)
+
+        if self._converters:
+            row = [conv(val) if conv else val for val, conv in zip(row, self._converters)]
 
         # Convert row values
         return [self._convert_value(val) for val in row]

@@ -29,6 +29,25 @@ tables:
         length: 50
         unique: false
 
+      # Uploaded before the book is saved too: covers lay out by date.
+      - name: cover
+        type: Image
+        root: covers
+
+      - name: sample
+        type: File
+        root: covers
+        accept: [pdf]
+        label: Sample chapter
+
+  Author:
+    columns:
+      # The folder Author/000/<id>/documents/, read from disk.
+      - name: documents
+        type: Files
+        root: records
+        accept: [pdf, jpg, jpeg, png]
+
   LibraryUser:
     name: library_users
     mixins: [TimeStamp, Credentials]
@@ -39,6 +58,12 @@ tables:
       - name: name
         type: Name
         index: False
+
+      # Laid out by record: uploaded once the reader is saved.
+      - name: card
+        type: Image
+        root: records
+        label: Library card
 
       - name: address
         type: Address

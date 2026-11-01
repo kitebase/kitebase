@@ -958,6 +958,8 @@ def register_flask(target, kitebase_app, plugins, secret_key: str, *,
     config = plugins.config
     prefix, endpoint_prefix = _prefixes(config, prefix, endpoint_prefix)
     auth = auth or AuthMiddleware(config, secret_key)
+    if getattr(kitebase_app, 'media', None) is not None:
+        kitebase_app.media.set_signing_key(secret_key)
     report_checks(kitebase_app)
     command_processor = kitebase_app.cp
 
@@ -1089,6 +1091,8 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
     config = plugins.config
     prefix, endpoint_prefix = _prefixes(config, prefix, endpoint_prefix)
     auth = auth or AuthMiddleware(config, secret_key)
+    if getattr(kitebase_app, 'media', None) is not None:
+        kitebase_app.media.set_signing_key(secret_key)
     report_checks(kitebase_app)
     command_processor = kitebase_app.cp
 

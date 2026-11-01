@@ -72,6 +72,35 @@
    "validate": "email_validator",
    "$plugin": "common"
   },
+  "Image": {
+   "base": "String",
+   "length": 255,
+   "media": "image",
+   "accept": [
+    "jpg",
+    "jpeg",
+    "png",
+    "webp",
+    "gif"
+   ],
+   "max_size": "10MB",
+   "$plugin": "common"
+  },
+  "File": {
+   "base": "String",
+   "length": 255,
+   "media": "file",
+   "max_size": "20MB",
+   "$plugin": "common"
+  },
+  "Files": {
+   "base": "String",
+   "media": "files",
+   "virtual": true,
+   "editable": false,
+   "max_size": "20MB",
+   "$plugin": "common"
+  },
   "Json": {
    "base": "JSON",
    "widget": "json",
@@ -471,6 +500,18 @@
      "editable": false,
      "label": "Full Name",
      "$plugin": "books"
+    },
+    {
+     "name": "documents",
+     "type": "Files",
+     "root": "records",
+     "accept": [
+      "pdf",
+      "jpg",
+      "jpeg",
+      "png"
+     ],
+     "$plugin": "library"
     }
    ],
    "indexes": [
@@ -616,6 +657,22 @@
      "length": 1,
      "default": "'A'",
      "$plugin": "library"
+    },
+    {
+     "name": "cover",
+     "type": "Image",
+     "root": "covers",
+     "$plugin": "library"
+    },
+    {
+     "name": "sample",
+     "type": "File",
+     "root": "covers",
+     "accept": [
+      "pdf"
+     ],
+     "label": "Sample chapter",
+     "$plugin": "library"
     }
    ],
    "indexes": [
@@ -680,6 +737,13 @@
      "name": "name",
      "type": "Name",
      "index": false,
+     "$plugin": "library"
+    },
+    {
+     "name": "card",
+     "type": "Image",
+     "root": "records",
+     "label": "Library card",
      "$plugin": "library"
     },
     {

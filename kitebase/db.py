@@ -10,6 +10,7 @@ import sqlalchemy.types
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session, Session
 import kitebase.access
+import kitebase.media
 from kitebase.plugins import PluginsManager, Plugin
 from kitebase.endpoints import CommandProcessor
 from kitebase.utils import deep_merge
@@ -130,6 +131,7 @@ class DB:
         self.multi_tenant_config: Dict[str, Any] = {}
         self.shared_tables: set = set()
         self.query_behaviors: List[Any] = []
+        self.media: Optional[kitebase.media.Media] = None
 
     def add_query_behavior(self, behavior_class: Any) -> None:
         """
@@ -164,6 +166,7 @@ class DB:
         self._calc_tables()
         self._calc_junctions()
         self._calc_columns()
+        self.media = kitebase.media.Media(self.pm.config.get('media'), self.pm.resolve_path)
         self._calc_endpoints()
         self._load_multi_tenant_config()
         # After the endpoints: a policy plugin registers its guard on import.

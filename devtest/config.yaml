@@ -26,6 +26,17 @@ cli: devtest.py
 # db engine for sqlalchemy
 db_engine: "sqlite:///devtest.sqlite"
 
+# Where uploaded files live (kitebase.media). A column names its root, and
+# stores `root:path`; the bytes stay here, out of the database.
+media:
+  roots:
+    covers:  { type: fs, path: media/covers }                        # yyyymm
+    records: { type: fs, path: media/records, allocate: by_record }
+  # Sizes a view names (`variant: thumb`), never free in a URL.
+  variants:
+    thumb:  { fit: 96x96 }
+    medium: { fit: 480x480 }
+
 # Schema alignment (kitebase.schema_sync). The server only ever looks: at startup
 # it compares the database with the schema the plugins describe and, on a
 # difference, stops ('error', the default), logs ('warn') or says nothing

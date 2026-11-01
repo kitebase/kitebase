@@ -1,6 +1,7 @@
 import kitebase
 import kitebase.server_utils as server_utils
 import kitebase.transforms
+import kitebase.media
 from kitebase import access
 from kitebase.access import AccessDenied
 from kitebase.endpoints import endpoint
@@ -111,6 +112,17 @@ def write_values(db_table, record_data: Dict[str, Any]) -> Dict[str, Any]:
         is_empty = value is None or value == ''
 
         if attrs.get('secret') and is_empty:
+            continue
+
+        if attrs.get('media'):
+            try:
+                value = kitebase.media.incoming(kitebase.utils.get_app().media, attrs, value)
+            except kitebase.media.MediaError as e:
+                errors[key] = str(e)
+                continue
+            if value is kitebase.media.KEEP:
+                continue
+            result[key] = value
             continue
 
         validator_name = attrs.get('validate')
@@ -494,7 +506,9 @@ def db_query(data: Dict[str, Any]) -> Dict[str, Any]:
     try:
         app = kitebase.utils.get_app()
         with app.get_session() as session:
-            builder = DynamicQueryBuilder(session, app.models)
+            builder = DynamicQueryBuilder(
+                session, app.models,
+                value_transform=kitebase.media.query_transform(app, data.get('variants')))
             records = builder.execute_query(query_def, result_format=fmt)
 
             if want_count:
@@ -513,6 +527,8 @@ def db_query(data: Dict[str, Any]) -> Dict[str, Any]:
 
     except AccessDenied:
         raise
+    except kitebase.media.MediaError as e:
+        return {"status": "error", "message": str(e), "code": 400}
     except Exception as e:
         import traceback
         traceback.print_exc()

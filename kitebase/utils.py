@@ -193,6 +193,11 @@ def serialize_model(model, include_relationships=False, db_table=None):
                 continue
             result[col.name] = getattr(model, col.name, None)
 
+    # A file's stored reference leaves as its signed URL (kitebase.media)
+    if db_table is not None:
+        from kitebase import media
+        media.sign_record(get_app(), db_table, result)
+
     # Optionally add relationships
     if include_relationships:
         for relationship in inspection.inspect(model.__class__).relationships:
