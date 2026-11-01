@@ -26,7 +26,6 @@ Two kinds of media column:
 
 This module is the mechanism without HTTP: roots, references, templates, the
 filesystem provider. Routes, signed URLs and upload checks build on it.
-See docs/pending/media.md in the workspace for the design.
 """
 import base64
 import hashlib
@@ -840,8 +839,8 @@ def serve(media: Media, root: str, path: str, params: Dict[str, str],
     except MediaError as e:
         return MediaReply(403, {}, message=str(e))
     if variant:
-        # Renditions come with their first consumer (docs/pending/media.md §8):
-        # never the full original in place of a thumbnail.
+        # Renditions are not generated yet, and the full original is never
+        # sent in place of a thumbnail.
         return MediaReply(501, {}, message=f"Variant '{variant}' cannot be generated yet")
     provider = media.root(ref.root).provider
     try:

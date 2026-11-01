@@ -674,8 +674,8 @@ def handle_upload(command_processor, fields: Dict[str, Any], upload: Any,
 
     The form fields and the file go to `media_upload` through the command
     processor, so the upload runs with the same context, permissions and log
-    line as any operation. Unlike the dispatcher (docs/pending/backend.md),
-    the answer keeps the status the operation gave: 403, 404, 413, 415.
+    line as any operation. Unlike the dispatcher, the answer keeps the
+    status the operation gave: 403, 404, 413, 415.
     """
     from kitebase.media import UploadedFile
 
