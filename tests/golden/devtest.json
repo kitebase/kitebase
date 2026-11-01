@@ -2007,6 +2007,156 @@
     "$plugin": "library"
    },
    "$plugin": "library"
+  },
+  "libraryuser_form": {
+   "title": "Member",
+   "content": {
+    "type": "form",
+    "source": {
+     "model": "LibraryUser",
+     "id": "$props.id",
+     "$plugin": "library"
+    },
+    "layout": [
+     {
+      "id": "member",
+      "type": "section",
+      "columns": [
+       {
+        "id": "left",
+        "fields": [
+         {
+          "name": "name",
+          "width": "50%"
+         },
+         {
+          "name": "membership_number",
+          "width": "30%"
+         },
+         {
+          "name": "is_student",
+          "width": "20%"
+         },
+         {
+          "filler": null
+         },
+         {
+          "name": "membership_date",
+          "width": "25%"
+         },
+         {
+          "name": "membership_expires",
+          "width": "25%"
+         },
+         {
+          "name": "phone",
+          "width": "50%"
+         }
+        ]
+       }
+      ],
+      "$plugin": "library"
+     },
+     {
+      "id": "reach",
+      "type": "section",
+      "label": "Address",
+      "columns": [
+       {
+        "id": "postal",
+        "fields": [
+         {
+          "name": "a_address",
+          "width": "45%"
+         },
+         {
+          "name": "a_zip",
+          "width": "12%"
+         },
+         {
+          "name": "a_city",
+          "width": "28%"
+         },
+         {
+          "filler": null
+         },
+         {
+          "name": "a_state",
+          "width": "12%"
+         },
+         {
+          "name": "a_country",
+          "width": "28%"
+         }
+        ]
+       }
+      ],
+      "$plugin": "library"
+     },
+     {
+      "id": "login",
+      "type": "section",
+      "label": "Login",
+      "columns": [
+       {
+        "id": "credentials",
+        "fields": [
+         {
+          "name": "username",
+          "width": "30%"
+         },
+         {
+          "name": "email",
+          "width": "40%"
+         },
+         {
+          "name": "password",
+          "label": "Password",
+          "widget": "password",
+          "width": "30%"
+         },
+         {
+          "filler": null
+         },
+         {
+          "name": "is_active",
+          "width": "30%"
+         }
+        ]
+       }
+      ],
+      "$plugin": "library"
+     },
+     {
+      "id": "card",
+      "type": "section",
+      "label": "Library card",
+      "columns": [
+       {
+        "id": "card_image",
+        "fields": [
+         {
+          "name": "card"
+         },
+         {
+          "name": "notes"
+         }
+        ]
+       }
+      ],
+      "$plugin": "library"
+     }
+    ],
+    "actions": {
+     "toolbar": [
+      "save",
+      "cancel"
+     ],
+     "$plugin": "library"
+    },
+    "$plugin": "library"
+   },
+   "$plugin": "library"
   }
  },
  "views": {

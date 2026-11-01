@@ -498,6 +498,11 @@ class Media:
                 raise MediaError(f'media.cache: {self.cache!r} is not in media.roots')
             if not isinstance(self.roots[self.cache].provider, FsProvider):
                 raise MediaError(f'media.cache: root {self.cache!r} must be of type fs')
+        # The variant a generated list shows an image column in: a grid of
+        # originals would download each photo at full size.
+        self.list_variant: Optional[str] = config.get('list_variant')
+        if self.list_variant is not None and self.list_variant not in self.variants:
+            raise MediaError(f'media.list_variant: {self.list_variant!r} is not in media.variants')
         self.max_pixels: int = int(config.get('max_pixels', 40_000_000))
         self.url_days: int = int(config.get('url_days', 1))
         self._key: Optional[bytes] = None

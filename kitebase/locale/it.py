@@ -11,6 +11,7 @@ register_translations('it', {
     'Record ID is required for updates':'ID record obbligatorio per l\'aggiornamento',
     'No data provided for update':      'Nessun dato fornito per l\'aggiornamento',
     'Some values are not valid':        'Alcuni valori non sono validi',
+    'A value is required':              'Valore obbligatorio',
     'Not a valid email address':        'Non è un indirizzo email valido',
     'Record updated successfully':      'Record aggiornato con successo',
     'Record ID is required for deletion':'ID record obbligatorio per l\'eliminazione',

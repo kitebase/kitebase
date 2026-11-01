@@ -1,0 +1,84 @@
+# The member form. Declared rather than generated: a member logs in, and the
+# generated form leaves the password out, because the column is `secret` and
+# never reaches the client. Here it is in, empty on every load: typing sets a
+# new one, hashed on the way in; leaving it empty leaves it as it is. A new
+# member needs one, and the server says so under the field.
+#
+# Its name is the convention's, `{table}_form`: the generated list opens it.
+
+pages:
+
+  libraryuser_form:
+    title: Member
+    content:
+      type: form
+      source:
+        model: LibraryUser
+        id: $props.id
+      layout:
+        - id: member
+          type: section
+          columns:
+            - id: left
+              fields:
+                - name: name
+                  width: 50%
+                - name: membership_number
+                  width: 30%
+                - name: is_student
+                  width: 20%
+                - filler:
+                - name: membership_date
+                  width: 25%
+                - name: membership_expires
+                  width: 25%
+                - name: phone
+                  width: 50%
+
+        - id: reach
+          type: section
+          label: Address
+          columns:
+            - id: postal
+              fields:
+                - name: a_address
+                  width: 45%
+                - name: a_zip
+                  width: 12%
+                - name: a_city
+                  width: 28%
+                - filler:
+                - name: a_state
+                  width: 12%
+                - name: a_country
+                  width: 28%
+
+        - id: login
+          type: section
+          label: Login
+          columns:
+            - id: credentials
+              fields:
+                - name: username
+                  width: 30%
+                - name: email
+                  width: 40%
+                - name: password
+                  label: Password
+                  widget: password
+                  width: 30%
+                - filler:
+                - name: is_active
+                  width: 30%
+
+        # Laid out by record: the card is uploaded once the member is saved.
+        - id: card
+          type: section
+          label: Library card
+          columns:
+            - id: card_image
+              fields:
+                - name: card
+                - name: notes
+      actions:
+        toolbar: [save, cancel]

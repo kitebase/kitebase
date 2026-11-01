@@ -246,6 +246,32 @@ def coerce_value(model_class, key: str, value: Any) -> Any:
     return value
 
 
+def require_columns(model_class, values: Dict[str, Any]) -> None:
+    """Refuse a new row that leaves out a column the database requires.
+
+    A column that is NOT NULL, with no default and no key the database
+    assigns, must arrive with a value: said by field before the insert, rather
+    than as the database's own error, which quotes the statement and its
+    values. A secret column the form does not show (a password) is reported
+    here too, under its name.
+
+    Raises:
+        ValidationError: the columns left out, as {field: message}
+    """
+    table = getattr(model_class, '__table__', None)
+    if table is None:
+        return
+    errors = {}
+    for col in table.columns:
+        if (col.nullable or col.default is not None or col.server_default is not None
+                or col is table.autoincrement_column):
+            continue
+        if values.get(col.key) is None:
+            errors[col.key] = _('A value is required')
+    if errors:
+        raise kitebase.transforms.ValidationError(errors)
+
+
 def _invalid(error) -> Dict[str, Any]:
     """A write refused by a column's rule: the errors go back by field."""
     return {"status": "error", "code": 400, "message": _('Some values are not valid'),
@@ -263,6 +289,7 @@ def handle_create(app, model_class, params: Dict[str, Any], db_table=None) -> Di
     try:
         record_data = write_values(db_table, record_data)
         coerced = {k: coerce_value(model_class, k, v) for k, v in record_data.items()}
+        require_columns(model_class, coerced)
         new_record = model_class(**coerced)
 
         with app.get_session() as session:

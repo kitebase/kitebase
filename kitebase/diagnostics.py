@@ -184,6 +184,7 @@ def _check_view(app: Any, view: Dict[str, Any], path: str,
                     f"other's values — give one an alias ('{field} as ...')", plugin))
             else:
                 keys[key] = field
+            _check_variant(app, table, col, f'{path}.columns[{field}]', plugin, issues)
 
     _check_fields(view.get('fields') or [], colnames, model,
                   f'{path}.fields', plugin, issues)
@@ -242,6 +243,31 @@ def _check_collection(app: Any, node: Dict[str, Any], path: str,
             f"'{model}.{fk}' does not say whether it is owned: rows edited here will "
             f"not follow the parent when it is deleted — write 'owned: false' to "
             f"confirm that, or 'owned: true' to make them parts of it", plugin))
+
+
+def _check_variant(app: Any, table: Any, col: Dict[str, Any], path: str,
+                   plugin: Optional[str], issues: List[Dict[str, Any]]) -> None:
+    """An image column of a grid names the variant it shows, and one that exists.
+
+    Without one the grid gets the originals, each photo at full size; an
+    unknown one makes the query fail.
+    """
+    media = getattr(app, 'media', None)
+    variants = getattr(media, 'variants', None) or {}
+    column = next((c for c in table.effective_columns if c.name == col['field']), None)
+    if column is None or column.attributes.get('media') != 'image':
+        return
+    variant = col.get('variant')
+    if variant is None:
+        if variants:
+            issues.append(make_issue(
+                'warning', 'media-variant', path,
+                f"image column without variant: the grid downloads every original; "
+                f"name one of {', '.join(sorted(variants))}", plugin))
+    elif variant not in variants:
+        issues.append(make_issue(
+            'error', 'media-variant', path,
+            f"variant '{variant}' is not in media.variants: the query fails", plugin))
 
 
 def _check_field(app: Any, field: str, colnames: Set[str], model: str,

@@ -626,6 +626,7 @@ def test_an_image_over_max_pixels_is_413_before_it_is_decoded(cached, tmp_path):
     ({'variants': {'thumb': {}}}, 'WIDTHxHEIGHT'),
     ({'variants': {'thumb': {'fit': '0x10'}}}, 'WIDTHxHEIGHT'),
     ({'cache': 'nowhere'}, 'not in media.roots'),
+    ({'variants': {'thumb': {'fit': '96x96'}}, 'list_variant': 'tiny'}, 'not in media.variants'),
 ])
 def test_variants_and_cache_are_checked_when_they_load(tmp_path, config, why):
     with pytest.raises(MediaError, match=why):
@@ -647,3 +648,30 @@ def test_the_client_learns_the_kind_limits_and_whether_to_save_first(media):
                      'resize': 2048, 'max_size': 1024 ** 2, 'needs_record': False}
     assert column_schema(media, {'media': 'image', 'root': 'records'})['needs_record']
     assert column_schema(media, {'media': 'files', 'root': 'records'})['needs_record']
+
+
+def test_a_generated_list_shows_images_in_the_list_variant(cached):
+    from kitebase.pages import auto_list_page
+    table = _Table(_Col('id'), _Col('cover', media='image', root='covers'),
+                   _Col('sample', media='file', root='covers'))
+    columns = lambda m: {c['field']: c.get('variant') for c in
+                         auto_list_page('Book', table, m)['content']['columns']}
+
+    assert columns(cached) == {'id': None, 'cover': None, 'sample': None}
+    cached.list_variant = 'thumb'
+    assert columns(cached) == {'id': None, 'cover': 'thumb', 'sample': None}
+
+
+def test_check_asks_a_grid_for_an_existing_variant_of_its_images(cached):
+    from kitebase.diagnostics import _check_view
+    app = _App(cached, Book=_Table(_Col('title'), _Col('cover', media='image', root='covers')))
+
+    def issues(*columns):
+        found = []
+        _check_view(app, {'source': {'model': 'Book'}, 'columns': list(columns)},
+                    'views.books', None, found)
+        return [(i['code'], i['severity']) for i in found]
+
+    assert issues({'field': 'title'}, {'field': 'cover', 'variant': 'thumb'}) == []
+    assert issues({'field': 'cover'}) == [('media-variant', 'warning')]
+    assert issues({'field': 'cover', 'variant': 'huge'}) == [('media-variant', 'error')]

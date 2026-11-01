@@ -43,7 +43,7 @@ import kitebase.media
 from kitebase import access
 from kitebase.access import AccessDenied
 from kitebase.endpoints import endpoint
-from kitebase.endpoint_db import pk_field, write_values, coerce_value
+from kitebase.endpoint_db import pk_field, write_values, coerce_value, require_columns
 from kitebase.pages import Aggregate, Collection, page_aggregate
 from kitebase.querybuilder import DynamicQueryBuilder
 
@@ -366,6 +366,7 @@ def _save_node(app, session, node_def, node: Dict[str, Any],
                              or (isinstance(values[pk], int) and values[pk] < 0)):
             del values[pk]
 
+        require_columns(model_class, values)
         obj = model_class(**values)
         session.add(obj)
         session.flush()                     # the key, without closing the transaction

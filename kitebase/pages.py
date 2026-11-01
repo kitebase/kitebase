@@ -195,13 +195,15 @@ def resolve_collections(page: Dict[str, Any], page_id: str) -> Dict[str, Collect
 
 # ── Auto-generated pages ────────────────────────────────────────────────────
 
-def auto_list_page(table_name: str, table: Any) -> Dict[str, Any]:
+def auto_list_page(table_name: str, table: Any, media: Any = None) -> Dict[str, Any]:
     """
     Auto-generate a minimal list page descriptor for a table.
 
     Convention: requested as '{table_name}_list' (e.g. 'author_list').
     Includes all non-secret effective_columns as table columns.
     FK columns are shown as raw id fields (no join auto-resolve).
+    An image column shows the variant `media.list_variant` names, when it
+    names one.
 
     A junction table needs no special case: it carries a key of its own like
     every other table, so its rows are addressable and add/delete mean something.
@@ -214,6 +216,8 @@ def auto_list_page(table_name: str, table: Any) -> Dict[str, Any]:
         label = col.attributes.get('label')
         if label:
             entry['title'] = label
+        if col.attributes.get('media') == 'image' and getattr(media, 'list_variant', None):
+            entry['variant'] = media.list_variant
         columns.append(entry)
 
     return {
@@ -297,12 +301,14 @@ def resolve_auto_page(app: Any, page_id: str) -> Optional[Dict[str, Any]]:
     Table name matching is case-insensitive (e.g. 'author_list' → 'Author').
     Returns None if no matching table is found.
     """
-    for suffix, builder in (('_list', auto_list_page), ('_form', auto_form_page)):
+    for suffix in ('_list', '_form'):
         if page_id.endswith(suffix):
             base = page_id[:-len(suffix)]
             for t_name, t_obj in app.tables.items():
                 if t_name.lower() == base.lower():
-                    return builder(t_name, t_obj)
+                    if suffix == '_list':
+                        return auto_list_page(t_name, t_obj, getattr(app, 'media', None))
+                    return auto_form_page(t_name, t_obj)
     return None
 
 

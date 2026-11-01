@@ -39,6 +39,8 @@ media:
   variants:
     thumb:  { fit: 96x96 }
     medium: { fit: 480x480 }
+  # What a generated list shows an image column in.
+  list_variant: thumb
 
 # Schema alignment (kitebase.schema_sync). The server only ever looks: at startup
 # it compares the database with the schema the plugins describe and, on a
