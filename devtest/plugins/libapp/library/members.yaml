@@ -8,6 +8,15 @@
 
 pages:
 
+  # The generated member list, opening as cards, with the table a click away.
+  # No `card:`: the card is drawn from the columns, the name (the display
+  # field) as its title and the library card as its image.
+  libraryuser_list:
+    $auto: true
+    content:
+      type: cards
+      allow_views: [cards, table]
+
   libraryuser_form:
     title: Member
     content:

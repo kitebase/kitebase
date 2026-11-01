@@ -366,6 +366,19 @@ views:
         align: center
         formatter: price_color
       - field: status
+      # The cover again, larger, for the cards: an alias carries its own
+      # variant, and the grid does not show it.
+      - field: cover as card_cover
+        variant: medium
+        visible: false
+    # The same rows as tiles. A card names columns of the view by key; a photo
+    # dropped on a card's image replaces the cover.
+    allow_views: [table, cards]
+    card:
+      image: card_cover
+      title: title
+      subtitle: name
+      details: [price, status]
     # One entry point for everything Archivable offers, in the [⚡] menu: the
     # server answers with a menu of its own (active / archived / all, and the
     # verb that fits the active row). Book carries the mixin; the command is

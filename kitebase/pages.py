@@ -363,6 +363,9 @@ def _column_label(app: Any, model: Optional[str], field_expr: Any) -> Optional[s
     return None
 
 
+GRID_TYPES = ('table', 'tree', 'cards')
+
+
 def _fill_titles(app: Any, obj: Any, model: Optional[str] = None) -> None:
     """Give every list column without a `title` the label its model declares.
 
@@ -380,7 +383,9 @@ def _fill_titles(app: Any, obj: Any, model: Optional[str] = None) -> None:
     source = obj.get('source')
     if isinstance(source, dict) and source.get('model'):
         model = source['model']
-    is_table = obj.get('type') == 'table' and isinstance(obj.get('columns'), list)
+    # The views whose `columns` are grid columns: a tree is a grid, and cards
+    # are the same rows (their details are labelled with these titles).
+    is_table = obj.get('type') in GRID_TYPES and isinstance(obj.get('columns'), list)
     if is_table:
         for col in obj['columns']:
             if isinstance(col, dict) and 'title' not in col:

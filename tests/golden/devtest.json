@@ -1954,6 +1954,95 @@
    ],
    "$plugin": "library"
   },
+  "review_list": {
+   "title": "Reviews",
+   "content": {
+    "type": "cards",
+    "allow_views": [
+     "cards",
+     "table"
+    ],
+    "source": {
+     "model": "Review",
+     "joins": [
+      {
+       "Book": "Review.book_id = Book.id",
+       "$plugin": "library"
+      },
+      {
+       "LibraryUser": "Review.library_user_id = LibraryUser.id",
+       "$plugin": "library"
+      }
+     ],
+     "order_by": [
+      "-rating",
+      "-review_date"
+     ],
+     "$plugin": "library"
+    },
+    "columns": [
+     {
+      "field": "id",
+      "$plugin": "library"
+     },
+     {
+      "field": "rating",
+      "tone": {
+       "ranges": [
+        [
+         5,
+         "success"
+        ],
+        [
+         4,
+         "accent"
+        ],
+        [
+         3,
+         "warning"
+        ],
+        [
+         1,
+         "danger"
+        ]
+       ]
+      },
+      "$plugin": "library"
+     },
+     {
+      "field": "Book.title as book",
+      "title": "Book",
+      "$plugin": "library"
+     },
+     {
+      "field": "comment",
+      "$plugin": "library"
+     },
+     {
+      "field": "LibraryUser.name as member",
+      "title": "Member",
+      "$plugin": "library"
+     },
+     {
+      "field": "review_date",
+      "$plugin": "library"
+     }
+    ],
+    "card": {
+     "title": "book",
+     "subtitle": "comment",
+     "ribbon": "rating",
+     "details": [
+      "member",
+      "review_date"
+     ],
+     "$plugin": "library"
+    },
+    "navigator": true,
+    "$plugin": "library"
+   },
+   "$plugin": "library"
+  },
   "welcome": {
    "title": "Welcome",
    "content": {
@@ -2004,6 +2093,18 @@
      ],
      "$plugin": "library"
     },
+    "$plugin": "library"
+   },
+   "$plugin": "library"
+  },
+  "libraryuser_list": {
+   "$auto": true,
+   "content": {
+    "type": "cards",
+    "allow_views": [
+     "cards",
+     "table"
+    ],
     "$plugin": "library"
    },
    "$plugin": "library"
@@ -2328,8 +2429,28 @@
     {
      "field": "status",
      "$plugin": "panels"
+    },
+    {
+     "field": "cover as card_cover",
+     "variant": "medium",
+     "visible": false,
+     "$plugin": "panels"
     }
    ],
+   "allow_views": [
+    "table",
+    "cards"
+   ],
+   "card": {
+    "image": "card_cover",
+    "title": "title",
+    "subtitle": "name",
+    "details": [
+     "price",
+     "status"
+    ],
+    "$plugin": "panels"
+   },
    "navigator": {
     "commands": [
      {

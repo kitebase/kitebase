@@ -185,9 +185,60 @@ def _check_view(app: Any, view: Dict[str, Any], path: str,
             else:
                 keys[key] = field
             _check_variant(app, table, col, f'{path}.columns[{field}]', plugin, issues)
+            _check_tone(col, f'{path}.columns[{field}]', plugin, issues)
 
+    _check_card(view, keys, path, plugin, issues)
     _check_fields(view.get('fields') or [], colnames, model,
                   f'{path}.fields', plugin, issues)
+
+
+# The tones a view may give a row (client: components/tone.ts): names, drawn
+# by each renderer with the theme's tokens.
+TONES = ('accent', 'success', 'warning', 'danger', 'muted')
+
+
+def _check_tone(col: Dict[str, Any], path: str, plugin: Optional[str],
+                issues: List[Dict[str, Any]]) -> None:
+    """A column's tone names tones of the list, by exact value or by range."""
+    tone = col.get('tone')
+    if not isinstance(tone, dict):
+        return
+
+    def named(name: Any, where: str) -> None:
+        if name not in TONES:
+            issues.append(make_issue(
+                'warning', 'tone-value', f'{path}.tone.{where}',
+                f"'{name}' is not a tone, so it gives none; "
+                f"the tones are: {', '.join(TONES)}", plugin))
+
+    for value, name in (tone.get('values') or {}).items():
+        if not str(value).startswith('$'):          # merge metadata ($plugin)
+            named(name, f'values.{value}')
+    for i, entry in enumerate(tone.get('ranges') or []):
+        if (not isinstance(entry, list) or len(entry) != 2
+                or isinstance(entry[0], bool) or not isinstance(entry[0], (int, float))):
+            issues.append(make_issue(
+                'warning', 'tone-range', f'{path}.tone.ranges[{i}]',
+                f"a range is [minimum, tone], as [4, success]; {entry!r} gives no tone", plugin))
+        else:
+            named(entry[1], f'ranges[{i}]')
+
+
+def _check_card(view: Dict[str, Any], keys: Dict[str, str], path: str,
+                plugin: Optional[str], issues: List[Dict[str, Any]]) -> None:
+    """A card names columns of its view by key: the card shows what the query brought."""
+    card = view.get('card')
+    if not isinstance(card, dict):
+        return
+    named = [(k, card[k]) for k in ('image', 'title', 'subtitle', 'ribbon') if isinstance(card.get(k), str)]
+    named += [('details', f) for f in card.get('details') or [] if isinstance(f, str)]
+    for where, key in named:
+        if key not in keys:
+            known = ', '.join(sorted(keys)) or 'none'
+            issues.append(make_issue(
+                'warning', 'card-field', f'{path}.card.{where}',
+                f"'{key}' is not the key of a column of the view, so the card "
+                f"shows nothing there; the keys are: {known}", plugin))
 
 
 def _check_collection(app: Any, node: Dict[str, Any], path: str,

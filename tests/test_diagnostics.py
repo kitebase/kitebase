@@ -318,3 +318,31 @@ def test_the_query_ranks_on_the_scale_pass(rank):
 def test_a_query_rank_off_the_scale_is_named():
     found = by_code(rank_app('hight'), 'query-rank-unknown')
     assert len(found) == 1 and found[0]['path'] == 'tables.Book.name'
+
+
+def test_a_card_names_columns_of_its_view_by_key():
+    """A card shows what the query brought: a key that no column has shows nothing."""
+    pm = PluginsManager()
+    pm.merge_dicts({'pages': {'book_list': {'content': {
+        'type': 'table', 'source': {'model': 'Book'},
+        'columns': [{'field': 'name'}, {'field': 'Publisher.name as publisher'}],
+        'card': {'title': 'name', 'subtitle': 'publisher',
+                 'details': ['price'], 'image': 'cover'}}}}}, 'bench')
+    tables = {'Book': FakeTable('id', 'name'), 'Publisher': FakeTable('id', 'name')}
+    found = by_code(run_checks(FakeApp(pm, tables)), 'card-field')
+    assert sorted(i['path'].rsplit('.', 1)[-1] for i in found) == ['details', 'image']
+
+
+def test_a_column_tone_names_tones_by_value_or_range():
+    pm = PluginsManager()
+    pm.merge_dicts({'pages': {'book_list': {'content': {
+        'type': 'table', 'source': {'model': 'Book'},
+        'columns': [
+            {'field': 'name', 'tone': {'values': {'A': 'success', 'N': 'muted'}}},
+            {'field': 'id', 'tone': {'values': {'A': 'green'},
+                                     'ranges': [[4, 'success'], [3, 'amber'], ['x', 'danger']]}},
+        ]}}}}, 'bench')
+    issues = run_checks(FakeApp(pm, {'Book': FakeTable('id', 'name')}))
+    found = sorted((i['code'], i['path'].rsplit('.', 1)[-1]) for i in issues
+                   if i['code'].startswith('tone-'))
+    assert found == [('tone-range', 'ranges[2]'), ('tone-value', 'A'), ('tone-value', 'ranges[1]')]

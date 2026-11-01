@@ -1,0 +1,33 @@
+# The reviews as a ranking: cards ordered by rating, the rating in a ribbon
+# coloured by the tone of its column. The tone goes by ranges: a rating below
+# every range (a 0) has none, and shows no ribbon.
+
+pages:
+
+  review_list:
+    title: Reviews
+    content:
+      type: cards
+      allow_views: [cards, table]
+      source:
+        model: Review
+        joins:
+          - Book: "Review.book_id = Book.id"
+          - LibraryUser: "Review.library_user_id = LibraryUser.id"
+        order_by: [-rating, -review_date]
+      columns:
+        - field: id
+        - field: rating
+          tone: { ranges: [[5, success], [4, accent], [3, warning], [1, danger]] }
+        - field: Book.title as book
+          title: Book
+        - field: comment
+        - field: LibraryUser.name as member
+          title: Member
+        - field: review_date
+      card:
+        title: book
+        subtitle: comment
+        ribbon: rating
+        details: [member, review_date]
+      navigator: true
