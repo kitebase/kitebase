@@ -20,6 +20,7 @@ import jwt
 import pytest
 
 import kitebase.server_utils as srv
+from kitebase.access import AccessDenied
 from kitebase.db import BaseApp
 from kitebase.endpoints import CommandProcessor, FileResult, _ENDPOINTS
 
@@ -48,6 +49,9 @@ def kitebase_app():
     # Keys of mixed type: a descriptor carries them, and sorting them raises.
     register('mixed_keys', lambda params: {1: 'one', 'two': 2})
     register('boom', _raise)
+    register('denied', _deny)
+    register('gone', lambda params: {'status': 'error', 'code': 404, 'message': 'no such row'})
+    register('no_code', lambda params: {'status': 'error', 'message': 'not now'})
     register('who', lambda params: BaseApp.get_context())
     # A refusal with something to say: the field errors of a form.
     register('refuse', lambda params: {
@@ -69,6 +73,10 @@ def kitebase_app():
 
 def _raise(params):
     raise KeyError('missing thing')
+
+
+def _deny(params):
+    raise AccessDenied('Book.delete')
 
 
 @pytest.fixture
@@ -134,11 +142,24 @@ def test_an_invalid_token_is_refused(flask_client):
     assert res.status_code == 401
 
 
-def test_a_failing_endpoint_answers_with_its_status(flask_client):
-    res = flask_client.post('/kitebase/endpoint/boom', json={}, headers=bearer())
+@pytest.mark.parametrize('operation, status', [
+    ('denied', 403),     # a refused permission
+    ('no_such_op', 404), # an operation nobody registered
+    ('gone', 404),       # an endpoint's own code
+    ('boom', 500),       # an endpoint that raised
+    ('no_code', 400),    # a refusal that names no status
+    ('refuse', 400),
+])
+def test_the_dispatcher_answers_with_the_status_of_the_operation(
+        flask_client, fastapi_client, operation, status):
+    flask_res = flask_client.post(f'/kitebase/endpoint/{operation}', json={},
+                                  headers=bearer())
+    fastapi_res = fastapi_client.post(f'/kitebase/endpoint/{operation}', json={},
+                                      headers=bearer())
 
-    assert res.status_code >= 400
-    assert res.get_json()['status'] == 'error'
+    assert flask_res.status_code == fastapi_res.status_code == status
+    assert flask_res.get_json()['status_code'] == fastapi_res.json()['status_code'] == status
+    assert flask_res.get_json()['status'] == 'error'
 
 
 def test_a_stale_token_comes_back_refreshed(flask_client):

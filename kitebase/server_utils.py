@@ -51,12 +51,18 @@ def _error_from_exc(e: Exception, status_code: int = 500) -> Dict[str, Any]:
     )
 
 
-def _error_from_result(result: Dict[str, Any], default_message: str = 'Operation failed',
-                       status_code: int = 400) -> Dict[str, Any]:
-    """Build error response propagating traceback from a CommandResult dict."""
+def _error_from_result(result: Dict[str, Any],
+                       default_message: str = 'Operation failed') -> Dict[str, Any]:
+    """Build error response propagating traceback from a CommandResult dict.
+
+    The HTTP status is the one the operation gave: 403 for a refused
+    permission, 404 for an unknown operation, 500 for an endpoint that raised,
+    an endpoint's own 4xx. A refusal that names no error status is a 400.
+    """
+    code = result.get('code')
     return _error_response(
         message=result.get('message', default_message),
-        status_code=status_code,
+        status_code=code if isinstance(code, int) and code >= 400 else 400,
         error_type=result.get('error_type'),
         traceback=result.get('traceback'),
         request_id=result.get('request_id'),
@@ -652,11 +658,7 @@ def handle_download(
         result = command_processor.send(command)
 
         if result.get('status') != 'success':
-            # The endpoint's own code where it gave one: a refused permission
-            # stays a 403 on this route too.
-            code = result.get('code')
-            return _error_from_result(result, 'Operation failed',
-                                      code if isinstance(code, int) and code >= 400 else 400)
+            return _error_from_result(result, 'Operation failed')
         if not isinstance(result.get('data'), FileResult):
             return _error_response(
                 f"Operation '{operation}' does not return a file",
@@ -674,8 +676,7 @@ def handle_upload(command_processor, fields: Dict[str, Any], upload: Any,
 
     The form fields and the file go to `media_upload` through the command
     processor, so the upload runs with the same context, permissions and log
-    line as any operation. Unlike the dispatcher, the answer keeps the
-    status the operation gave: 403, 404, 413, 415.
+    line as any operation, and the same statuses: 403, 404, 413, 415.
     """
     from kitebase.media import UploadedFile
 
@@ -688,9 +689,7 @@ def handle_upload(command_processor, fields: Dict[str, Any], upload: Any,
         result = command_processor.send(command)
         if result.get('status') == 'success':
             return {'status': 'success', 'data': result.get('data'), 'status_code': 200}
-        code = result.get('code')
-        return _error_from_result(result, 'Upload failed',
-                                  code if isinstance(code, int) and code >= 400 else 400)
+        return _error_from_result(result, 'Upload failed')
     except Exception as e:
         return _error_from_exc(e)
 
