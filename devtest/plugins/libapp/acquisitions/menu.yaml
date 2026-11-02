@@ -1,0 +1,6 @@
+# A group of its own: the plugin comes and goes with `include`, its menu with it.
+
+menu_items:
+  acquisitions: { label: Acquisitions, icon: truck, order: 40 }
+  orders:   { label: Orders,   icon: clipboard-list, parent: acquisitions, order: 10, action: stack_push, panel: purchaseorder_list }
+  receipts: { label: Receipts, icon: package-check,  parent: acquisitions, order: 20, action: stack_push, panel: receipt_list }

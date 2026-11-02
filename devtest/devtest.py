@@ -279,6 +279,7 @@ STAFF = [
     ('desk', 'Dennis Ward', ['library.desk']),
     ('librarian', 'Laura Bennett', ['library.librarian']),
     ('stats', 'Steve Norris', ['library.stats']),
+    ('buyer', 'Bianca Moretti', ['acquisitions.buyer']),
 ]
 
 
@@ -310,7 +311,60 @@ def seed(app, model=None):
     flow will be tested against once it exists.
     """
     model = model or app.model
+    _seed_library(app, model)
+    with app.get_session() as session:
+        if seed_acquisitions(session, model):
+            session.commit()
 
+
+# Two orders to the publisher with the most books, and the first half received:
+# enough to open a document, and to have something still to arrive.
+def seed_acquisitions(session, model) -> int:
+    """Orders and a receipt, while there are none; how many documents it added.
+
+    Its own step, so a database seeded before the plugin gets them on the next
+    start. It needs a publisher with three books, and skips quietly without.
+    """
+    if session.query(model.PurchaseOrder).first():
+        return 0
+    from sqlalchemy import func
+    row = (session.query(model.Book.publisher_id, func.count())
+           .filter(model.Book.publisher_id.isnot(None))
+           .group_by(model.Book.publisher_id)
+           .order_by(func.count().desc(), model.Book.publisher_id).first())
+    if row is None or row[1] < 3:
+        return 0
+    publisher_id = row[0]
+    books = (session.query(model.Book).filter_by(publisher_id=publisher_id)
+             .order_by(model.Book.id).limit(5).all())
+
+    first = model.PurchaseOrder(publisher_id=publisher_id, notes='Spring titles')
+    second = model.PurchaseOrder(publisher_id=publisher_id)
+    session.add_all([first, second])
+    session.flush()
+    lines = []
+    for n, book in enumerate(books, start=1):
+        lines.append(model.PurchaseOrderLine(
+            purchase_order_id=first.id, sequence=n * 10, book_id=book.id,
+            quantity=n + 1, price=book.price, discount=10 if n % 2 else None))
+    for n, book in enumerate(books[:2], start=1):
+        lines.append(model.PurchaseOrderLine(
+            purchase_order_id=second.id, sequence=n * 10, book_id=book.id,
+            quantity=3, price=book.price))
+    session.add_all(lines)
+    session.flush()
+
+    receipt = model.Receipt(publisher_id=publisher_id, reference='DN 0412')
+    session.add(receipt)
+    session.flush()
+    session.add_all(model.ReceiptLine(
+        receipt_id=receipt.id, sequence=n * 10, book_id=line.book_id,
+        quantity=line.quantity, purchase_order_line_id=line.id)
+        for n, line in enumerate(lines[:2], start=1))
+    return 3
+
+
+def _seed_library(app, model):
     with app.get_session() as session:
         if session.query(model.Book).first():
             return

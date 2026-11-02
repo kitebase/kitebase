@@ -1,0 +1,141 @@
+# Buying books: an order to a publisher, and what arrives against it.
+#
+# A bench for the document form (header, rows, phases, commands on the rows),
+# not a purchasing module: quantities are numbers, nothing counts copies or
+# stock, and what is still to arrive is reckoned from the rows. The supplier
+# is the publisher, so the plugin needs nothing beyond the catalogue.
+
+tables:
+
+  PurchaseOrder:
+    name: purchase_orders
+    tags: [journal]
+    mixins: [TimeStamp]
+    columns:
+      - name: id
+        type: ID
+        label: Number
+
+      - name: order_date
+        type: Date
+        label: Date
+        default: $op_date
+        nullable: false
+
+      - name: publisher_id
+        label: Publisher
+        nullable: false
+        foreign_key:
+          target: Publisher.id
+
+      - name: notes
+        type: Text
+        label: Notes
+        nullable: true
+
+  PurchaseOrderLine:
+    name: purchase_order_lines
+    columns:
+      - name: id
+        type: ID
+
+      # A part of its order: it goes when the order goes.
+      - name: purchase_order_id
+        nullable: false
+        foreign_key:
+          target: PurchaseOrder.id
+          owned: true
+
+      # The place of the row in its document, which the reader chose.
+      - name: sequence
+        type: Integer
+        nullable: false
+        default: 0
+
+      - name: book_id
+        label: Book
+        nullable: false
+        foreign_key:
+          target: Book.id
+
+      - name: quantity
+        type: Quantity
+        nullable: false
+
+      - name: price
+        type: Price
+        nullable: true
+
+      - name: discount
+        type: Percent
+        nullable: true
+
+  Receipt:
+    name: receipts
+    tags: [journal]
+    mixins: [TimeStamp]
+    columns:
+      - name: id
+        type: ID
+        label: Number
+
+      - name: receipt_date
+        type: Date
+        label: Date
+        default: $op_date
+        nullable: false
+
+      - name: publisher_id
+        label: Publisher
+        nullable: false
+        foreign_key:
+          target: Publisher.id
+
+      # The number on the publisher's delivery note.
+      - name: reference
+        type: String
+        label: Delivery note
+        length: 50
+        nullable: true
+
+      - name: notes
+        type: Text
+        label: Notes
+        nullable: true
+
+  ReceiptLine:
+    name: receipt_lines
+    columns:
+      - name: id
+        type: ID
+
+      - name: receipt_id
+        nullable: false
+        foreign_key:
+          target: Receipt.id
+          owned: true
+
+      - name: sequence
+        type: Integer
+        nullable: false
+        default: 0
+
+      - name: book_id
+        label: Book
+        nullable: false
+        foreign_key:
+          target: Book.id
+
+      - name: quantity
+        type: Quantity
+        nullable: false
+
+      # The order row this one fills, when it fills one: a book can also
+      # arrive that nobody ordered. The order outlives its receipts and the
+      # other way round, so neither deletes the other.
+      - name: purchase_order_line_id
+        label: Order row
+        nullable: true
+        foreign_key:
+          target: PurchaseOrderLine.id
+          owned: false

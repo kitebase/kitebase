@@ -1,0 +1,138 @@
+# The two documents: a header and its rows. A row of a document opens the
+# generated form of its table.
+
+pages:
+
+  purchaseorder_list:
+    title: Purchase orders
+    content:
+      type: table
+      source:
+        model: PurchaseOrder
+        joins:
+          - Publisher: "PurchaseOrder.publisher_id = Publisher.id"
+        order_by: [-id]
+      columns:
+        - field: id
+        - field: order_date
+        - field: Publisher.name as publisher
+          title: Publisher
+        - field: notes
+      navigator: true
+
+  receipt_list:
+    title: Receipts
+    content:
+      type: table
+      source:
+        model: Receipt
+        joins:
+          - Publisher: "Receipt.publisher_id = Publisher.id"
+        order_by: [-id]
+      columns:
+        - field: id
+        - field: receipt_date
+        - field: Publisher.name as publisher
+          title: Publisher
+        - field: reference
+        - field: notes
+      navigator: true
+
+  purchaseorder_form:
+    title: Purchase order
+    content:
+      type: form
+      source:
+        model: PurchaseOrder
+        id: $props.id
+      layout:
+        - id: header
+          type: section
+          columns:
+            - id: left
+              fields:
+                - name: id
+                  width: 15%
+                - name: order_date
+                  width: 20%
+                - name: publisher_id
+                  width: 45%
+                - name: notes
+
+        # In a tabs even alone: the hook another plugin needs to add a
+        # sibling collection (the payment terms of an order, say).
+        - id: relations
+          type: tabs
+          pages:
+            - id: lines_tab
+              label: Lines
+              count: lines
+              layout:
+                - type: collection
+                  id: lines
+                  model: PurchaseOrderLine
+                  fk: purchase_order_id
+                  view:
+                    type: table
+                    source:
+                      order_by: [sequence]
+                    columns:
+                      - field: book_id.title
+                        title: Book
+                        width: 320
+                      - field: quantity
+                        title: Quantity
+                      - field: price
+                        title: Price
+                      - field: discount
+                        title: Discount
+
+  receipt_form:
+    title: Receipt
+    content:
+      type: form
+      source:
+        model: Receipt
+        id: $props.id
+      layout:
+        - id: header
+          type: section
+          columns:
+            - id: left
+              fields:
+                - name: id
+                  width: 15%
+                - name: receipt_date
+                  width: 20%
+                - name: publisher_id
+                  width: 40%
+                - name: reference
+                  width: 20%
+                - filler:
+                - name: notes
+
+        # In a tabs even alone: the hook another plugin needs to add a
+        # sibling collection (the payment terms of an order, say).
+        - id: relations
+          type: tabs
+          pages:
+            - id: lines_tab
+              label: Lines
+              count: lines
+              layout:
+                - type: collection
+                  id: lines
+                  model: ReceiptLine
+                  fk: receipt_id
+                  view:
+                    type: table
+                    source:
+                      order_by: [sequence]
+                    columns:
+                      - field: book_id.title
+                        title: Book
+                        width: 320
+                      - field: quantity
+                        title: Quantity
+                      - field: purchase_order_line_id
+                        title: Order row

@@ -20,3 +20,4 @@ pages:
           - { username: desk,      password: desk,      role: Loans desk,    sees: "Members and loans; books read only, every other table by its label." }
           - { username: librarian, password: librarian, role: Librarian,     sees: "Cataloguer and loans desk together, plus the reviews and the Playground demos." }
           - { username: stats,     password: stats,     role: Statistics,    sees: "Loan statistics, by book and by month. The Loans list answers 403: it shows the members' names. No Playground: the group goes when nothing in it is left." }
+          - { username: buyer,     password: buyer,     role: Buyer,         sees: "Orders to the publishers and what arrives against them; the catalogue read only. The bench of the document form." }

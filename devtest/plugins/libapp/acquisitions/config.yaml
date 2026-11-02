@@ -1,0 +1,4 @@
+name: acquisitions
+version: 0.0.1
+description: Buying books from their publishers, the bench of the document form
+depends_on: [common, devtypes, books]

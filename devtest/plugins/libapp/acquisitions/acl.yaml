@@ -1,0 +1,14 @@
+# The buyer: orders and receipts, the catalogue to choose from.
+
+roles:
+
+  acquisitions.buyer:
+    label: Buyer
+    grants:
+      - PurchaseOrder.*
+      - PurchaseOrderLine.*
+      - Receipt.*
+      - ReceiptLine.*
+      - Book.read
+      - Publisher.read
+      - '*.label'
