@@ -37,6 +37,10 @@ form applies to its draft. It writes nothing:
     @proposal('PurchaseOrder')
     def order_head(ctx):
         ctx.rows['lines'] = [r for r in ctx.rows['lines'] if keep(r)]
+
+A batch writes a document as its form would with `run_form`: the proposals of
+its phases in order, then the save. It does not repeat the form's behaviour
+in a second place, and what holds always stays a rule of the table.
 """
 import functools
 import logging
@@ -345,3 +349,123 @@ def proposal(table: str):
         body.proposes = fn  # type: ignore[attr-defined]
         return body
     return wrap
+
+
+# ── The form without its client: a document written as the form would ───────
+
+def run_form(page_id: str, tree: Dict[str, Any],
+             answers: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Write a new document through its form, without a client: each phase that
+    has a judge proposes on the tree, in order, and its patch is applied as the
+    client applies it; then `save_tree`, with the rules of the table.
+
+    `tree` is the document as a form holds it, `{values, children: {cid:
+    [{values}, ...]}}`, ids optional. `answers` answers every question up
+    front: a question without its answer stops the run, and nothing is
+    written. Calls go through the dispatcher, so they run with the permissions
+    of whoever is in the context, as a client's would.
+
+    Returns the answer of `save_tree`, with the lines the proposals had for the
+    person, or the refusal of the step that stopped.
+    """
+    from kitebase.endpoints import CommandProcessor
+    from kitebase.pages import load_page
+
+    if isinstance(tree.get('id'), int) and tree['id'] >= 0:
+        return {'status': 'error', 'code': 400,
+                'message': 'run_form writes new documents: this one already has a key'}
+    page = load_page(kitebase.utils.get_app(), page_id)
+    if page is None:
+        return {'status': 'error', 'code': 404, 'message': f"No page '{page_id}'"}
+
+    seq = [0]
+    doc = _with_ids(tree, seq)
+    answers = dict(answers or {})
+    infos: List[str] = []
+    # The dispatcher replaces the context with the command's: each call
+    # carries the caller's, or it would run as nobody and leave nobody behind
+    context = kitebase.db.BaseApp.get_context()
+    processor = CommandProcessor()
+
+    def send(command: Dict[str, Any]) -> Dict[str, Any]:
+        return processor.send({**command, 'context': context})
+
+    for phase in (page.get('content') or {}).get('phases') or []:
+        endpoint = (phase.get('next') or {}).get('endpoint') if isinstance(phase, dict) else None
+        if not endpoint:
+            continue
+        res = send({'operation': endpoint, 'parameters': {'tree': doc, 'answers': answers}})
+        if res.get('status') != 'success':
+            ask = (res.get('$flow') or {}).get('ask')
+            if ask:
+                # Nobody to ask: the caller learns which answer to add
+                res['message'] = _f("Unanswered '{name}': {text}", name=ask['key'], text=ask['text'])
+            return res
+        apply_patch(doc, res.get('data') or {}, seq)
+        infos += (res.get('$flow') or {}).get('info') or []
+
+    result = send({'operation': 'save_tree',
+                   'parameters': {'page': page_id, 'root': _created(doc), 'answers': answers}})
+    if infos:
+        flow = result.setdefault('$flow', {})
+        flow['info'] = infos + (flow.get('info') or [])
+    return result
+
+
+def apply_patch(node: Dict[str, Any], patch: Dict[str, Any], seq: List[int]) -> None:
+    """A proposal's patch on a tree: the values, and each collection whole."""
+    node['values'].update(patch.get('values') or {})
+    for cid, rows in (patch.get('rows') or {}).items():
+        apply_rows(node, cid, rows, seq)
+
+
+def apply_rows(parent: Dict[str, Any], cid: str, rows: List[Dict[str, Any]],
+               seq: List[int]) -> None:
+    """
+    Make a collection what a proposal says it should be, as the client does
+    (`applyRows` in aggregate.ts): a known row takes the values, a row without
+    a known id is created, a live row left out is removed (a stored one is
+    marked for deletion, one never written simply goes). Rows end up in the
+    proposal's order.
+    """
+    current = parent.setdefault('children', {}).get(cid, [])
+    live = {r['id']: r for r in current if r.get('op') != 'delete'}
+    kept: List[Dict[str, Any]] = []
+    for patch in rows:
+        row = live.pop(patch.get('id'), None) if patch.get('id') is not None else None
+        if row is None:
+            seq[0] += 1
+            row = {'id': -seq[0], 'op': 'create', 'values': {}, 'children': {}}
+        changed = {k: v for k, v in (patch.get('values') or {}).items()
+                   if row['values'].get(k) != v}
+        if changed:
+            row['values'].update(changed)
+            if not row.get('op'):
+                row['op'] = 'update'
+        kept.append(row)
+    going = [r for r in current if r.get('op') == 'delete']
+    for row in live.values():
+        if isinstance(row['id'], int) and row['id'] >= 0:
+            row['op'] = 'delete'
+            going.append(row)
+    parent['children'][cid] = kept + going
+
+
+def _with_ids(node: Dict[str, Any], seq: List[int]) -> Dict[str, Any]:
+    """A copy of a document with a temporary id on every node that has none."""
+    node_id = node.get('id')
+    if node_id is None:
+        seq[0] += 1
+        node_id = -seq[0]
+    return {'id': node_id, 'values': dict(node.get('values') or {}),
+            'children': {cid: [_with_ids(child, seq) for child in children]
+                         for cid, children in (node.get('children') or {}).items()}}
+
+
+def _created(node: Dict[str, Any]) -> Dict[str, Any]:
+    """The save_tree payload of a document nobody has written yet."""
+    return {'id': node['id'], 'op': 'create', 'values': node['values'],
+            'children': {cid: [_created(child) for child in children
+                               if child.get('op') != 'delete']
+                         for cid, children in node['children'].items()}}

@@ -58,6 +58,20 @@ PAGES = {
         'layout': [{'name': 'title'},
                    {'type': 'collection', 'id': 'pages', 'model': 'Page', 'fk': 'loan_id'}],
     }},
+    # The same document in two phases, the step to the pages judged
+    'loan_doc': {'content': {
+        'type': 'form', 'source': {'model': 'Loan'},
+        'layout': [
+            {'id': 'head', 'type': 'section',
+             'columns': [{'id': 'left', 'fields': [{'name': 'title'}, {'name': 'member_id'}]}]},
+            {'id': 'relations', 'type': 'tabs', 'pages': [{'id': 'pages_tab', 'layout': [
+                {'type': 'collection', 'id': 'pages', 'model': 'Page', 'fk': 'loan_id'}]}]},
+        ],
+        'phases': [
+            {'id': 'head', 'nodes': ['head'], 'next': {'endpoint': 'test_loan_doc_head'}},
+            {'id': 'pages', 'nodes': ['relations']},
+        ],
+    }},
 }
 
 
@@ -521,3 +535,145 @@ def test_a_proposal_reaches_the_client_through_its_endpoint(app):
     assert result['data'] == {'values': {'note': 'seen'}}
     assert result['$flow'] == {'info': ['Looked at it']}
     assert loan_head.proposes.__name__ == 'loan_head'
+
+
+# ── apply_rows: the client's applyRows, on the server ───────────────────────
+#
+# The same cases as aggregate.test.ts: a batch must apply a proposal as the
+# form does, or the two paths drift apart.
+
+def stored():
+    return {'id': 7, 'values': {'title': '1984'}, 'children': {'authors': [
+        {'id': 42, 'values': {'author_id': 3, 'notes': 'first'}, 'children': {}},
+        {'id': 43, 'values': {'author_id': 4, 'notes': None}, 'children': {}},
+    ]}}
+
+
+def test_apply_rows_touches_known_rows_creates_new_ones_removes_the_rest():
+    tree, seq = stored(), [0]
+
+    flow.apply_rows(tree, 'authors', [
+        {'id': 43, 'values': {'author_id': 4, 'notes': 'second'}},
+        {'values': {'author_id': 5, 'notes': None}},
+    ], seq)
+
+    assert [(r['id'], r.get('op'), r['values'].get('notes')) for r in tree['children']['authors']] \
+        == [(43, 'update', 'second'), (-1, 'create', None), (42, 'delete', 'first')]
+
+
+def test_apply_rows_drops_a_row_never_written_and_keeps_one_already_going():
+    tree, seq = stored(), [1]
+    tree['children']['authors'][1]['op'] = 'delete'
+    tree['children']['authors'].append({'id': -1, 'op': 'create', 'values': {'author_id': 9}})
+
+    flow.apply_rows(tree, 'authors', [{'id': 42, 'values': {'author_id': 3, 'notes': 'first'}}], seq)
+
+    assert [(r['id'], r.get('op')) for r in tree['children']['authors']] == [(42, None), (43, 'delete')]
+
+
+def test_apply_rows_with_the_same_rows_moves_nothing():
+    tree = stored()
+    same = [{'id': r['id'], 'values': dict(r['values'])} for r in tree['children']['authors']]
+
+    flow.apply_rows(tree, 'authors', same, [0])
+
+    assert tree == stored()
+
+
+# ── run_form: the form without its client ───────────────────────────────────
+
+def judge_the_pages():
+    from kitebase.endpoints import endpoint
+
+    @endpoint('test_loan_doc_head')
+    @flow.proposal('Loan')
+    def loan_doc_head(ctx):
+        drafts = [r for r in ctx.rows.get('pages', []) if r['text'].startswith('draft')]
+        if drafts:
+            if not ctx.confirm('drop_drafts', f'{len(drafts)} pages are drafts: drop them?'):
+                ctx.stay('Drafts kept')
+            ctx.rows['pages'] = [r for r in ctx.rows['pages'] if r not in drafts]
+            ctx.info('Drafts dropped')
+        ctx.record['note'] = 'judged'
+
+
+def new_loan(title='Dune'):
+    """A document as a batch writes it: values and rows, no ids."""
+    return {'values': {'title': title, 'member_id': 1},
+            'children': {'pages': [{'values': {'text': t}} for t in ('p1', 'draft a', 'p2')]}}
+
+
+def written(app):
+    """What the database holds, without the keys: two paths give two ids."""
+    with app.get_session() as session:
+        Loan, Page = app.models['Loan'], app.models['Page']
+        return [(loan.title, loan.note, loan.member_id,
+                 [p.text for p in session.query(Page).filter(Page.loan_id == loan.id).order_by(Page.id)])
+                for loan in session.query(Loan).order_by(Loan.id)]
+
+
+def test_run_form_stops_at_a_question_nobody_answered(app):
+    judge_the_pages()
+
+    result = flow.run_form('loan_doc', new_loan())
+
+    assert result['status'] == 'error'
+    assert "'drop_drafts'" in result['message']
+    assert result['$flow']['ask']['key'] == 'drop_drafts'
+    assert titles(app) == []
+
+
+def test_run_form_writes_what_the_phases_proposed(app):
+    judge_the_pages()
+
+    result = flow.run_form('loan_doc', new_loan(), {'drop_drafts': True})
+
+    assert result['status'] == 'success'
+    assert result['$flow']['info'] == ['Drafts dropped']
+    assert written(app) == [('Dune', 'judged', 1, ['p1', 'p2'])]
+
+
+def test_run_form_and_the_form_write_the_same_document(app):
+    """The client's path, step by step through the dispatcher, then run_form."""
+    judge_the_pages()
+    answers = {'drop_drafts': True}
+
+    seq = [0]
+    doc = flow._with_ids(new_loan(), seq)
+    proposed = send('test_loan_doc_head', {'tree': doc, 'answers': answers})
+    flow.apply_patch(doc, proposed['data'], seq)
+    by_hand = send('save_tree', {'page': 'loan_doc', 'root': flow._created(doc), 'answers': answers})
+    assert by_hand['status'] == 'success'
+
+    assert flow.run_form('loan_doc', new_loan(), answers)['status'] == 'success'
+
+    first, second = written(app)
+    assert first == second == ('Dune', 'judged', 1, ['p1', 'p2'])
+
+
+def test_run_form_does_not_edit_a_stored_document(app):
+    result = flow.run_form('loan_doc', {**new_loan(), 'id': 1})
+
+    assert result['code'] == 400 and 'new documents' in result['message']
+
+
+def test_run_form_calls_as_its_caller_and_leaves_the_context_as_it_was(app):
+    """The dispatcher replaces the context with the command's: run_form passes
+    its caller's on, or each step would run as nobody, and so would the rest
+    of the caller's own endpoint once run_form returned."""
+    from kitebase.db import BaseApp
+    from kitebase.endpoints import endpoint
+    seen = []
+
+    @endpoint('test_loan_doc_head')
+    @flow.proposal('Loan')
+    def loan_doc_head(ctx):
+        seen.append((BaseApp.get_context() or {}).get('username'))
+
+    BaseApp.set_context({'username': 'erin'})
+    try:
+        assert flow.run_form('loan_doc', new_loan())['status'] == 'success'
+        assert seen == ['erin']
+        assert BaseApp.get_context() == {'username': 'erin'}
+    finally:
+        BaseApp.set_context(None)
