@@ -803,6 +803,16 @@ class UploadedFile:
     filename: str
     chunks: Iterable[bytes]
 
+    def read(self, limit: int) -> bytes:
+        """The whole file, for an operation that reads it in memory (a sheet to
+        import). Refused past `limit` bytes with a 413, before reading on."""
+        data = bytearray()
+        for chunk in self.chunks:
+            data += chunk
+            if len(data) > limit:
+                raise MediaError(f'File larger than {limit} bytes', 413)
+        return bytes(data)
+
 
 # Spellings of one format: what the extension says and what the bytes say
 # must agree up to these.

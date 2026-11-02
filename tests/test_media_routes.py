@@ -30,6 +30,16 @@ def fake_upload(params):
             'fields': params, 'user': (BaseApp.get_context() or {}).get('username')}
 
 
+def fake_import(params):
+    """Stands in for an operation that takes a file: what reached it, or a question."""
+    upload = params.pop('file')
+    if 'mode' in params and 'answers' not in params:
+        return {'status': 'error', 'code': 409, 'message': 'Add or replace?',
+                '$flow': {'ask': {'key': 'mode', 'kind': 'choose', 'text': 'Add or replace?'}}}
+    return {'name': upload.filename, 'bytes': len(upload.read(1000)), 'params': params,
+            'user': (BaseApp.get_context() or {}).get('username')}
+
+
 @pytest.fixture
 def stub(tmp_path):
     (tmp_path / 'covers').mkdir()
@@ -37,7 +47,7 @@ def stub(tmp_path):
     (tmp_path / 'covers' / 'page.html').write_bytes(b'<script>alert(1)</script>')
     media = Media({'roots': {'covers': {'path': str(tmp_path / 'covers')}}})
     cp = CommandProcessor()
-    cp.endpoints = {**_ENDPOINTS, 'media_upload': fake_upload}
+    cp.endpoints = {**_ENDPOINTS, 'media_upload': fake_upload, 'sheet_import': fake_import}
     yield SimpleNamespace(cp=cp, media=media)
     BaseApp.set_context(None)
 
@@ -81,6 +91,24 @@ class Client:
             return r.status_code, r.get_json()
         files = {'file': (filename, data)} if filename else None
         r = self.c.post('/kitebase/upload', data=fields, files=files, headers=headers or {})
+        return r.status_code, r.json()
+
+
+    def upload_op(self, op, params=None, filename=None, data=b'', headers=None):
+        """POST upload/<op>: `params` as the JSON field, the file as its part."""
+        import json
+        fields = {} if params is None else {'params': params if isinstance(params, str)
+                                            else json.dumps(params)}
+        if self.framework == 'flask':
+            import io
+            form = dict(fields)
+            if filename:
+                form['file'] = (io.BytesIO(data), filename)
+            r = self.c.post(f'/kitebase/upload/{op}', data=form, headers=headers or {},
+                            content_type='multipart/form-data')
+            return r.status_code, r.get_json()
+        files = {'file': (filename, data)} if filename else None
+        r = self.c.post(f'/kitebase/upload/{op}', data=fields, files=files, headers=headers or {})
         return r.status_code, r.json()
 
 
@@ -143,3 +171,48 @@ def test_an_upload_keeps_the_status_of_the_refusal(client):
     status, body = client.upload({'table': 'Book', 'field': 'refused'}, 'a.png', PNG,
                                  headers=bearer())
     assert status == 415 and body['message'] == 'this field takes pdf'
+
+
+# ── upload/<op>: an operation that takes a file ───────────────────────────────
+
+SHEET = b'PK\x03\x04' + b'\x00' * 50
+
+
+def test_a_file_reaches_its_operation_with_the_params_and_the_user(client):
+    status, body = client.upload_op('sheet_import', {'order': 'A1'}, 'orders.xlsx', SHEET,
+                                    headers=bearer())
+    assert status == 200
+    assert body['data'] == {'name': 'orders.xlsx', 'bytes': len(SHEET),
+                            'params': {'order': 'A1'}, 'user': 'tester'}
+
+
+def test_a_question_comes_back_as_from_the_dispatcher(client):
+    """The client asks, then sends the same file again with the answer."""
+    status, body = client.upload_op('sheet_import', {'mode': 'x'}, 'orders.xlsx', SHEET,
+                                    headers=bearer())
+    assert status == 409 and body['$flow']['ask']['key'] == 'mode'
+
+    status, body = client.upload_op('sheet_import', {'mode': 'x', 'answers': {'mode': 'add'}},
+                                    'orders.xlsx', SHEET, headers=bearer())
+    assert status == 200
+
+
+def test_an_operation_upload_needs_a_login_a_file_and_json_params(client):
+    assert client.upload_op('sheet_import', {}, 'orders.xlsx', SHEET)[0] == 401
+    status, body = client.upload_op('sheet_import', {}, headers=bearer())
+    assert status == 400 and 'file' in body['message']
+    status, body = client.upload_op('sheet_import', '{not json', 'orders.xlsx', SHEET,
+                                    headers=bearer())
+    assert status == 400 and 'JSON' in body['message']
+
+
+def test_an_unknown_operation_is_404(client):
+    assert client.upload_op('nowhere', {}, 'orders.xlsx', SHEET, headers=bearer())[0] == 404
+
+
+def test_an_operation_reads_the_file_within_its_limit():
+    from kitebase.media import MediaError
+    assert UploadedFile('a.xlsx', iter([b'ab', b'cd'])).read(4) == b'abcd'
+    with pytest.raises(MediaError) as refused:
+        UploadedFile('a.xlsx', iter([b'ab', b'cd', b'e'])).read(4)
+    assert refused.value.status == 413

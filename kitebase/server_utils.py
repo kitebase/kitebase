@@ -11,6 +11,7 @@ This allows the same logic to be used with Flask, FastAPI, Django, or any other 
 """
 
 from datetime import datetime, timezone, timedelta
+import json
 import logging
 import logging.handlers
 import sys
@@ -702,6 +703,29 @@ def handle_upload(command_processor, fields: Dict[str, Any], upload: Any,
         return _error_from_exc(e)
 
 
+def handle_upload_op(command_processor, operation: str, params: Optional[str], upload: Any,
+                     context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Framework-agnostic handler of `upload/<operation>`: an operation that takes
+    a file, the twin of the download route. The form carries `params`, the
+    operation's parameters as JSON, and the `file`, which the operation finds
+    in `data['file']` (an UploadedFile) and reads itself, within its own limit.
+    The answer is the dispatcher's, questions and all.
+    """
+    from kitebase.media import UploadedFile
+
+    if not isinstance(upload, UploadedFile):
+        return _error_response("The upload has no 'file' part", status_code=400)
+    try:
+        data = json.loads(params) if params else {}
+    except ValueError:
+        return _error_response("'params' is not JSON", status_code=400)
+    if not isinstance(data, dict):
+        return _error_response("'params' must be an object", status_code=400)
+    return handle_generic_endpoint(command_processor, operation, {**data, 'file': upload},
+                                   context=context)
+
+
 def handle_media_get(kitebase_app, root: str, path: str, params: Dict[str, str],
                      if_none_match: Optional[str] = None):
     """Framework-agnostic handler of `GET media/<root>/<path>`: a MediaReply."""
@@ -1124,6 +1148,19 @@ def register_flask(target, kitebase_app, plugins, secret_key: str, *,
         return reply(handle_upload(command_processor, request.form.to_dict(), upload,
                                    context=g.user_context))
 
+    @target.route(f'{prefix}/upload/<operation>', methods=['POST'])
+    @authenticated
+    def kitebase_upload_op(operation: str):
+        """An operation that takes a file, multipart: params and the file."""
+        from kitebase.media import UploadedFile
+
+        part = request.files.get('file')
+        upload = None
+        if part is not None:
+            upload = UploadedFile(part.filename or '', iter(lambda: part.stream.read(64 * 1024), b''))
+        return reply(handle_upload_op(command_processor, operation, request.form.get('params'),
+                                      upload, context=g.user_context))
+
     @target.route(f'{prefix}/media/<root>/<path:path>', methods=['GET'])
     def kitebase_media(root: str, path: str):
         """A file by its signed URL: no login, the signature is the permission."""
@@ -1289,6 +1326,30 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
             upload = UploadedFile(part.filename or '', iter(lambda: part.file.read(64 * 1024), b''))
         try:
             result = await run_in_threadpool(handle_upload, command_processor, fields, upload, user)
+        finally:
+            await form.close()
+        return reply(result, new_token=new_token)
+
+    @target.post(f'{prefix}/upload/{{operation}}')
+    async def kitebase_upload_op(operation: str, request: Request):
+        """An operation that takes a file, multipart: params and the file."""
+        from starlette.concurrency import run_in_threadpool
+        from starlette.datastructures import UploadFile
+        from kitebase.media import UploadedFile
+
+        user, refused, new_token = identify(request)
+        if refused is not None:
+            return refused
+        form = await request.form()
+        part = form.get('file')
+        params = form.get('params')
+        upload = None
+        if isinstance(part, UploadFile):
+            upload = UploadedFile(part.filename or '', iter(lambda: part.file.read(64 * 1024), b''))
+        try:
+            result = await run_in_threadpool(
+                handle_upload_op, command_processor, operation,
+                params if isinstance(params, str) else None, upload, user)
         finally:
             await form.close()
         return reply(result, new_token=new_token)
