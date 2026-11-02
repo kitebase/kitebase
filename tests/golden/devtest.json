@@ -2543,7 +2543,18 @@
       "$plugin": "acquisitions"
      }
     ],
-    "navigator": true,
+    "navigator": {
+     "commands": [
+      {
+       "id": "import_sheet",
+       "label": "Import from spreadsheet",
+       "scope": "global",
+       "endpoint": "purchase_order_import",
+       "$plugin": "acquisitions"
+      }
+     ],
+     "$plugin": "acquisitions"
+    },
     "$plugin": "acquisitions"
    },
    "$plugin": "acquisitions"

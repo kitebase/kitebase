@@ -369,7 +369,6 @@ def run_form(page_id: str, tree: Dict[str, Any],
     Returns the answer of `save_tree`, with the lines the proposals had for the
     person, or the refusal of the step that stopped.
     """
-    from kitebase.endpoints import CommandProcessor
     from kitebase.pages import load_page
 
     if isinstance(tree.get('id'), int) and tree['id'] >= 0:
@@ -383,14 +382,72 @@ def run_form(page_id: str, tree: Dict[str, Any],
     doc = _with_ids(tree, seq)
     answers = dict(answers or {})
     infos: List[str] = []
-    # The dispatcher replaces the context with the command's: each call
-    # carries the caller's, or it would run as nobody and leave nobody behind
+    send = _sender()
+    refusal = _propose_all(page, doc, answers, seq, send, infos)
+    if refusal is not None:
+        return refusal
+
+    result = send({'operation': 'save_tree',
+                   'parameters': {'page': page_id, 'root': _created(doc), 'answers': answers}})
+    return _with_infos(result, infos)
+
+
+def run_forms(page_id: str, trees: List[Dict[str, Any]],
+              answers: Optional[Dict[str, Any]] = None,
+              labels: Optional[List[str]] = None) -> Dict[str, Any]:
+    """
+    `run_form` for many new documents written as **one** act: every document
+    through the proposals of its phases first, then all of them in one
+    transaction (`save_trees`), so they are all written or none is. The same
+    `answers` serve every document. A refusal names its document by its
+    label (the key of its rows in a sheet, say), or by its position.
+    """
+    from kitebase.endpoint_tree import save_trees
+    from kitebase.pages import load_page
+
+    page = load_page(kitebase.utils.get_app(), page_id)
+    if page is None:
+        return {'status': 'error', 'code': 404, 'message': f"No page '{page_id}'"}
+    answers = dict(answers or {})
+    names = labels or [f'#{i + 1}' for i in range(len(trees))]
+    send = _sender()
+    infos: List[str] = []
+    roots = []
+    for tree, name in zip(trees, names):
+        if isinstance(tree.get('id'), int) and tree['id'] >= 0:
+            return {'status': 'error', 'code': 400,
+                    'message': f'{name}: run_forms writes new documents'}
+        seq = [0]
+        doc = _with_ids(tree, seq)
+        refusal = _propose_all(page, doc, answers, seq, send, infos)
+        if refusal is not None:
+            refusal['message'] = f"{name}: {refusal.get('message')}"
+            return refusal
+        roots.append(_created(doc))
+
+    result = save_trees(page_id, roots, answers)
+    if result.get('status') != 'success':
+        index = (result.get('data') or {}).get('index')
+        if isinstance(index, int) and index < len(names):
+            result['message'] = f"{names[index]}: {result.get('message')}"
+        return result
+    return _with_infos(result, infos)
+
+
+def _sender() -> Callable[[Dict[str, Any]], Dict[str, Any]]:
+    """Calls through the dispatcher with the caller's context: the dispatcher
+    replaces the context with the command's, and without it a call would run as
+    nobody and leave nobody behind."""
+    from kitebase.endpoints import CommandProcessor
     context = kitebase.db.BaseApp.get_context()
     processor = CommandProcessor()
+    return lambda command: processor.send({**command, 'context': context})
 
-    def send(command: Dict[str, Any]) -> Dict[str, Any]:
-        return processor.send({**command, 'context': context})
 
+def _propose_all(page: Dict[str, Any], doc: Dict[str, Any], answers: Dict[str, Any],
+                 seq: List[int], send, infos: List[str]) -> Optional[Dict[str, Any]]:
+    """The proposals of the page's phases on `doc`, in order, each patch
+    applied. The refusal of the step that stopped, or None."""
     for phase in (page.get('content') or {}).get('phases') or []:
         endpoint = (phase.get('next') or {}).get('endpoint') if isinstance(phase, dict) else None
         if not endpoint:
@@ -404,9 +461,10 @@ def run_form(page_id: str, tree: Dict[str, Any],
             return res
         apply_patch(doc, res.get('data') or {}, seq)
         infos += (res.get('$flow') or {}).get('info') or []
+    return None
 
-    result = send({'operation': 'save_tree',
-                   'parameters': {'page': page_id, 'root': _created(doc), 'answers': answers}})
+
+def _with_infos(result: Dict[str, Any], infos: List[str]) -> Dict[str, Any]:
     if infos:
         flow = result.setdefault('$flow', {})
         flow['info'] = infos + (flow.get('info') or [])

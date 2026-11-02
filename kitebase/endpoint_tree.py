@@ -510,48 +510,14 @@ def save_tree(data: Dict[str, Any]) -> Dict[str, Any]:
 
     app = kitebase.utils.get_app()
     try:
-        aggregate = page_aggregate(app, page_id)
-        # The aggregate decides for its rows: only the root is checked.
-        access.check_table(aggregate.model, _root_action(root_node))
-
-        ctx, refusal = _judge_root(app, aggregate, root_node, data.get('answers'))
+        aggregate, ctx, refusal = _prepare(app, page_id, root_node, data.get('answers'))
         if refusal:
             return refusal
 
         id_map: Dict[int, Any] = {}
-        deletes: List[Tuple[int, str, Any]] = []
-
         with app.get_session() as session:
-            root_class, _, _ = _table_of(app, aggregate.model)
-            action = _root_action(root_node)
-            # A row condition is judged on the root as stored, before the change
-            root_key = root_node.get('id')
-            # a malformed root is _save_node's to refuse, in its own words
-            if action != 'create' and isinstance(root_key, int) and root_key > 0 \
-                    and str(root_node.get('op') or 'update').lower() in _OPS:
-                if not access.row_visible(session, root_class, root_key):
-                    return {'status': 'error', 'code': 404,
-                            'message': f"No record {root_key} in '{aggregate.model}'"}
-                access.check_row(session, root_class, root_key, action)
-
-            root_id = _save_node(app, session, aggregate, root_node, {}, {},
-                                 id_map, deletes, 0)
-            # and a created root as inserted, before anything is committed
-            if action == 'create':
-                access.check_row(session, root_class, root_id, 'create')
-
-            # Backwards: a grandchild before its child, a child before its parent.
-            for _depth, model_name, record_id in sorted(deletes, key=lambda d: -d[0]):
-                model_class, _, _ = _table_of(app, model_name)
-                obj = session.get(model_class, record_id)
-                if obj is None:
-                    raise ValueError(f"No record {record_id} to delete in '{model_name}'")
-                session.delete(obj)
-
-            root_obj = session.get(root_class, root_id) if root_id is not None else None
-            flow.commit(ctx, session, root_obj)
+            root_id = _write(app, session, aggregate, root_node, ctx, id_map)
             session.commit()
-
             # What was just written comes back under the permission that wrote it.
             root = _load_tree(app, session, aggregate, root_id,
                               covered=_aggregate_models(aggregate)) if root_id is not None else None
@@ -561,6 +527,8 @@ def save_tree(data: Dict[str, Any]) -> Dict[str, Any]:
                                  'code': 200},
                            root['values'] if root else None)
 
+    except _Refused as r:
+        return r.envelope
     except AccessDenied:
         raise
     except ValueError as e:
@@ -569,3 +537,113 @@ def save_tree(data: Dict[str, Any]) -> Dict[str, Any]:
         import traceback
         traceback.print_exc()
         return {'status': 'error', 'message': str(e), 'code': 500}
+
+
+def save_trees(page_id: str, roots: List[Dict[str, Any]],
+               answers: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Write several trees of one page in **one** transaction: all of them or
+    none. Every root is judged before anything is written, so a question or a
+    refusal of the rules stops the whole set; a row that fails to write takes
+    the others back with it. A refusal names the tree it is about in
+    `data.index`. The `after` rules run once everything is committed.
+
+    For a batch that writes many documents as one act (a sheet imported):
+    called in the process, with the permissions of the current context.
+    """
+    app = kitebase.utils.get_app()
+    index = 0
+    try:
+        prepared = []
+        for index, root_node in enumerate(roots):
+            aggregate, ctx, refusal = _prepare(app, page_id, root_node, answers)
+            if refusal:
+                refusal['data'] = {**(refusal.get('data') or {}), 'index': index}
+                return refusal
+            prepared.append((aggregate, ctx, root_node))
+
+        written = []
+        with app.get_session() as session:
+            for index, (aggregate, ctx, root_node) in enumerate(prepared):
+                id_map: Dict[int, Any] = {}
+                written.append((_write(app, session, aggregate, root_node, ctx, id_map), id_map))
+            session.commit()
+            loaded = [_load_tree(app, session, aggregate, root_id,
+                                 covered=_aggregate_models(aggregate)) if root_id is not None else None
+                      for (aggregate, _, _), (root_id, _) in zip(prepared, written)]
+
+        infos: List[str] = []
+        actions: List[Dict[str, Any]] = []
+        for (_, ctx, _), root in zip(prepared, loaded):
+            outcome = flow.finish(ctx, {}, root['values'] if root else None).get('$flow') or {}
+            infos += outcome.get('info') or []
+            actions += outcome.get('actions') or []
+        result: Dict[str, Any] = {
+            'status': 'success', 'code': 200,
+            'data': {'ids': [root_id for root_id, _ in written],
+                     'id_maps': [id_map for _, id_map in written], 'roots': loaded}}
+        outcome = {k: v for k, v in (('info', infos), ('actions', actions)) if v}
+        if outcome:
+            result['$flow'] = outcome
+        return result
+
+    except _Refused as r:
+        r.envelope['data'] = {**(r.envelope.get('data') or {}), 'index': index}
+        return r.envelope
+    except AccessDenied:
+        raise
+    except ValueError as e:
+        return {'status': 'error', 'message': str(e), 'code': 400, 'data': {'index': index}}
+
+
+class _Refused(Exception):
+    """A tree refused while being written, with the envelope that says why."""
+
+    def __init__(self, envelope: Dict[str, Any]):
+        super().__init__(envelope.get('message'))
+        self.envelope = envelope
+
+
+def _prepare(app, page_id: str, root_node: Dict[str, Any], answers):
+    """The aggregate of the page, the permission on its root, and the rules'
+    judgement: `(aggregate, ctx, refusal)`. Nothing is written."""
+    aggregate = page_aggregate(app, page_id)
+    # The aggregate decides for its rows: only the root is checked.
+    access.check_table(aggregate.model, _root_action(root_node))
+    ctx, refusal = _judge_root(app, aggregate, root_node, answers)
+    return aggregate, ctx, refusal
+
+
+def _write(app, session, aggregate, root_node: Dict[str, Any], ctx,
+           id_map: Dict[int, Any]) -> Any:
+    """Write one judged tree in `session`, up to its `commit` rules; the
+    caller commits. Returns the root's key."""
+    deletes: List[Tuple[int, str, Any]] = []
+    root_class, _, _ = _table_of(app, aggregate.model)
+    action = _root_action(root_node)
+    # A row condition is judged on the root as stored, before the change
+    root_key = root_node.get('id')
+    # a malformed root is _save_node's to refuse, in its own words
+    if action != 'create' and isinstance(root_key, int) and root_key > 0 \
+            and str(root_node.get('op') or 'update').lower() in _OPS:
+        if not access.row_visible(session, root_class, root_key):
+            raise _Refused({'status': 'error', 'code': 404,
+                            'message': f"No record {root_key} in '{aggregate.model}'"})
+        access.check_row(session, root_class, root_key, action)
+
+    root_id = _save_node(app, session, aggregate, root_node, {}, {}, id_map, deletes, 0)
+    # and a created root as inserted, before anything is committed
+    if action == 'create':
+        access.check_row(session, root_class, root_id, 'create')
+
+    # Backwards: a grandchild before its child, a child before its parent.
+    for _depth, model_name, record_id in sorted(deletes, key=lambda d: -d[0]):
+        model_class, _, _ = _table_of(app, model_name)
+        obj = session.get(model_class, record_id)
+        if obj is None:
+            raise ValueError(f"No record {record_id} to delete in '{model_name}'")
+        session.delete(obj)
+
+    root_obj = session.get(root_class, root_id) if root_id is not None else None
+    flow.commit(ctx, session, root_obj)
+    return root_id

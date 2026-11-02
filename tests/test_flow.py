@@ -677,3 +677,161 @@ def test_run_form_calls_as_its_caller_and_leaves_the_context_as_it_was(app):
         assert BaseApp.get_context() == {'username': 'erin'}
     finally:
         BaseApp.set_context(None)
+
+
+# ── run_forms: many documents, one act ──────────────────────────────────────
+
+def test_run_forms_writes_every_document_in_one_go(app):
+    judge_the_pages()
+
+    result = flow.run_forms('loan_doc', [new_loan('Dune'), new_loan('Emma')],
+                            {'drop_drafts': True}, labels=['A1', 'A2'])
+
+    assert result['status'] == 'success'
+    assert len(result['data']['ids']) == 2
+    assert result['$flow']['info'] == ['Drafts dropped', 'Drafts dropped']
+    assert [w[0] for w in written(app)] == ['Dune', 'Emma']
+
+
+def test_a_document_the_rules_refuse_stops_them_all_and_is_named(app):
+    judge_the_pages()
+
+    @flow.on_write('Loan')
+    def no_emma(ctx):
+        if ctx.record.get('title') == 'Emma':
+            ctx.stay('Not Emma')
+
+    result = flow.run_forms('loan_doc', [new_loan('Dune'), new_loan('Emma')],
+                            {'drop_drafts': True}, labels=['A1', 'A2'])
+
+    assert result['status'] == 'error' and result['message'] == 'A2: Not Emma'
+    assert titles(app) == []
+
+
+def test_a_document_that_fails_to_write_takes_the_others_back(app):
+    """Judged fine, refused by the database: the first is rolled back with it."""
+    judge_the_pages()
+
+    @flow.on_write('Loan', 'commit')
+    def fail_on_emma(ctx):
+        if ctx.record.get('title') == 'Emma':
+            raise ValueError('the warehouse is closed')
+
+    result = flow.run_forms('loan_doc', [new_loan('Dune'), new_loan('Emma')],
+                            {'drop_drafts': True}, labels=['A1', 'A2'])
+
+    assert result['status'] == 'error'
+    assert result['message'] == 'A2: the warehouse is closed'
+    assert titles(app) == [] and titles(app, 'Page') == []
+
+
+def test_run_forms_stops_at_the_first_unanswered_question_and_names_the_document(app):
+    judge_the_pages()
+
+    result = flow.run_forms('loan_doc', [new_loan('Dune')], labels=['A1'])
+
+    assert result['code'] == 409 and result['message'].startswith("A1: Unanswered 'drop_drafts'")
+    assert titles(app) == []
+
+
+# ── Sheets: documents read from a spreadsheet (kitebase.sheets) ─────────────
+
+from kitebase.sheets import Ignored, Key, Lookup, SheetImport, Text  # noqa: E402
+
+
+class LoanSheet(SheetImport):
+    page = 'loan_doc'
+    collection = 'pages'
+    noun, nouns = 'loan', 'loans'
+    columns = {
+        'loan':   Key(),
+        'member': Lookup('Member', 'name', field='member_id', head=True, required=True),
+        'title':  Text('title', head=True, required=True),
+        'page':   Text('text', required=True),
+        'note':   Ignored(),
+    }
+
+
+def xlsx(rows):
+    """The bytes of a sheet whose first row is `rows[0]`."""
+    import io
+    from openpyxl import Workbook
+    book = Workbook()
+    for row in rows:
+        book.active.append(row)
+    out = io.BytesIO()
+    book.save(out)
+    return out.getvalue()
+
+
+def import_sheet(rows, answers=None, name='loans.xlsx'):
+    from kitebase.media import UploadedFile
+    return LoanSheet().run({'file': UploadedFile(name, iter([xlsx(rows)])), 'answers': answers})
+
+
+HEADER = ['loan', 'member', 'title', 'page', 'note']
+
+
+def test_a_sheet_becomes_one_document_per_key_written_together(app):
+    judge_the_pages()
+    result = import_sheet([HEADER,
+                           ['L1', 'erin', 'Dune', 'p1', 'for the reader'],
+                           ['L1', 'Erin', 'Dune', 'p2', None],
+                           ['L2', 'Erin', 'Emma', 'draft x', None],
+                           ['L2', 'Erin', 'Emma', 'q1', None]], {'drop_drafts': True})
+
+    assert result['status'] == 'success', result
+    assert result['data']['message'] == '2 loans imported'
+    assert written(app) == [('Dune', 'judged', 1, ['p1', 'p2']), ('Emma', 'judged', 1, ['q1'])]
+
+
+def test_the_header_is_checked_first_and_named_whole(app):
+    result = import_sheet([['loan', 'Member', 'title', 'pages', 'extra'], ['L1', 'Erin', 'Dune', 'p1', 1]])
+
+    assert result['code'] == 422
+    assert result['data']['detail'].split('\n') == [
+        'Row 1: missing columns: page, note',
+        'Row 1: columns this import does not know: pages, extra']
+
+
+def test_every_mistake_of_the_rows_is_reported_in_sheet_order_and_nothing_written(app):
+    with app.get_session() as session:      # two members with one name: ambiguous
+        session.add_all([app.models['Member'](name='Sam'), app.models['Member'](name='sam')])
+        session.commit()
+
+    result = import_sheet([HEADER,
+                           ['L1', 'Nobody', 'Dune', 'p1', None],
+                           ['L2', 'Sam', 'Emma', None, None],
+                           ['L3', 'Erin', 'Ulysses', 'p1', None],
+                           ['L3', 'Erin', 'Odyssey', 'p2', None]])
+
+    assert result['code'] == 422
+    assert result['data']['detail'].split('\n') == [
+        'Row 2, member: no Member "Nobody"',
+        'Row 3, page: missing',
+        'Row 3, member: more than one Member "Sam"',
+        'Row 5, title: differs from row 4 of the same loan']
+    assert titles(app) == []
+
+
+def test_a_file_that_is_not_a_sheet_is_refused_before_reading(app):
+    from kitebase.media import UploadedFile
+
+    assert LoanSheet().run({'file': UploadedFile('loans.csv', iter([b'a,b']))})['code'] == 415
+    assert LoanSheet().run({'file': UploadedFile('loans.xlsx', iter([b'not a zip']))})['code'] == 415
+
+    class Small(LoanSheet):
+        max_bytes = 10
+
+    assert Small().run({'file': UploadedFile('loans.xlsx', iter([xlsx([HEADER])]))})['code'] == 413
+
+
+def test_a_question_of_the_phases_is_asked_once_for_the_whole_sheet(app):
+    judge_the_pages()
+    rows = [HEADER, ['L1', 'Erin', 'Dune', 'draft', None], ['L2', 'Erin', 'Emma', 'draft', None],
+            ['L2', 'Erin', 'Emma', 'p1', None]]
+
+    asked = import_sheet(rows)
+    assert asked['code'] == 409 and asked['$flow']['ask']['key'] == 'drop_drafts'
+
+    assert import_sheet(rows, {'drop_drafts': True})['status'] == 'success'

@@ -18,7 +18,14 @@ pages:
         - field: Publisher.name as publisher
           title: Publisher
         - field: notes
-      navigator: true
+      # Orders from a spreadsheet (order_import.py): the command asks for the
+      # file, and the sheet is written whole or not at all.
+      navigator:
+        commands:
+          - id: import_sheet
+            label: Import from spreadsheet
+            scope: global
+            endpoint: purchase_order_import
 
   receipt_list:
     title: Receipts
