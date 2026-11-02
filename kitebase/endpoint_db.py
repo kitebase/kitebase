@@ -2,6 +2,7 @@ import kitebase
 import kitebase.server_utils as server_utils
 import kitebase.transforms
 import kitebase.media
+from kitebase import flow
 from kitebase import access
 from kitebase.access import AccessDenied
 from kitebase.endpoints import endpoint
@@ -290,7 +291,13 @@ def handle_create(app, model_class, params: Dict[str, Any], db_table=None) -> Di
         record_data = write_values(db_table, record_data)
         coerced = {k: coerce_value(model_class, k, v) for k, v in record_data.items()}
         require_columns(model_class, coerced)
-        new_record = model_class(**coerced)
+
+        # The table's rules first: a question or a refusal writes nothing
+        ctx, refusal = flow.judge(model_class.__name__, 'insert', coerced, None,
+                                  params.get('answers'))
+        if refusal:
+            return refusal
+        new_record = model_class(**ctx.record)
 
         with app.get_session() as session:
             session.add(new_record)
@@ -298,17 +305,20 @@ def handle_create(app, model_class, params: Dict[str, Any], db_table=None) -> Di
             session.flush()
             access.check_row(session, model_class,
                              sa_inspect(new_record).identity[0], 'create')
+            flow.commit(ctx, session, new_record)
             session.commit()
 
             # Refresh to get generated IDs and other database defaults
             session.refresh(new_record)
 
-            return {
+            saved = kitebase.utils.serialize_model(new_record, db_table=db_table)
+            result = {
                 "status": "success",
-                "data": kitebase.utils.serialize_model(new_record, db_table=db_table),
+                "data": saved,
                 "message": _('Record created successfully'),
                 "code": 201
             }
+        return flow.finish(ctx, result, saved)
     except kitebase.transforms.ValidationError as e:
         return _invalid(e)
     except AccessDenied:
@@ -340,25 +350,33 @@ def handle_update(app, model_class, params: Dict[str, Any], db_table=None) -> Di
         # On the row as stored: otherwise the change itself could satisfy it
         access.check_row(session, model_class, record_id, 'update')
 
-        # Update record attributes (skip read-only hybrid/virtual properties)
-        for key, value in record_data.items():
-            if hasattr(record, key):
+        changes = {k: coerce_value(model_class, k, v) for k, v in record_data.items()
+                   if hasattr(record, k)}
+        original = flow.row_values(record)
+        ctx, refusal = flow.judge(model_class.__name__, 'update', {**original, **changes},
+                                  original, params.get('answers'))
+        if refusal:
+            return refusal
+
+        # What the request changed, and what a rule changed on top of it
+        for key, value in ctx.record.items():
+            if key in changes or original.get(key) != value:
+                # Skip read-only hybrid/virtual properties
                 try:
-                    setattr(record, key, coerce_value(model_class, key, value))
+                    setattr(record, key, value)
                 except AttributeError:
                     pass
 
         try:
+            flow.commit(ctx, session, record)
             session.commit()
-            return {
-                "status": "success",
-                "data": kitebase.utils.serialize_model(record, db_table=db_table),
-                "message": _('Record updated successfully'),
-                "code": 200
-            }
+            saved = kitebase.utils.serialize_model(record, db_table=db_table)
         except Exception as e:
             session.rollback()
             return {"status": "error", "message": f"Update failed: {str(e)}", "code": 400}
+
+    return flow.finish(ctx, {"status": "success", "data": saved,
+                             "message": _('Record updated successfully'), "code": 200}, saved)
 
 
 def handle_delete(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[str, Any]:
@@ -374,17 +392,22 @@ def handle_delete(app, model_class, params: Dict[str, Any], db_table=None) -> Di
             return {"status": "error", "message": f"Record with id {record_id} not found", "code": 404}
         access.check_row(session, model_class, record_id, 'delete')
 
+        original = flow.row_values(record)
+        ctx, refusal = flow.judge(model_class.__name__, 'delete', original, original,
+                                  params.get('answers'))
+        if refusal:
+            return refusal
+
         try:
+            flow.commit(ctx, session, record)
             session.delete(record)
             session.commit()
-            return {
-                "status": "success",
-                "message": _('Record deleted successfully'),
-                "code": 200
-            }
         except Exception as e:
             session.rollback()
             return {"status": "error", "message": f"Deletion failed: {str(e)}", "code": 400}
+
+    return flow.finish(ctx, {"status": "success",
+                             "message": _('Record deleted successfully'), "code": 200}, None)
 
 
 # build_filters spells some operators differently from the querybuilder

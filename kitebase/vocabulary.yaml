@@ -4,9 +4,9 @@
 menu_items.*: [action, confirm, icon, label, op, order, panel, parent]
 menus.*: [home_page, label]
 pages.*: [access, breadcrumb, confirm_on_leave, content, panels, title]
-pages.*.content: [actions, allow_views, card, columns, component, fields, layout, navigator, policy, props, rules, source, type]
-pages.*.content.card: [details, image, ribbon, subtitle, title]
+pages.*.content: [actions, allow_views, card, columns, component, fields, layout, navigator, on_saved, policy, props, rules, source, type]
 pages.*.content.actions: [toolbar]
+pages.*.content.card: [details, image, ribbon, subtitle, title]
 pages.*.content.columns[]: [field, formatter, title, tone, width]
 pages.*.content.columns[].tone: [ranges, values]
 pages.*.content.columns[].tone.values: '*'
@@ -36,6 +36,11 @@ pages.*.content.layout[].pages[].layout[].view.columns[]: [field, title, width]
 pages.*.content.layout[].pages[].layout[].view.source: [order_by]
 pages.*.content.navigator: [commands]
 pages.*.content.navigator.commands[]: [endpoint, id, key, label, scope]
+pages.*.content.on_saved: [insert, update]
+pages.*.content.on_saved.insert: [action, op, panel, params]
+pages.*.content.on_saved.insert.params: '*'
+pages.*.content.on_saved.update: [action, op, panel, params]
+pages.*.content.on_saved.update.params: '*'
 pages.*.content.policy: [button_style, editable]
 pages.*.content.props: '*'
 pages.*.content.props.*[]: '*'
@@ -66,10 +71,10 @@ tables.*.many_to_many.target2: [column, db_type, id, table]
 types.*: [accept, autoincrement, base, case, columns, default, deferred, editable, help, index, label, length, max_size, media, nullable, on_write, precision, primary_key, resize, scale, secret, unique, validate, virtual, widget]
 types.*.columns[]: [base, column_group, default, deferred, granularity, help, label, length, name, nullable, on_write, onupdate, query_rank, secret, type, unique, validate, widget]
 views.*: [actions, allow_views, card, columns, component, data_schema, fields, layout, navigator, policy, presentation, props, source, type]
-views.*.card: [details, image, ribbon, subtitle, title]
 views.*.actions: [row, toolbar]
 views.*.actions.row[]: [action, confirm, id, op, panel, params, pass]
 views.*.actions.row[].params: '*'
+views.*.card: [details, image, ribbon, subtitle, title]
 views.*.columns[]: [align, field, formatter, title, tone, variant, visible, width]
 views.*.columns[].tone: [ranges, values]
 views.*.columns[].tone.values: '*'

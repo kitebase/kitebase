@@ -40,7 +40,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import kitebase.utils
 import kitebase.media
-from kitebase import access
+from kitebase import access, flow
 from kitebase.access import AccessDenied
 from kitebase.endpoints import endpoint
 from kitebase.endpoint_db import pk_field, write_values, coerce_value, require_columns
@@ -430,6 +430,48 @@ def _save_children(app, session, node_def, node: Dict[str, Any], parent: Optiona
                        id_map, deletes, depth + 1)
 
 
+def _judge_root(app, aggregate: Aggregate, root_node: Dict[str, Any], answers):
+    """
+    The rules of the root's table, on the root as it will be written.
+
+    The rows below are written by this same call, and a rule of theirs would be
+    skipped in silence: until a row's rules are judged here, a tree whose rows
+    have rules is refused rather than written around them.
+    """
+    ruled = [m for m in _aggregate_models(aggregate)[1:] if flow.has_rules(m)]
+    if ruled:
+        raise ValueError(f"Rules on rows are not judged by save_tree yet: "
+                         f"{', '.join(sorted(set(ruled)))}")
+
+    root_class, db_table, _ = _table_of(app, aggregate.model)
+    mode = {'create': 'insert', 'delete': 'delete'}.get(root_node.get('op'), 'update')
+    if not flow.has_rules(aggregate.model):
+        return flow.Context(aggregate.model, mode, {}, None, {}), None
+
+    values = write_values(db_table, dict(root_node.get('values') or {}))
+    changes = {k: coerce_value(root_class, k, v) for k, v in values.items()}
+
+    original = None
+    if mode != 'insert':
+        with app.get_session() as session:
+            obj = session.get(root_class, root_node.get('id'))
+            if obj is None:
+                raise ValueError(f"No record {root_node.get('id')} in '{aggregate.model}'")
+            original = flow.row_values(obj)
+
+    ctx, refusal = flow.judge(aggregate.model, mode, {**(original or {}), **changes},
+                              original, answers)
+    if refusal is None:
+        # What a rule changed is written with the rest of the root
+        for key, value in ctx.record.items():
+            if key in changes and changes[key] == value:
+                continue
+            if key not in changes and original is not None and original.get(key) == value:
+                continue
+            root_node.setdefault('values', {})[key] = value
+    return ctx, refusal
+
+
 @endpoint('save_tree', access=access.PER_TABLE)
 def save_tree(data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -472,6 +514,10 @@ def save_tree(data: Dict[str, Any]) -> Dict[str, Any]:
         # The aggregate decides for its rows: only the root is checked.
         access.check_table(aggregate.model, _root_action(root_node))
 
+        ctx, refusal = _judge_root(app, aggregate, root_node, data.get('answers'))
+        if refusal:
+            return refusal
+
         id_map: Dict[int, Any] = {}
         deletes: List[Tuple[int, str, Any]] = []
 
@@ -502,15 +548,18 @@ def save_tree(data: Dict[str, Any]) -> Dict[str, Any]:
                     raise ValueError(f"No record {record_id} to delete in '{model_name}'")
                 session.delete(obj)
 
+            root_obj = session.get(root_class, root_id) if root_id is not None else None
+            flow.commit(ctx, session, root_obj)
             session.commit()
 
             # What was just written comes back under the permission that wrote it.
             root = _load_tree(app, session, aggregate, root_id,
                               covered=_aggregate_models(aggregate)) if root_id is not None else None
 
-        return {'status': 'success',
-                'data': {'id': root_id, 'id_map': id_map, 'root': root},
-                'code': 200}
+        return flow.finish(ctx, {'status': 'success',
+                                 'data': {'id': root_id, 'id_map': id_map, 'root': root},
+                                 'code': 200},
+                           root['values'] if root else None)
 
     except AccessDenied:
         raise

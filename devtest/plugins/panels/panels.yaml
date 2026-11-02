@@ -478,6 +478,13 @@ views:
       - field: borrowed_at
       - field: due_date
       - field: returned_at
+    navigator:
+      commands:
+        # The ticket printed when a loan is made (library/loans.py), again on demand
+        - id: print_ticket
+          label: Print ticket
+          scope: row
+          endpoint: loan_print_ticket
     actions:
       toolbar: [add, search, export]
       row:

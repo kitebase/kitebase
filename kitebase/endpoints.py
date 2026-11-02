@@ -85,7 +85,8 @@ class CommandResult:
                  request_id: Optional[str] = None,
                  code: int = 200,
                  error_type: Optional[str] = None,
-                 traceback: Optional[str] = None) -> None:
+                 traceback: Optional[str] = None,
+                 flow: Optional[Dict[str, Any]] = None) -> None:
         """
         Initialize a command result.
 
@@ -97,6 +98,8 @@ class CommandResult:
             code: Status code (similar to HTTP status codes)
             error_type: Exception class name (e.g. "ValueError")
             traceback: Full Python traceback string (always included for errors)
+            flow: What the rules of a write had to say (kitebase.flow): a
+                  question, lines for the person, actions for the client
         """
         self.status = status
         self.data = data
@@ -105,6 +108,7 @@ class CommandResult:
         self.code = code
         self.error_type = error_type
         self.traceback = traceback
+        self.flow = flow
         self.timestamp = int(time.time())
 
     def to_dict(self) -> Dict[str, Any]:
@@ -139,6 +143,10 @@ class CommandResult:
                 result["error_type"] = self.error_type
             if self.traceback:
                 result["traceback"] = self.traceback
+
+        # Either way: a question is a refusal, and an action follows a success.
+        if self.flow:
+            result["$flow"] = self.flow
 
         return result
 
@@ -455,7 +463,8 @@ class CommandProcessor:
                     data=result_data.get("data"),
                     message=result_data.get("message"),
                     request_id=command.request_id,
-                    code=result_data.get("code", 200)
+                    code=result_data.get("code", 200),
+                    flow=result_data.get("$flow"),
                 )
             else:
                 result = CommandResult(

@@ -2258,6 +2258,25 @@
     "$plugin": "library"
    },
    "$plugin": "library"
+  },
+  "loan_form": {
+   "$auto": true,
+   "content": {
+    "on_saved": {
+     "insert": {
+      "action": "download",
+      "op": "loan_ticket",
+      "params": {
+       "id": "$record.id",
+       "$plugin": "library"
+      },
+      "$plugin": "library"
+     },
+     "$plugin": "library"
+    },
+    "$plugin": "library"
+   },
+   "$plugin": "library"
   }
  },
  "views": {
@@ -2673,6 +2692,18 @@
      "$plugin": "panels"
     }
    ],
+   "navigator": {
+    "commands": [
+     {
+      "id": "print_ticket",
+      "label": "Print ticket",
+      "scope": "row",
+      "endpoint": "loan_print_ticket",
+      "$plugin": "panels"
+     }
+    ],
+    "$plugin": "panels"
+   },
    "actions": {
     "toolbar": [
      "add",

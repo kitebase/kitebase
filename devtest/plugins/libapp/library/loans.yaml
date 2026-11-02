@@ -1,0 +1,11 @@
+# The loan form: the generated one, plus what the desk does once a loan is made.
+#
+# The ticket is a reaction of this form, not a rule of the table: a loan written
+# by a batch, or by any other port, prints nothing. The rules that hold on every
+# port are in loans.py; the ticket again, on demand, is a command of the list.
+pages:
+  loan_form:
+    $auto: true
+    content:
+      on_saved:
+        insert: {action: download, op: loan_ticket, params: {id: $record.id}}

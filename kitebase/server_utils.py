@@ -25,7 +25,8 @@ def _error_response(message: str, status_code: int = 500,
                     error_type: Optional[str] = None,
                     traceback: Optional[str] = None,
                     request_id: Optional[str] = None,
-                    data: Any = None) -> Dict[str, Any]:
+                    data: Any = None,
+                    flow: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Build a uniform error response dict."""
     r: Dict[str, Any] = {'status': 'error', 'message': message, 'status_code': status_code}
     # What a refusal has to say beyond its message - the field errors of a form.
@@ -38,6 +39,10 @@ def _error_response(message: str, status_code: int = 500,
     # The line in the log that tells the whole story: what a person reports.
     if request_id:
         r['request_id'] = request_id
+    # A question of a rule travels as a refusal: a caller that does not know
+    # the protocol never takes it for a save (kitebase.flow).
+    if flow:
+        r['$flow'] = flow
     return r
 
 
@@ -67,6 +72,7 @@ def _error_from_result(result: Dict[str, Any],
         traceback=result.get('traceback'),
         request_id=result.get('request_id'),
         data=result.get('data'),
+        flow=result.get('$flow'),
     )
 
 
@@ -628,6 +634,8 @@ def handle_generic_endpoint(
             # from a button reports in one line, and the envelope carries it.
             if result.get('message'):
                 response['message'] = result['message']
+            if result.get('$flow'):
+                response['$flow'] = result['$flow']
             return response
         else:
             return _error_from_result(result, 'Operation failed')
