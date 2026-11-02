@@ -45,6 +45,17 @@ pages:
       source:
         model: PurchaseOrder
         id: $props.id
+      # Two steps: the header, then the rows. The step to the rows asks the
+      # server (orders.py) whether the rows still fit the header.
+      phases:
+        - id: head
+          label: Order
+          nodes: [header]
+          summary: [id, order_date, publisher_id]
+          next: { endpoint: purchase_order_head, label: Go to the lines }
+        - id: lines
+          label: Lines
+          nodes: [relations]
       layout:
         - id: header
           type: section
@@ -94,6 +105,16 @@ pages:
       source:
         model: Receipt
         id: $props.id
+      # The same two steps with nothing to judge in between: phases are a
+      # layout first, the handler is optional.
+      phases:
+        - id: head
+          label: Delivery
+          nodes: [header]
+          summary: [id, receipt_date, publisher_id, reference]
+        - id: lines
+          label: Lines
+          nodes: [relations]
       layout:
         - id: header
           type: section

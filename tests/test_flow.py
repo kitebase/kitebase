@@ -420,3 +420,104 @@ def test_save_tree_refuses_rows_whose_rules_it_would_skip(app):
     assert result['status'] == 'error'
     assert 'Rules on rows' in result['message']
     assert titles(app) == []
+
+
+# ── Proposals: what a form suggests on its way, before anything is written ──
+
+def document(title='Dune', pages=('p1', 'p2'), root_id=-1):
+    """The tree a form holds: a header and its rows, the shape of save_tree."""
+    return {'id': root_id, 'op': 'create', 'values': {'title': title, 'member_id': 1},
+            'children': {'pages': [{'id': -(i + 2), 'op': 'create', 'values': {'text': t}}
+                                   for i, t in enumerate(pages)]}}
+
+
+def propose(fn, tree, answers=None):
+    return flow.propose('Loan', fn, {'tree': tree, 'answers': answers or {}})
+
+
+def test_a_proposal_that_changes_nothing_answers_an_empty_patch(app):
+    result = propose(lambda ctx: None, document())
+
+    assert result == {'status': 'success', 'data': {}}
+
+
+def test_a_proposal_sees_the_header_the_rows_and_the_mode(app):
+    seen = {}
+
+    def look(ctx):
+        seen.update(mode=ctx.mode, title=ctx.record['title'],
+                    rows=[(r['id'], r['text']) for r in ctx.rows['pages']])
+
+    propose(look, document())
+    assert seen == {'mode': 'insert', 'title': 'Dune', 'rows': [(-2, 'p1'), (-3, 'p2')]}
+
+    propose(look, document(root_id=7))
+    assert seen['mode'] == 'update'
+
+
+def test_a_deleted_row_is_not_among_the_rows(app):
+    tree = document()
+    tree['children']['pages'].append({'id': 5, 'op': 'delete', 'values': {}})
+
+    result = propose(lambda ctx: None if [r['id'] for r in ctx.rows['pages']] == [-2, -3]
+                     else ctx.stay('a deleted row was seen'), tree)
+    assert result['status'] == 'success'
+
+
+def test_the_patch_carries_changed_values_and_changed_collections_whole(app):
+    def edit(ctx):
+        ctx.record['note'] = 'checked'
+        ctx.rows['pages'] = [r for r in ctx.rows['pages'] if r['text'] != 'p1']
+        ctx.rows['pages'].append({'text': 'p3'})
+
+    result = propose(edit, document())
+
+    assert result['data'] == {
+        'values': {'note': 'checked'},
+        'rows': {'pages': [{'id': -3, 'values': {'text': 'p2'}},
+                           {'id': None, 'values': {'text': 'p3'}}]},
+    }
+
+
+def test_a_proposal_asks_and_refuses_as_a_rule_does(app):
+    def drop(ctx):
+        if not ctx.confirm('drop', 'Drop the first page?'):
+            ctx.stay('Kept', patch={'note': 'kept'})
+        ctx.rows['pages'] = ctx.rows['pages'][1:]
+
+    asked = propose(drop, document())
+    assert asked['code'] == 409 and asked['$flow']['ask']['key'] == 'drop'
+
+    refused = propose(drop, document(), {'drop': False})
+    assert refused['code'] == 422 and refused['$flow']['patch'] == {'note': 'kept'}
+
+    done = propose(drop, document(), {'drop': True})
+    assert [r['id'] for r in done['data']['rows']['pages']] == [-3]
+
+
+def test_a_proposal_writes_nothing(app):
+    def write(ctx):
+        ctx.session.add(kitebase.utils.get_app().models['Stamp'](what='proposed'))
+        ctx.session.flush()
+
+    with pytest.raises(flow.ReadOnly):
+        propose(write, document())
+    assert titles(app, 'Stamp') == []
+
+
+def test_a_proposal_reaches_the_client_through_its_endpoint(app):
+    """The envelope a client receives: the patch, and the lines for the person."""
+    from kitebase.endpoints import endpoint
+
+    @endpoint('test_loan_head')
+    @flow.proposal('Loan')
+    def loan_head(ctx):
+        ctx.record['note'] = 'seen'
+        ctx.info('Looked at it')
+
+    result = send('test_loan_head', {'tree': document()})
+
+    assert result['status'] == 'success'
+    assert result['data'] == {'values': {'note': 'seen'}}
+    assert result['$flow'] == {'info': ['Looked at it']}
+    assert loan_head.proposes.__name__ == 'loan_head'

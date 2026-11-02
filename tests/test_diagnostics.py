@@ -346,3 +346,68 @@ def test_a_column_tone_names_tones_by_value_or_range():
     found = sorted((i['code'], i['path'].rsplit('.', 1)[-1]) for i in issues
                    if i['code'].startswith('tone-'))
     assert found == [('tone-range', 'ranges[2]'), ('tone-value', 'A'), ('tone-value', 'ranges[1]')]
+
+
+# ── phases group the top nodes of a form's layout ────────────────────────────
+
+def phases_app(phases, endpoints=()):
+    pm = PluginsManager()
+    pm.merge_dicts({'pages': {'order_form': {'content': {
+        'type': 'form',
+        'source': {'model': 'Order'},
+        'layout': [
+            {'id': 'header', 'type': 'section',
+             'columns': [{'id': 'left', 'fields': [{'name': 'date'}, {'name': 'customer'}]}]},
+            {'id': 'relations', 'type': 'tabs', 'pages': [{'id': 'lines_tab', 'layout': [
+                {'type': 'collection', 'id': 'lines', 'model': 'Line', 'fk': 'order_id',
+                 'view': {'columns': [{'field': 'qty'}]}}]}]},
+        ],
+        'phases': phases,
+    }}}}, 'testplugin')
+    app = FakeApp(pm, {'Order': FakeTable('id', 'date', 'customer'),
+                       'Line': FakeTable('id', 'order_id', 'qty')})
+    app.cp = type('CP', (), {'endpoints': {e: None for e in endpoints}})()
+    return app
+
+
+HEAD = {'id': 'head', 'nodes': ['header'], 'summary': ['date', 'customer']}
+LINES = {'id': 'lines', 'nodes': ['relations']}
+PHASE_CODES = ('phase-node-unknown', 'phase-node-twice', 'phase-node-unplaced',
+               'phase-summary-field', 'phase-endpoint-unknown')
+
+
+def phase_issues(app):
+    return [i for i in run_checks(app) if i['code'] in PHASE_CODES]
+
+
+def test_phases_that_place_every_top_node_once_pass():
+    app = phases_app([{**HEAD, 'next': {'endpoint': 'order_head'}}, LINES], ['order_head'])
+    assert phase_issues(app) == []
+
+
+def test_a_phase_naming_a_node_that_is_not_at_the_top_breaks_the_form():
+    issues = phase_issues(phases_app([{**HEAD, 'nodes': ['header', 'left']}, LINES]))
+    assert [(i['code'], i['severity']) for i in issues] == [('phase-node-unknown', 'error')]
+
+
+def test_a_node_in_two_phases_breaks_the_form():
+    issues = phase_issues(phases_app([HEAD, {'id': 'lines', 'nodes': ['relations', 'header']}]))
+    assert [i['code'] for i in issues] == ['phase-node-twice']
+
+
+def test_a_node_in_no_phase_is_never_drawn():
+    issues = phase_issues(phases_app([HEAD]))
+    assert [(i['code'], i['severity']) for i in issues] == [('phase-node-unplaced', 'warning')]
+    assert issues[0]['path'].endswith('layout[relations]')
+
+
+def test_the_summary_shows_fields_of_its_own_phase():
+    """`qty` is a column of the rows, not a field of the header."""
+    issues = phase_issues(phases_app([{**HEAD, 'summary': ['date', 'qty']}, LINES]))
+    assert [i['code'] for i in issues] == ['phase-summary-field']
+
+
+def test_a_step_to_an_endpoint_nobody_registered_could_never_be_taken():
+    issues = phase_issues(phases_app([{**HEAD, 'next': {'endpoint': 'order_hed'}}, LINES],
+                                     ['order_head']))
+    assert [(i['code'], i['severity']) for i in issues] == [('phase-endpoint-unknown', 'error')]

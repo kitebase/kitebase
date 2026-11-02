@@ -2602,6 +2602,33 @@
      "id": "$props.id",
      "$plugin": "acquisitions"
     },
+    "phases": [
+     {
+      "id": "head",
+      "label": "Order",
+      "nodes": [
+       "header"
+      ],
+      "summary": [
+       "id",
+       "order_date",
+       "publisher_id"
+      ],
+      "next": {
+       "endpoint": "purchase_order_head",
+       "label": "Go to the lines"
+      },
+      "$plugin": "acquisitions"
+     },
+     {
+      "id": "lines",
+      "label": "Lines",
+      "nodes": [
+       "relations"
+      ],
+      "$plugin": "acquisitions"
+     }
+    ],
     "layout": [
      {
       "id": "header",
@@ -2691,6 +2718,30 @@
      "id": "$props.id",
      "$plugin": "acquisitions"
     },
+    "phases": [
+     {
+      "id": "head",
+      "label": "Delivery",
+      "nodes": [
+       "header"
+      ],
+      "summary": [
+       "id",
+       "receipt_date",
+       "publisher_id",
+       "reference"
+      ],
+      "$plugin": "acquisitions"
+     },
+     {
+      "id": "lines",
+      "label": "Lines",
+      "nodes": [
+       "relations"
+      ],
+      "$plugin": "acquisitions"
+     }
+    ],
     "layout": [
      {
       "id": "header",

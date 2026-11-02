@@ -27,7 +27,18 @@ its reply. Nothing is kept on the server between the two calls.
 The rules belong to the table, not to a form: `db` and `save_tree` both judge
 them, so a call that skips the form does not skip a rule. Functions on the
 same table and stage run in the order their plugins load.
+
+A form also proposes, before anything is written: the step from one phase of a
+document to the next. A proposal sees the document as it stands in the form,
+header and rows, asks and refuses as a rule does, and answers with a patch the
+form applies to its draft. It writes nothing:
+
+    @endpoint('order_head', access=access.PER_TABLE)
+    @proposal('PurchaseOrder')
+    def order_head(ctx):
+        ctx.rows['lines'] = [r for r in ctx.rows['lines'] if keep(r)]
 """
+import functools
 import logging
 from typing import Any, Callable, Dict, List, NoReturn, Optional
 
@@ -201,23 +212,27 @@ def judge(table: str, mode: str, record: Dict[str, Any],
     rules = _rules(table, 'check')
     if not rules:
         return ctx, None
+    return ctx, _read_only(ctx, rules)
 
+
+def _read_only(ctx: Context, fns: List[Callable]) -> Optional[Dict[str, Any]]:
+    """Run `fns` on a session that refuses to write; the refusal envelope, or None."""
     app = kitebase.utils.get_app()
     try:
         with app.get_session() as session:
             _forbid_writes(session)
             ctx.session = session
-            for rule in rules:
-                rule(ctx)
+            for fn in fns:
+                fn(ctx)
     except Ask as a:
-        return ctx, {'status': 'error', 'code': 409, 'message': a.question['text'],
-                     '$flow': _flow(ctx, ask=a.question)}
+        return {'status': 'error', 'code': 409, 'message': a.question['text'],
+                '$flow': _flow(ctx, ask=a.question)}
     except Stay as s:
-        return ctx, {'status': 'error', 'code': 422, 'message': s.message,
-                     '$flow': _flow(ctx, patch=s.patch)}
+        return {'status': 'error', 'code': 422, 'message': s.message,
+                '$flow': _flow(ctx, patch=s.patch)}
     finally:
         ctx.session = None
-    return ctx, None
+    return None
 
 
 def commit(ctx: Context, session, obj) -> None:
@@ -258,3 +273,75 @@ def _flow(ctx: Context, **parts: Any) -> Dict[str, Any]:
     if ctx.infos:
         flow['info'] = list(ctx.infos)
     return flow
+
+
+# ── Proposals: what a form suggests before anything is written ───────────────
+
+class Proposal(Context):
+    """
+    What a proposal sees: the document as the form holds it.
+
+    `record` is the header, `rows` the rows of each collection by its id, each
+    row a dict of its values with its `id` (negative for a row never written;
+    a row the proposal adds has none). Change them in place, or replace a list
+    whole: the form receives what differs from what it sent.
+    """
+
+    def __init__(self, table: str, tree: Dict[str, Any], answers: Dict[str, Any]):
+        root_id = tree.get('id')
+        mode = 'insert' if root_id is None or (isinstance(root_id, int) and root_id < 0) else 'update'
+        super().__init__(table, mode, dict(tree.get('values') or {}), None, answers)
+        self.rows: Dict[str, List[Dict[str, Any]]] = {
+            cid: [{**(node.get('values') or {}), 'id': node.get('id')} for node in nodes
+                  if node.get('op') != 'delete']
+            for cid, nodes in (tree.get('children') or {}).items()
+        }
+
+    def patch(self, values: Dict[str, Any], rows: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Any]:
+        """What changed against what the form sent: values by key, collections whole."""
+        changed = {k: v for k, v in self.record.items() if k not in values or values[k] != v}
+        moved = {cid: [{'id': r.get('id'), 'values': {k: v for k, v in r.items() if k != 'id'}}
+                       for r in current]
+                 for cid, current in self.rows.items() if current != rows.get(cid, [])}
+        out: Dict[str, Any] = {}
+        if changed:
+            out['values'] = changed
+        if moved:
+            out['rows'] = moved
+        return out
+
+
+def propose(table: str, fn: Callable, data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Run a proposal on the document in `data` (`tree`, in the shape of
+    `save_tree`, and `answers`). The answer is the endpoint's: the patch on
+    success, a question or a refusal as the rules give them.
+    """
+    ctx = Proposal(table, data.get('tree') or {}, dict(data.get('answers') or {}))
+    values = dict(ctx.record)
+    rows = {cid: [dict(r) for r in current] for cid, current in ctx.rows.items()}
+    refusal = _read_only(ctx, [fn])
+    if refusal is not None:
+        return refusal
+    result: Dict[str, Any] = {'status': 'success', 'data': ctx.patch(values, rows)}
+    flow = _flow(ctx)
+    if flow:
+        result['$flow'] = flow
+    return result
+
+
+def proposal(table: str):
+    """
+    Make `fn(ctx)` the body of an endpoint that proposes changes to a document
+    of `table`. Reading the table is the least a proposal needs; writing is
+    the save's to check, when the document is written.
+    """
+    def wrap(fn: Callable) -> Callable:
+        @functools.wraps(fn)
+        def body(data: Dict[str, Any]) -> Dict[str, Any]:
+            from kitebase import access
+            access.check_table(table, 'read')
+            return propose(table, fn, data)
+        body.proposes = fn  # type: ignore[attr-defined]
+        return body
+    return wrap

@@ -4,7 +4,7 @@
 menu_items.*: [action, confirm, icon, label, op, order, panel, parent]
 menus.*: [home_page, label]
 pages.*: [access, breadcrumb, confirm_on_leave, content, panels, title]
-pages.*.content: [actions, allow_views, card, columns, component, fields, layout, navigator, on_saved, policy, props, rules, source, type]
+pages.*.content: [actions, allow_views, card, columns, component, fields, layout, navigator, on_saved, phases, policy, props, rules, source, type]
 pages.*.content.actions: [toolbar]
 pages.*.content.card: [details, image, ribbon, subtitle, title]
 pages.*.content.columns[]: [field, formatter, title, tone, width]
@@ -41,6 +41,8 @@ pages.*.content.on_saved.insert: [action, op, panel, params]
 pages.*.content.on_saved.insert.params: '*'
 pages.*.content.on_saved.update: [action, op, panel, params]
 pages.*.content.on_saved.update.params: '*'
+pages.*.content.phases[]: [id, label, next, nodes, summary]
+pages.*.content.phases[].next: [endpoint, label]
 pages.*.content.policy: [button_style, editable]
 pages.*.content.props: '*'
 pages.*.content.props.*[]: '*'

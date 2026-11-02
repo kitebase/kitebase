@@ -132,6 +132,9 @@ def _walk(app: Any, obj: Any, path: str, plugin: Optional[str],
         if isinstance(obj.get('commands'), list):
             _check_commands(app, obj['commands'], f'{path}.commands', plugin, issues)
 
+        if isinstance(obj.get('phases'), list):
+            _check_phases(app, obj, path, plugin, issues)
+
         for key, value in obj.items():
             if not isinstance(key, str):
                 # YAML 1.1 reads an unquoted on/off/yes/no as a boolean: `on:`
@@ -518,6 +521,69 @@ def _check_commands(app: Any, commands: List[Any], path: str,
             f"endpoint '{name}' is not registered, so the command is not shown; "
             f"if it belongs to a plugin this app may not load, declare that plugin "
             f"under `optional`", owner))
+
+
+def _check_phases(app: Any, content: Dict[str, Any], path: str,
+                  plugin: Optional[str], issues: List[Dict[str, Any]]) -> None:
+    """The phases of a form group the top nodes of its layout by id: a node
+    named and missing, or in two phases, breaks the form; a node in none is
+    never drawn, which may be the intent of a derived plugin but rarely is."""
+    layout = content.get('layout') if isinstance(content.get('layout'), list) else []
+    tops = {n.get('id'): n for n in layout if isinstance(n, dict) and n.get('id')}
+    placed: Dict[str, str] = {}
+    cp = getattr(app, 'cp', None)
+    for phase in content['phases']:
+        if not isinstance(phase, dict):
+            continue
+        pid = phase.get('id', '?')
+        where = f'{path}.phases[{pid}]'
+        fields: Set[str] = set()
+        for node_id in phase.get('nodes') or []:
+            if node_id not in tops:
+                issues.append(make_issue(
+                    'error', 'phase-node-unknown', f'{where}.nodes',
+                    f"'{node_id}' is not the id of a node at the top of the layout", plugin))
+            elif node_id in placed:
+                issues.append(make_issue(
+                    'error', 'phase-node-twice', f'{where}.nodes',
+                    f"'{node_id}' is already in phase '{placed[node_id]}'", plugin))
+            else:
+                placed[node_id] = pid
+                _layout_fields(tops[node_id], fields)
+        for name in phase.get('summary') or []:
+            if name not in fields:
+                issues.append(make_issue(
+                    'warning', 'phase-summary-field', f'{where}.summary',
+                    f"'{name}' is not a field of this phase: the summary shows "
+                    f"what the phase filled in", plugin))
+        nxt = phase.get('next')
+        endpoint = nxt.get('endpoint') if isinstance(nxt, dict) else None
+        if isinstance(endpoint, str) and cp is not None and endpoint not in cp.endpoints:
+            issues.append(make_issue(
+                'error', 'phase-endpoint-unknown', f'{where}.next.endpoint',
+                f"endpoint '{endpoint}' is not registered: the form could not "
+                f"leave this phase", plugin))
+    for node_id in tops:
+        if node_id not in placed:
+            issues.append(make_issue(
+                'warning', 'phase-node-unplaced', f'{path}.layout[{node_id}]',
+                f"'{node_id}' is in no phase, so it is never drawn: add it to "
+                f"the `nodes` of one", plugin))
+
+
+def _layout_fields(obj: Any, out: Set[str]) -> None:
+    """The names of the fields a layout node draws, not those of its collections."""
+    if isinstance(obj, list):
+        for item in obj:
+            _layout_fields(item, out)
+    elif isinstance(obj, dict):
+        if obj.get('type') == 'collection':
+            return
+        if isinstance(obj.get('name'), str):
+            out.add(obj['name'])
+        for key, value in obj.items():
+            if isinstance(key, str) and not key.startswith('$'):
+                _layout_fields(value, out)
 
 
 def _check_push_target(app: Any, action: Dict[str, Any], path: str,
