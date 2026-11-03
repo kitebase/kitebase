@@ -151,7 +151,9 @@ tables:
 
       # The order row this one fills, when it fills one: a book can also
       # arrive that nobody ordered. The order outlives its receipts and the
-      # other way round, so neither deletes the other.
+      # other way round, so neither deletes the other. No form fills it: the
+      # seed does, as the case for the receipt against the orders (README,
+      # "Still to come").
       - name: purchase_order_line_id
         label: Order row
         nullable: true
