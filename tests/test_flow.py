@@ -870,3 +870,31 @@ def test_a_question_of_the_phases_is_asked_once_for_the_whole_sheet(app):
     assert asked['code'] == 409 and asked['$flow']['ask']['key'] == 'drop_drafts'
 
     assert import_sheet(rows, {'drop_drafts': True})['status'] == 'success'
+
+
+def draft_sheet(rows, sheet=LoanSheet):
+    from kitebase.media import UploadedFile
+    return sheet().draft({'file': UploadedFile('loans.xlsx', iter([xlsx(rows)]))})
+
+
+def test_a_draft_opens_the_document_in_its_form_and_writes_nothing(app):
+    class Proposing(LoanSheet):
+        def propose(self, session, tree):
+            tree['values']['note'] = 'from the sheet'
+
+    result = draft_sheet([HEADER, ['L1', 'Erin', 'Dune', 'p1', None],
+                          ['L1', 'Erin', 'Dune', 'p2', None]], Proposing)
+
+    assert result['status'] == 'success', result
+    assert result['data']['action'] == 'open_form' and result['data']['page'] == 'loan_doc'
+    assert result['data']['draft'] == {
+        'values': {'member_id': 1, 'title': 'Dune', 'note': 'from the sheet'},
+        'children': {'pages': [{'values': {'text': 'p1'}}, {'values': {'text': 'p2'}}]}}
+    assert titles(app) == []
+
+
+def test_a_draft_is_one_document(app):
+    result = draft_sheet([HEADER, ['L1', 'Erin', 'Dune', 'p1', None], ['L2', 'Erin', 'Emma', 'p1', None]])
+
+    assert result['code'] == 422
+    assert result['message'] == 'The sheet holds 2 loans: a draft is one'

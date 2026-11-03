@@ -58,7 +58,7 @@ pages:
         - id: head
           label: Order
           nodes: [header]
-          summary: [id, order_date, publisher_id]
+          summary: [id, order_date, publisher_id, supplier_reference]
           next: { endpoint: purchase_order_head, label: Go to the lines }
         - id: lines
           label: Lines
@@ -74,7 +74,10 @@ pages:
                 - name: order_date
                   width: 20%
                 - name: publisher_id
-                  width: 45%
+                  width: 40%
+                - name: supplier_reference
+                  width: 20%
+                - filler:
                 - name: notes
 
         # In a tabs even alone: the hook another plugin needs to add a

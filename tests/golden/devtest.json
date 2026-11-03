@@ -932,6 +932,14 @@
      "$plugin": "acquisitions"
     },
     {
+     "name": "supplier_reference",
+     "type": "String",
+     "label": "Supplier reference",
+     "length": 50,
+     "nullable": true,
+     "$plugin": "acquisitions"
+    },
+    {
      "name": "notes",
      "type": "Text",
      "label": "Notes",
@@ -2551,6 +2559,13 @@
        "scope": "global",
        "endpoint": "purchase_order_import",
        "$plugin": "acquisitions"
+      },
+      {
+       "id": "import_publisher_sheet",
+       "label": "Open a publisher's sheet",
+       "scope": "global",
+       "endpoint": "publisher_sheet",
+       "$plugin": "acq_publisher_sheet"
       }
      ],
      "$plugin": "acquisitions"
@@ -2623,7 +2638,8 @@
       "summary": [
        "id",
        "order_date",
-       "publisher_id"
+       "publisher_id",
+       "supplier_reference"
       ],
       "next": {
        "endpoint": "purchase_order_head",
@@ -2658,7 +2674,14 @@
          },
          {
           "name": "publisher_id",
-          "width": "45%"
+          "width": "40%"
+         },
+         {
+          "name": "supplier_reference",
+          "width": "20%"
+         },
+         {
+          "filler": null
          },
          {
           "name": "notes"

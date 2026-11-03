@@ -28,6 +28,13 @@ tables:
         foreign_key:
           target: Publisher.id
 
+      # The publisher's own reference: their quote, or the sheet they sent.
+      - name: supplier_reference
+        type: String
+        label: Supplier reference
+        length: 50
+        nullable: true
+
       - name: notes
         type: Text
         label: Notes

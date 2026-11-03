@@ -1,0 +1,4 @@
+name: acq_publisher_sheet
+version: 0.0.1
+description: A publisher's own order sheet, opened as a draft in the order form
+depends_on: [acquisitions]

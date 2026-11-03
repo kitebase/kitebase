@@ -1,0 +1,13 @@
+# One more command in the list of orders: the sheet a publisher sends, which
+# is not written but opened in the order form, to be finished there.
+
+pages:
+
+  purchaseorder_list:
+    content:
+      navigator:
+        commands:
+          - id: import_publisher_sheet
+            label: Open a publisher's sheet
+            scope: global
+            endpoint: publisher_sheet

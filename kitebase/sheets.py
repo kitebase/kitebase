@@ -27,8 +27,11 @@ every mistake collected by row and column. The rows are grouped into documents b
 through `flow.run_forms`: the proposals of the form's phases, then one
 transaction for the whole sheet.
 
-A different layout for the same documents (a supplier's own sheet) is a
-subclass that changes the columns, or a check.
+A sheet can also be opened rather than written: `draft` reads one document
+and answers `open_form`, the form opens on it as a new document, and the
+person finishes and saves it there; `propose` adds what the sheet does not
+hold. A different layout for the same documents (a supplier's own sheet) is
+a subclass that changes the columns, or a check.
 """
 import io
 import re
@@ -182,26 +185,10 @@ class SheetImport:
     def run(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """The endpoint's answer for an uploaded sheet: written, or why not."""
         from kitebase.flow import run_forms
-        from kitebase.media import MediaError, UploadedFile
 
-        upload = data.get('file')
-        if not isinstance(upload, UploadedFile):
-            return {'status': 'error', 'code': 400, 'message': 'No file: call through upload/<op>'}
-        if not upload.filename.lower().endswith('.xlsx'):
-            return {'status': 'error', 'code': 415,
-                    'message': _f('{name} is not an Excel sheet (.xlsx)', name=upload.filename)}
-        try:
-            content = upload.read(self.max_bytes)
-        except MediaError as e:
-            return {'status': 'error', 'code': e.status, 'message': str(e)}
-
-        try:
-            rows = self.read(content)
-        except CellError as e:
-            return {'status': 'error', 'code': 415, 'message': str(e)}
-        documents, errors = self.documents(rows)
-        if errors:
-            return self.refusal(errors)
+        documents, refusal = self.load(data)
+        if refusal:
+            return refusal
 
         result = run_forms(self.page, [tree for _, tree in documents], data.get('answers'),
                            labels=[label for label, _ in documents])
@@ -218,6 +205,62 @@ class SheetImport:
         if result.get('$flow'):
             out['$flow'] = result['$flow']
         return out
+
+    def draft(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        The endpoint's answer for a sheet that is not written but opened: one
+        document, as a new draft in its form, with what `propose` adds to it.
+        The person finishes it there, and the form writes it as any other.
+        """
+        documents, refusal = self.load(data)
+        if refusal:
+            return refusal
+        if len(documents) > 1:
+            return {'status': 'error', 'code': 422,
+                    'message': _f('The sheet holds {n} {nouns}: a draft is one',
+                                  n=len(documents), nouns=self.nouns)}
+        _, tree = documents[0]
+        app = kitebase.utils.get_app()
+        with app.get_session() as session:
+            access.guard_session(session)
+            self.propose(session, tree)
+        return {'status': 'success',
+                'data': {'action': 'open_form', 'page': self.page, 'draft': tree,
+                         'title': data['file'].filename}}
+
+    def propose(self, session, tree: Dict[str, Any]) -> None:
+        """
+        What a draft adds to the document before the form opens it: the
+        header the sheet does not hold (the publisher of its books). A session
+        under the reader's permissions.
+        """
+
+    def load(self, data: Dict[str, Any]
+             ) -> Tuple[List[Tuple[str, Dict[str, Any]]], Optional[Dict[str, Any]]]:
+        """The documents of an uploaded sheet, or the answer that refuses it."""
+        from kitebase.media import MediaError, UploadedFile
+
+        self.left_out = []
+        upload = data.get('file')
+        if not isinstance(upload, UploadedFile):
+            return [], {'status': 'error', 'code': 400,
+                        'message': 'No file: call through upload/<op>'}
+        if not upload.filename.lower().endswith('.xlsx'):
+            return [], {'status': 'error', 'code': 415,
+                        'message': _f('{name} is not an Excel sheet (.xlsx)', name=upload.filename)}
+        try:
+            content = upload.read(self.max_bytes)
+        except MediaError as e:
+            return [], {'status': 'error', 'code': e.status, 'message': str(e)}
+
+        try:
+            rows = self.read(content)
+        except CellError as e:
+            return [], {'status': 'error', 'code': 415, 'message': str(e)}
+        documents, errors = self.documents(rows)
+        if errors:
+            return [], self.refusal(errors)
+        return documents, None
 
     def read(self, content: bytes) -> List[Tuple[int, List[Any]]]:
         """The rows of the first sheet, numbered as the spreadsheet numbers them."""
