@@ -112,8 +112,6 @@ pages:
                     discount: $record.default_discount
                   view:
                     type: table
-                    source:
-                      order_by: [sequence]
                     columns:
                       - field: book_id.title
                         title: Book
@@ -187,8 +185,6 @@ pages:
                   sequence: sequence
                   view:
                     type: table
-                    source:
-                      order_by: [sequence]
                     columns:
                       - field: book_id.title
                         title: Book

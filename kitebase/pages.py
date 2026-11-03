@@ -206,7 +206,8 @@ def auto_list_page(table_name: str, table: Any, media: Any = None) -> Dict[str, 
     Convention: requested as '{table_name}_list' (e.g. 'author_list').
     Includes all non-secret effective_columns as table columns, save a Files
     column: its files are in a folder, not in the row, and a list of a hundred
-    records does not read a hundred folders.
+    records does not read a hundred folders. A `hidden` column (a sequence)
+    is the framework's business, not the reader's, and is left out too.
     FK columns are shown as raw id fields (no join auto-resolve).
     An image column shows the variant `media.list_variant` names, when it
     names one.
@@ -216,7 +217,8 @@ def auto_list_page(table_name: str, table: Any, media: Any = None) -> Dict[str, 
     """
     columns = []
     for col in table.effective_columns:
-        if col.attributes.get('secret') or col.attributes.get('media') == 'files':
+        if (col.attributes.get('secret') or col.attributes.get('hidden')
+                or col.attributes.get('media') == 'files'):
             continue
         entry: Dict[str, Any] = {'field': col.name}
         label = col.attributes.get('label')
@@ -271,8 +273,8 @@ def auto_form_page(table_name: str, table: Any) -> Dict[str, Any]:
     Auto-generate a form page descriptor for a table.
 
     Convention: '{table_name}_form' (e.g. 'book_form').
-    PK columns are included as read-only. Secret and virtual columns are
-    skipped, save a Files column: it has no value in the row, but a widget
+    PK columns are included as read-only. Secret, hidden and virtual columns
+    are skipped, save a Files column: it has no value in the row, but a widget
     that lists its folder.
     All column attributes are forwarded to the client (which applies what it knows).
     The only exception is foreign_key['table'] which is a non-serializable DbTable object.
@@ -283,7 +285,7 @@ def auto_form_page(table_name: str, table: Any) -> Dict[str, Any]:
     with equal right, while only the first belongs inside the book.
     """
     fields = [field_from_column(col) for col in table.effective_columns
-              if not col.attributes.get('secret')
+              if not col.attributes.get('secret') and not col.attributes.get('hidden')
               and (not col.attributes.get('virtual') or col.attributes.get('media') == 'files')]
 
     return {

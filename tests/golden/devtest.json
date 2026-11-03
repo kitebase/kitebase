@@ -163,6 +163,15 @@
    "scale": 3,
    "$plugin": "common"
   },
+  "Sequence": {
+   "base": "Integer",
+   "label": "Sequence",
+   "default": 0,
+   "nullable": false,
+   "hidden": true,
+   "query_rank": "none",
+   "$plugin": "common"
+  },
   "TimeStamp": {
    "label": "Timestamp",
    "columns": [
@@ -972,9 +981,7 @@
     },
     {
      "name": "sequence",
-     "type": "Integer",
-     "nullable": false,
-     "default": 0,
+     "type": "Sequence",
      "$plugin": "acquisitions"
     },
     {
@@ -1076,9 +1083,7 @@
     },
     {
      "name": "sequence",
-     "type": "Integer",
-     "nullable": false,
-     "default": 0,
+     "type": "Sequence",
      "$plugin": "acquisitions"
     },
     {
@@ -2732,11 +2737,6 @@
           },
           "view": {
            "type": "table",
-           "source": {
-            "order_by": [
-             "sequence"
-            ]
-           },
            "columns": [
             {
              "field": "book_id.title",
@@ -2879,11 +2879,6 @@
           "sequence": "sequence",
           "view": {
            "type": "table",
-           "source": {
-            "order_by": [
-             "sequence"
-            ]
-           },
            "columns": [
             {
              "field": "book_id.title",

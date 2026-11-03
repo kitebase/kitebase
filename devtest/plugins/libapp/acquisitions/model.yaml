@@ -58,9 +58,7 @@ tables:
 
       # The place of the row in its document, which the reader chose.
       - name: sequence
-        type: Integer
-        nullable: false
-        default: 0
+        type: Sequence
 
       - name: book_id
         label: Book
@@ -126,9 +124,7 @@ tables:
           owned: true
 
       - name: sequence
-        type: Integer
-        nullable: false
-        default: 0
+        type: Sequence
 
       - name: book_id
         label: Book

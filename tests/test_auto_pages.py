@@ -117,3 +117,16 @@ def test_check_names_the_page_before_anyone_opens_it():
     assert ('auto-missing', 'pages.writers') in codes
     assert not any(path == 'pages.author_list' for code, path in codes
                    if code == 'auto-missing')
+
+
+def test_a_hidden_column_is_in_no_generated_page():
+    from kitebase.pages import auto_form_page, auto_list_page
+    table = FakeTable(FakeColumn('id', primary_key=True), FakeColumn('title'),
+                      FakeColumn('password', secret=True),
+                      FakeColumn('sequence', type='Sequence', hidden=True))
+
+    form = [f['name'] for f in auto_form_page('Line', table)['content']['fields']]
+    grid = [c['field'] for c in auto_list_page('Line', table)['content']['columns']]
+
+    assert form == ['id', 'title']
+    assert grid == ['id', 'title']
