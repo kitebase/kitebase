@@ -58,10 +58,10 @@ pages:
       source:
         model: PurchaseOrder
         id: $props.id
-      # Three steps: the header, the rows, the footer. The step to the rows
-      # asks the server (orders.py) whether the rows still fit the header; the
-      # footer's step is the save, judged first, and a refusal goes back to
-      # where the problem is.
+      # Three steps: the header, the rows, the footer, each judged on the way
+      # out (orders.py): the rows against a changed header, the rows
+      # themselves, the footer before the save. An error is told on the step
+      # where it can be mended.
       phases:
         - id: head
           label: Order
@@ -71,7 +71,7 @@ pages:
         - id: lines
           label: Lines
           nodes: [relations]
-          next: { label: Go to the footer }
+          next: { endpoint: purchase_order_lines, label: Go to the footer }
         - id: footer
           label: Footer
           nodes: [footer]

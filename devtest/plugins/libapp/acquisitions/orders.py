@@ -1,11 +1,13 @@
 """
-What the order form proposes on its way from the header to the rows.
+What the order form judges on its way through its steps, each step its own.
 
 An order goes to one publisher, so its rows are that publisher's books. The
-case is a publisher changed once the rows are in: the step to the rows
-offers to take away those of another publisher, and stays on the header
-otherwise. A proposal writes nothing: the form applies the patch, and the
-order is written when it is saved.
+step to the rows offers to take away those of another publisher when the
+publisher changed once the rows were in; the step to the footer checks the
+rows themselves; the footer's step, the save, checks the footer. An error
+is told where it can be mended, never a step later. A proposal writes
+nothing: the form applies the patch, and the order is written when it is
+saved.
 """
 from datetime import date, timedelta
 
@@ -42,26 +44,27 @@ def purchase_order_head(ctx):
     ctx.info(f"Removed: {', '.join(_titles(ctx, foreign))}")
 
 
-@endpoint('purchase_order_close', access=access.PER_TABLE)
+@endpoint('purchase_order_lines', access=access.PER_TABLE)
 @proposal('PurchaseOrder')
-def purchase_order_close(ctx):
-    """
-    The order judged before it is saved, the last step of its form. A
-    refusal goes back to where the problem is: the lines for a book of
-    another publisher, the footer itself for a delivery before the order.
-    """
+def purchase_order_lines(ctx):
+    """The rows, judged on the way to the footer: some, and all of the order's publisher."""
     publisher_id = ctx.record.get('publisher_id')
     lines = ctx.rows.get('lines', [])
     if not lines:
-        ctx.stay('An order needs at least one line', phase='lines')
+        ctx.stay('An order needs at least one line')
     book_ids = {r['book_id'] for r in lines if r.get('book_id') is not None}
     Book = kitebase.utils.get_app().model.Book
     theirs = {book_id for (book_id,) in ctx.session.query(Book.id)
               .filter(Book.id.in_(book_ids), Book.publisher_id == publisher_id)}
     foreign = [r for r in lines if r.get('book_id') not in theirs]
     if foreign:
-        ctx.stay(f"Books of another publisher: {', '.join(_titles(ctx, foreign))}", phase='lines')
+        ctx.stay(f"Books of another publisher: {', '.join(_titles(ctx, foreign))}")
 
+
+@endpoint('purchase_order_close', access=access.PER_TABLE)
+@proposal('PurchaseOrder')
+def purchase_order_close(ctx):
+    """The footer, judged before the order is saved: the last step of its form."""
     delivery, ordered = ctx.record.get('expected_delivery'), ctx.record.get('order_date')
     if delivery and ordered and str(delivery)[:10] < str(ordered)[:10]:
         ctx.stay('The delivery cannot come before the order')
