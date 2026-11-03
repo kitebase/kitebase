@@ -7,8 +7,11 @@ offers to take away those of another publisher, and stays on the header
 otherwise. A proposal writes nothing: the form applies the patch, and the
 order is written when it is saved.
 """
+from datetime import date, timedelta
+
 import kitebase
 from kitebase import access
+from kitebase.duplicate import duplicator
 from kitebase.endpoints import endpoint
 from kitebase.flow import proposal
 
@@ -37,6 +40,29 @@ def purchase_order_head(ctx):
         ctx.stay(text)
     ctx.rows['lines'] = [r for r in lines if r not in foreign]
     ctx.info(f"Removed: {', '.join(_titles(ctx, foreign))}")
+
+
+@duplicator('purchaseorder_form', options='purchaseorder_duplicate')
+def order_duplicate(tree, choices):
+    """A new order from another: the same publisher, the date chosen, the lines if asked."""
+    tree['values']['order_date'] = choices['order_date']
+    if not choices.get('lines', True):
+        tree['children']['lines'] = []
+
+
+@order_duplicate.options_values
+def order_duplicate_values(source):
+    """The date proposed: a month after the order copied, the usual rhythm of a reorder."""
+    return {'order_date': _month_after(source['values']['order_date']).isoformat()}
+
+
+def _month_after(when):
+    day = date.fromisoformat(str(when)[:10])
+    year, month = divmod(day.month, 12)
+    following = date(day.year + year, month + 1, 1)
+    last = (date(following.year + following.month // 12, following.month % 12 + 1, 1)
+            - timedelta(days=1)).day
+    return following.replace(day=min(day.day, last))
 
 
 def _titles(ctx, rows):

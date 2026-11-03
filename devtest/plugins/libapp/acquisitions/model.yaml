@@ -16,11 +16,13 @@ tables:
         type: ID
         label: Number
 
+      # A copy is a new order: today's date, not the one it was copied from.
       - name: order_date
         type: Date
         label: Date
         default: $op_date
         nullable: false
+        duplicate: false
 
       - name: publisher_id
         label: Publisher
@@ -34,6 +36,7 @@ tables:
         label: Supplier reference
         length: 50
         nullable: true
+        duplicate: false
 
       - name: notes
         type: Text

@@ -174,6 +174,7 @@
      "deferred": true,
      "nullable": false,
      "query_rank": "more",
+     "duplicate": false,
      "$plugin": "common"
     },
     {
@@ -185,6 +186,7 @@
      "deferred": true,
      "nullable": false,
      "query_rank": "more",
+     "duplicate": false,
      "$plugin": "common"
     }
    ],
@@ -920,6 +922,7 @@
      "label": "Date",
      "default": "$op_date",
      "nullable": false,
+     "duplicate": false,
      "$plugin": "acquisitions"
     },
     {
@@ -937,6 +940,7 @@
      "label": "Supplier reference",
      "length": 50,
      "nullable": true,
+     "duplicate": false,
      "$plugin": "acquisitions"
     },
     {
@@ -2558,6 +2562,16 @@
        "label": "Import from spreadsheet",
        "scope": "global",
        "endpoint": "purchase_order_import",
+       "$plugin": "acquisitions"
+      },
+      {
+       "id": "duplicate",
+       "label": "Duplicate",
+       "scope": "row",
+       "endpoint": "duplicate",
+       "params": {
+        "page": "purchaseorder_form"
+       },
        "$plugin": "acquisitions"
       },
       {
@@ -4278,6 +4292,35 @@
     "$plugin": "library"
    },
    "$plugin": "library"
+  },
+  "purchaseorder_duplicate": {
+   "type": "form",
+   "presentation": "dialog",
+   "source": {
+    "$plugin": "acquisitions"
+   },
+   "layout": [
+    {
+     "type": "section",
+     "id": "duplicate",
+     "fields": [
+      {
+       "name": "order_date",
+       "label": "Order date",
+       "type": "Date",
+       "required": true
+      },
+      {
+       "name": "lines",
+       "label": "Copy the lines",
+       "type": "Boolean",
+       "default": true
+      }
+     ],
+     "$plugin": "acquisitions"
+    }
+   ],
+   "$plugin": "acquisitions"
   }
  },
  "permissions": {

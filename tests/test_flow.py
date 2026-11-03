@@ -32,6 +32,11 @@ TABLES = {
             {'name': 'title', 'type': 'String', 'length': 120},
             {'name': 'note', 'type': 'String', 'length': 120, 'nullable': True},
             {'name': 'member_id', 'type': 'Integer', 'foreign_key': {'target': 'Member.id'}},
+            # What a duplicate leaves behind, and what it carries regardless
+            {'name': 'code', 'type': 'String', 'length': 20, 'nullable': True, 'unique': True},
+            {'name': 'ref', 'type': 'String', 'length': 20, 'nullable': True, 'duplicate': False},
+            {'name': 'serial', 'type': 'String', 'length': 20, 'nullable': True, 'unique': True,
+             'duplicate': True},
         ],
     },
     'Stamp': {
@@ -898,3 +903,82 @@ def test_a_draft_is_one_document(app):
 
     assert result['code'] == 422
     assert result['message'] == 'The sheet holds 2 loans: a draft is one'
+
+
+# ── Duplicate: a saved document as a new draft (kitebase.duplicate) ─────────
+
+from kitebase import duplicate as dup  # noqa: E402
+
+
+@pytest.fixture
+def stored_loan(app, monkeypatch):
+    monkeypatch.setattr(dup, '_DUPLICATORS', {})
+    with app.get_session() as session:
+        loan = app.models['Loan'](title='Dune', note='n', member_id=1, code='C1', ref='R1', serial='S1')
+        session.add(loan)
+        session.flush()
+        session.add_all([app.models['Page'](text=t, loan_id=loan.id) for t in ('p1', 'p2')])
+        session.commit()
+        return loan.id
+
+
+def test_a_duplicate_asks_first_then_opens_the_draft(app, stored_loan):
+    asked = send('duplicate', {'page': 'loan_tree', 'id': stored_loan})['data']
+    assert asked['action'] == 'endpoint' and asked['confirm'] == f'Duplicate #{stored_loan}?'
+
+    assert send(asked['op'], asked['params'])['data']['action'] == 'open_form'
+
+
+def test_a_command_that_says_confirm_false_opens_the_draft_at_once(app, stored_loan):
+    result = send('duplicate', {'page': 'loan_tree', 'id': stored_loan, 'confirm': False})
+
+    assert result['data']['action'] == 'open_form'
+
+
+def test_a_duplicate_is_the_document_without_keys_links_and_what_must_not_repeat(app, stored_loan):
+    result = send('duplicate', {'page': 'loan_tree', 'id': stored_loan, 'confirm': False})
+
+    assert result['status'] == 'success', result
+    assert result['data']['action'] == 'open_form' and result['data']['page'] == 'loan_tree'
+    assert result['data']['draft'] == {
+        'values': {'title': 'Dune', 'note': 'n', 'member_id': 1, 'serial': 'S1'},
+        'children': {'pages': [{'values': {'text': 'p1'}, 'children': {}},
+                               {'values': {'text': 'p2'}, 'children': {}}]}}
+    assert titles(app) == ['Dune']
+
+
+def test_a_duplicator_changes_the_draft(app, stored_loan):
+    @dup.duplicator('loan_tree')
+    def fresh(tree, choices):
+        tree['values']['title'] += ' (copy)'
+        tree['children']['pages'] = []
+
+    draft = send('duplicate', {'page': 'loan_tree', 'id': stored_loan, 'confirm': False})['data']['draft']
+
+    assert draft['values']['title'] == 'Dune (copy)' and draft['children']['pages'] == []
+
+
+def test_a_duplicator_with_options_asks_them_first(app, stored_loan):
+    app.pm.data.setdefault('views', {})['loan_copy'] = {
+        'layout': [{'name': 'pages', 'type': 'Boolean', 'default': True}]}
+
+    @dup.duplicator('loan_tree', options='loan_copy')
+    def choose(tree, choices):
+        if not choices['pages']:
+            tree['children']['pages'] = []
+
+    @choose.options_values
+    def computed(source):
+        # The record as it was read: what the draft leaves behind is still there
+        return {'title': f"{source['values']['title']} II, after {source['values']['ref']}"}
+
+    asked = send('duplicate', {'page': 'loan_tree', 'id': stored_loan})['data']
+    assert asked['action'] == 'form' and asked['values'] == {'pages': True, 'title': 'Dune II, after R1'}
+
+    then = asked['then']
+    answered = send(then['op'], {**then['params'], 'pages': False})['data']
+    assert answered['action'] == 'open_form' and answered['draft']['children']['pages'] == []
+
+
+def test_a_record_that_is_not_there_is_refused_before_asking(app, stored_loan):
+    assert send('duplicate', {'page': 'loan_tree', 'id': 999})['code'] == 404

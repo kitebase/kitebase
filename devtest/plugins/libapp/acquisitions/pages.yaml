@@ -26,6 +26,12 @@ pages:
             label: Import from spreadsheet
             scope: global
             endpoint: purchase_order_import
+          # A new order from this one (orders.py asks whether to copy the lines)
+          - id: duplicate
+            label: Duplicate
+            scope: row
+            endpoint: duplicate
+            params: { page: purchaseorder_form }
 
   receipt_list:
     title: Receipts
@@ -167,3 +173,24 @@ pages:
                         title: Quantity
                       - field: purchase_order_line_id
                         title: Order row
+
+views:
+
+  # What a duplicate of an order asks first (orders.py, order_duplicate). The
+  # date is proposed from the order copied: a month after it.
+  purchaseorder_duplicate:
+    type: form
+    presentation: dialog
+    source: {}
+    layout:
+      - type: section
+        id: duplicate
+        fields:
+          - name: order_date
+            label: Order date
+            type: Date
+            required: true
+          - name: lines
+            label: Copy the lines
+            type: Boolean
+            default: true
