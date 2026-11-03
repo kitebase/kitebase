@@ -456,18 +456,24 @@ def _check_vocabulary(app: Any, issues: List[Dict[str, Any]]) -> None:
     """Keys the merged YAML uses where the core has never used them: a typo,
     or a key of the core that is new and goes into its vocabulary.
 
+    Only in the roots registered with `vocabulary=True`, the core's: the keys
+    of a plugin's root are judged by its own `check=`, and a root nobody owns
+    already has its warning.
+
     With KITEBASE_VOCABULARY_UPDATE=1 the vocabulary takes them in instead:
     run it on the applications that show the new key, then read the diff.
     """
     import os
     from kitebase import vocabulary
 
+    data = {k: v for k, v in app.pm.data.items()
+            if (section := get_section(k)) is not None and section.vocabulary}
     if os.environ.get('KITEBASE_VOCABULARY_UPDATE') == '1':
-        added = vocabulary.update(app.pm.data)
+        added = vocabulary.update(data)
         issues.append(make_issue('info', 'vocabulary-updated', str(vocabulary.VOCABULARY_FILE),
                                  f'{added} keys added to the vocabulary'))
         return
-    issues.extend(vocabulary.check(app.pm.data, vocabulary.load()))
+    issues.extend(vocabulary.check(data, vocabulary.load()))
 
 
 def _check_client(app: Any, issues: List[Dict[str, Any]]) -> None:

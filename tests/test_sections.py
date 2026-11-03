@@ -117,3 +117,18 @@ def test_the_check_of_a_root_not_declared_does_not_run():
     register_from('acme.reader', 'gadgets', check=lambda app: calls.append(1) or [])
     run_checks(FakeApp(PluginsManager()))
     assert calls == []
+
+
+def test_the_vocabulary_judges_only_the_cores_roots():
+    """A plugin's root keeps its own keys, dot or not; the core's still answer
+    for a typo. A root nobody owns has its warning, not one per key."""
+    register_from('acme.reader', 'gadgets')
+    pm = PluginsManager()
+    pm.merge_dicts({
+        'gadgets': {'accounting': {'label': 'Accounting', 'items': [{'name': 'x'}]}},
+        'widgets': {'w': {'colour': 'red'}},
+        'pages': {'p': {'titel': 'Typo'}},
+    }, 'shop')
+    unknown = [i['path'] for i in by_code(run_checks(FakeApp(pm)), 'key-unknown')]
+
+    assert unknown == ['pages.p.titel']
