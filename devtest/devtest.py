@@ -345,11 +345,11 @@ def seed_acquisitions(session, model) -> int:
     lines = []
     for n, book in enumerate(books, start=1):
         lines.append(model.PurchaseOrderLine(
-            purchase_order_id=first.id, sequence=n * 10, book_id=book.id,
+            purchase_order_id=first.id, sequence=n, book_id=book.id,
             quantity=n + 1, price=book.price, discount=10 if n % 2 else None))
     for n, book in enumerate(books[:2], start=1):
         lines.append(model.PurchaseOrderLine(
-            purchase_order_id=second.id, sequence=n * 10, book_id=book.id,
+            purchase_order_id=second.id, sequence=n, book_id=book.id,
             quantity=3, price=book.price))
     session.add_all(lines)
     session.flush()
@@ -358,7 +358,7 @@ def seed_acquisitions(session, model) -> int:
     session.add(receipt)
     session.flush()
     session.add_all(model.ReceiptLine(
-        receipt_id=receipt.id, sequence=n * 10, book_id=line.book_id,
+        receipt_id=receipt.id, sequence=n, book_id=line.book_id,
         quantity=line.quantity, purchase_order_line_id=line.id)
         for n, line in enumerate(lines[:2], start=1))
     return 3
