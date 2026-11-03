@@ -58,8 +58,10 @@ pages:
       source:
         model: PurchaseOrder
         id: $props.id
-      # Two steps: the header, then the rows. The step to the rows asks the
-      # server (orders.py) whether the rows still fit the header.
+      # Three steps: the header, the rows, the footer. The step to the rows
+      # asks the server (orders.py) whether the rows still fit the header; the
+      # footer's step is the save, judged first, and a refusal goes back to
+      # where the problem is.
       phases:
         - id: head
           label: Order
@@ -69,6 +71,11 @@ pages:
         - id: lines
           label: Lines
           nodes: [relations]
+          next: { label: Go to the footer }
+        - id: footer
+          label: Footer
+          nodes: [footer]
+          next: { endpoint: purchase_order_close }
       layout:
         - id: header
           type: section
@@ -92,6 +99,15 @@ pages:
                   transient: true
                   width: 20%
                 - name: notes
+
+        - id: footer
+          type: section
+          columns:
+            - id: footer_left
+              fields:
+                - name: expected_delivery
+                  width: 25%
+                - name: footer_discount
 
         # In a tabs even alone: the hook another plugin needs to add a
         # sibling collection (the payment terms of an order, say).

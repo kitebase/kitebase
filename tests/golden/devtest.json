@@ -958,6 +958,21 @@
      "label": "Notes",
      "nullable": true,
      "$plugin": "acquisitions"
+    },
+    {
+     "name": "expected_delivery",
+     "type": "Date",
+     "label": "Expected delivery",
+     "nullable": true,
+     "duplicate": false,
+     "$plugin": "acquisitions"
+    },
+    {
+     "name": "footer_discount",
+     "type": "Percent",
+     "label": "Discount on the order",
+     "nullable": true,
+     "$plugin": "acquisitions"
     }
    ],
    "$plugin": "acquisitions"
@@ -2672,6 +2687,20 @@
       "nodes": [
        "relations"
       ],
+      "next": {
+       "label": "Go to the footer"
+      },
+      "$plugin": "acquisitions"
+     },
+     {
+      "id": "footer",
+      "label": "Footer",
+      "nodes": [
+       "footer"
+      ],
+      "next": {
+       "endpoint": "purchase_order_close"
+      },
       "$plugin": "acquisitions"
      }
     ],
@@ -2711,6 +2740,25 @@
          },
          {
           "name": "notes"
+         }
+        ]
+       }
+      ],
+      "$plugin": "acquisitions"
+     },
+     {
+      "id": "footer",
+      "type": "section",
+      "columns": [
+       {
+        "id": "footer_left",
+        "fields": [
+         {
+          "name": "expected_delivery",
+          "width": "25%"
+         },
+         {
+          "name": "footer_discount"
          }
         ]
        }

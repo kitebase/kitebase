@@ -43,6 +43,19 @@ tables:
         label: Notes
         nullable: true
 
+      # The footer: when the books should arrive, and a discount on the whole
+      # order beside the one of each line.
+      - name: expected_delivery
+        type: Date
+        label: Expected delivery
+        nullable: true
+        duplicate: false
+
+      - name: footer_discount
+        type: Percent
+        label: Discount on the order
+        nullable: true
+
   PurchaseOrderLine:
     name: purchase_order_lines
     columns:

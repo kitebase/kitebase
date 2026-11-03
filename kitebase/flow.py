@@ -98,12 +98,14 @@ class Ask(Exception):
 
 
 class Stay(Exception):
-    """A refusal: nothing is written, the form stays where it is."""
+    """A refusal: nothing is written, the form stays where it is, or goes to `phase`."""
 
-    def __init__(self, message: str, patch: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, patch: Optional[Dict[str, Any]] = None,
+                 phase: Optional[str] = None):
         super().__init__(message)
         self.message = message
         self.patch = patch
+        self.phase = phase
 
 
 class ReadOnly(RuntimeError):
@@ -183,9 +185,14 @@ class Context:
                                "to check, before anything is written")
         raise Ask({k: v for k, v in question.items() if v is not None})
 
-    def stay(self, message: str, patch: Optional[Dict[str, Any]] = None) -> NoReturn:
-        """Refuse the write. `patch` changes the form's values all the same."""
-        raise Stay(message, patch)
+    def stay(self, message: str, patch: Optional[Dict[str, Any]] = None,
+             phase: Optional[str] = None) -> NoReturn:
+        """
+        Refuse the write. `patch` changes the form's values all the same;
+        `phase`, in a form with phases, is where the problem is: the form goes
+        back there (the header, the rows) instead of staying on its step.
+        """
+        raise Stay(message, patch, phase)
 
     def check(self, ok: bool, text: str, key: str, severity: str = 'block') -> None:
         """
@@ -289,7 +296,7 @@ def _read_only(ctx: Context, fns: List[Callable]) -> Optional[Dict[str, Any]]:
                 '$flow': _flow(ctx, ask=a.question)}
     except Stay as s:
         return {'status': 'error', 'code': 422, 'message': s.message,
-                '$flow': _flow(ctx, patch=s.patch)}
+                '$flow': _flow(ctx, patch=s.patch, phase=s.phase)}
     finally:
         ctx.session = None
     return None
@@ -541,7 +548,7 @@ def _propose_all(page: Dict[str, Any], doc: Dict[str, Any], answers: Dict[str, A
             ask = (res.get('$flow') or {}).get('ask')
             if ask:
                 # Nobody to ask: the caller learns which answer to add
-                res['message'] = _f("Unanswered '{name}': {text}", name=ask['key'], text=ask['text'])
+                res['message'] = _f("Unanswered '{name}': {text}", name=ask['key'], text=ask.get('text', ''))
             return res
         apply_patch(doc, res.get('data') or {}, seq)
         infos += (res.get('$flow') or {}).get('info') or []

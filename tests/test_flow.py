@@ -554,6 +554,18 @@ def test_a_command_on_the_rows_asks_through_a_form_and_works_on_the_chosen_rows(
     assert [r['values']['text'] for r in ticked] == ['p1', 'p2!', 'p3']
 
 
+def test_a_refusal_can_name_the_phase_where_the_problem_is(app):
+    def close(ctx):
+        if not ctx.rows['pages']:
+            ctx.stay('A loan needs pages', phase='pages')
+        ctx.stay('Not today')
+
+    to_pages = propose(close, document(pages=()))
+    assert to_pages['code'] == 422 and to_pages['$flow'] == {'phase': 'pages'}
+    here = propose(close, document())
+    assert here['message'] == 'Not today' and 'phase' not in here.get('$flow', {})
+
+
 def test_a_proposal_writes_nothing(app):
     def write(ctx):
         ctx.session.add(kitebase.utils.get_app().models['Stamp'](what='proposed'))

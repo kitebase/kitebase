@@ -42,6 +42,31 @@ def purchase_order_head(ctx):
     ctx.info(f"Removed: {', '.join(_titles(ctx, foreign))}")
 
 
+@endpoint('purchase_order_close', access=access.PER_TABLE)
+@proposal('PurchaseOrder')
+def purchase_order_close(ctx):
+    """
+    The order judged before it is saved, the last step of its form. A
+    refusal goes back to where the problem is: the lines for a book of
+    another publisher, the footer itself for a delivery before the order.
+    """
+    publisher_id = ctx.record.get('publisher_id')
+    lines = ctx.rows.get('lines', [])
+    if not lines:
+        ctx.stay('An order needs at least one line', phase='lines')
+    book_ids = {r['book_id'] for r in lines if r.get('book_id') is not None}
+    Book = kitebase.utils.get_app().model.Book
+    theirs = {book_id for (book_id,) in ctx.session.query(Book.id)
+              .filter(Book.id.in_(book_ids), Book.publisher_id == publisher_id)}
+    foreign = [r for r in lines if r.get('book_id') not in theirs]
+    if foreign:
+        ctx.stay(f"Books of another publisher: {', '.join(_titles(ctx, foreign))}", phase='lines')
+
+    delivery, ordered = ctx.record.get('expected_delivery'), ctx.record.get('order_date')
+    if delivery and ordered and str(delivery)[:10] < str(ordered)[:10]:
+        ctx.stay('The delivery cannot come before the order')
+
+
 @endpoint('purchase_order_discount', access=access.PER_TABLE)
 @proposal('PurchaseOrder')
 def purchase_order_discount(ctx):
