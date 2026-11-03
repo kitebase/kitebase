@@ -15,10 +15,14 @@ documents the sheet holds, and what each column is.
             'quantity':  Number(field='quantity', positive=True, required=True),
         }
 
-The first row names the columns. Reading goes in two passes and writes
-nothing until both are clean: the header first (every column of the layout,
-no other), then the rows (types, ranges, keys found), with every mistake
-collected by row and column. The rows are grouped into documents by the
+The header is found, not assumed: the first of the top rows that names every
+column of the layout, in any order, compared without regard to case, spaces
+or a trailing '*' or ':'. What is above it is left alone, and so are the
+columns the layout does not know (a column of comments): the answer names
+them. A sheet where no top row names any column is read by position, in the
+order of `columns`. Reading goes in two passes and writes nothing until both
+are clean: the header first, then the rows (types, ranges, keys found), with
+every mistake collected by row and column. The rows are grouped into documents by the
 `Key` column, or the sheet is one document without one, and the documents go
 through `flow.run_forms`: the proposals of the form's phases, then one
 transaction for the whole sheet.
@@ -47,14 +51,18 @@ class Column:
     """
     One column of the sheet. `field` is where its value goes (None: nowhere);
     `head` puts it on the document rather than on the row, and then every row
-    of a document must agree on it.
+    of a document must agree on it. `required` is about the cell (never
+    empty), `optional` about the header (the sheet may lack the column).
     """
 
+    optional = False
+
     def __init__(self, field: Optional[str] = None, head: bool = False,
-                 required: bool = False):
+                 required: bool = False, optional: bool = False):
         self.field = field
         self.head = head
         self.required = required
+        self.optional = optional or self.optional
 
     def parse(self, value: Any) -> Any:
         """The value as the field takes it, or CellError."""
@@ -62,7 +70,12 @@ class Column:
 
 
 class Ignored(Column):
-    """A column for whoever reads the sheet: expected, never read."""
+    """
+    A column for whoever reads the sheet, never read: it keeps its place in a
+    sheet read by position, and is not named among the columns left out.
+    """
+
+    optional = True
 
 
 class Key(Column):
@@ -159,8 +172,10 @@ class SheetImport:
     sequence: Optional[str] = None       # a field numbered 10, 20... in sheet order
     columns: Dict[str, Column] = {}
     max_bytes = 2 * 1024 * 1024
+    header_window = 20                   # the rows where the header is looked for
     max_errors = 50
     noun, nouns = 'document', 'documents'   # what a document is called in the answer
+    left_out: List[str] = []             # the titles of the last sheet read that no column takes
 
     # ── Reading ──────────────────────────────────────────────────────────────
 
@@ -193,11 +208,13 @@ class SheetImport:
         if result.get('status') != 'success':
             return result
         ids = result['data']['ids']
+        detail = [f'{label}: #{key}' for (label, _), key in zip(documents, ids)]
+        if self.left_out:
+            detail.append(_f('Columns not read: {names}', names=', '.join(self.left_out)))
         out = {'status': 'success',
                'data': {'message': _f('{n} {noun} imported', n=len(ids),
                                       noun=self.noun if len(ids) == 1 else self.nouns),
-                        'detail': '\n'.join(f'{label}: #{key}'
-                                            for (label, _), key in zip(documents, ids))}}
+                        'detail': '\n'.join(detail)}}
         if result.get('$flow'):
             out['$flow'] = result['$flow']
         return out
@@ -216,30 +233,66 @@ class SheetImport:
 
     # ── Checking ─────────────────────────────────────────────────────────────
 
-    def header(self, row: List[Any]) -> Tuple[Dict[str, int], List[str]]:
-        """Where each column of the layout is, and what is wrong with the header."""
-        names = [str(v).strip() if v is not None else '' for v in row]
-        where = {name.lower(): i for i, name in enumerate(names) if name}
-        expected = {name.lower(): name for name in self.columns}
-        missing = [name for low, name in expected.items() if low not in where]
-        extra = [name for name in names if name and name.lower() not in expected]
-        errors = []
-        if missing:
-            errors.append(_f('Row 1: missing columns: {names}', names=', '.join(missing)))
+    def header(self, rows: List[Tuple[int, List[Any]]]
+               ) -> Tuple[Optional[int], Dict[str, int], List[str], List[str]]:
+        """
+        Where the header is (its index in `rows`, None when the sheet is read
+        by position), where each column of the layout is, the titles the
+        layout does not know, and what is wrong.
+        """
+        declared = {_title(name): name for name in self.columns}
+        needed = {_title(name) for name, c in self.columns.items() if not c.optional}
+        best: Optional[Tuple[int, int]] = None          # (matches, index)
+        for i, (n, row) in enumerate(rows[:self.header_window]):
+            titles = [_title(v) for v in row]
+            matches = len(set(titles) & set(declared))
+            if needed <= set(titles):
+                return self.place(n, i, row, titles, declared)
+            if matches and (best is None or matches > best[0]):
+                best = (matches, i)
+        if best is None:
+            return None, {name: i for i, name in enumerate(self.columns)}, [], []
+        n, row = rows[best[1]]
+        titles = set(_title(v) for v in row)
+        missing = [declared[t] for t in declared if t in needed and t not in titles]
+        extra = [_text(v) for v in row if _title(v) and _title(v) not in declared]
+        errors = [_f('Row {n}: missing columns: {names}', n=n, names=', '.join(missing))]
         if extra:
-            errors.append(_f('Row 1: columns this import does not know: {names}',
-                             names=', '.join(extra)))
-        return {name: where[name.lower()] for name in self.columns if name.lower() in where}, errors
+            errors.append(_f('Row {n}: columns this import does not know: {names}',
+                             n=n, names=', '.join(extra)))
+        return best[1], {}, [], errors
+
+    def place(self, n: int, i: int, row: List[Any], titles: List[str],
+              declared: Dict[str, str]
+              ) -> Tuple[Optional[int], Dict[str, int], List[str], List[str]]:
+        """The columns of the header found at row `n`."""
+        where: Dict[str, int] = {}
+        errors: List[str] = []
+        for pos, title in enumerate(titles):
+            name = declared.get(title)
+            if name is None:
+                continue
+            if name in where:
+                errors.append(_f('Row {n}: column {name} appears twice', n=n, name=name))
+            where[name] = pos
+        left_out = [_text(v) for v in row if _title(v) and _title(v) not in declared]
+        return i, where, left_out, errors
 
     def documents(self, rows: List[Tuple[int, List[Any]]]
                   ) -> Tuple[List[Tuple[str, Dict[str, Any]]], List[str]]:
         """The documents of the sheet, `(label, tree)`, and every mistake found."""
         if not rows:
             return [], [_f('The sheet is empty')]
-        (_, first), body = rows[0], rows[1:]
-        where, errors = self.header(first)
+        at, where, self.left_out, errors = self.header(rows)
         if errors:
             return [], errors
+        if at is None:
+            body = rows
+        else:
+            # A header repeated further down (a sheet printed by pages) is not a row
+            header = [_title(v) for v in rows[at][1]]
+            body = [(n, row) for n, row in rows[at + 1:]
+                    if [_title(v) for v in row] != header]
         if not body:
             return [], [_f('The sheet has no rows below the header')]
 
@@ -247,7 +300,7 @@ class SheetImport:
         for n, row in body:
             cells: Dict[str, Any] = {}
             for name, column in self.columns.items():
-                if isinstance(column, Ignored):
+                if isinstance(column, Ignored) or name not in where:
                     continue
                 raw = row[where[name]] if where[name] < len(row) else None
                 if raw is None or (isinstance(raw, str) and not raw.strip()):
@@ -335,6 +388,15 @@ class SheetImport:
                 'message': (_f('The sheet has a mistake: nothing was imported') if len(errors) == 1
                             else _f('The sheet has {n} mistakes: nothing was imported', n=len(errors))),
                 'data': {'detail': detail}}
+
+
+def _text(value: Any) -> str:
+    return ' '.join(str(value).split()) if value is not None else ''
+
+
+def _title(value: Any) -> str:
+    """A title as it is compared: no case, single spaces, no trailing '*' or ':'."""
+    return _text(value).rstrip('*:').strip().lower()
 
 
 def _row_of(error: str) -> int:

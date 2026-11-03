@@ -1,7 +1,7 @@
 """
 Orders from a spreadsheet: our layout, one row per order line.
 
-The first row names the columns; `order` groups the rows into orders, the
+The header names the columns, in any order; `order` groups the rows into orders, the
 publisher and the book are found by name and by ISBN, `title` is for whoever
 reads the sheet. Every order goes through the form's phases (orders.py asks
 about books of another publisher) and the sheet is written whole, or not at
@@ -23,8 +23,8 @@ class OrderSheet(SheetImport):
         'isbn':      Lookup('Book', 'isbn', field='book_id', ignore='- ', required=True),
         'title':     Ignored(),
         'quantity':  Number(field='quantity', positive=True, required=True),
-        'price':     Number(field='price', min=0),
-        'discount':  Number(field='discount', min=0, max=100),
+        'price':     Number(field='price', min=0, optional=True),
+        'discount':  Number(field='discount', min=0, max=100, optional=True),
     }
 
 

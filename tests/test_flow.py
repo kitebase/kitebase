@@ -790,8 +790,43 @@ def test_the_header_is_checked_first_and_named_whole(app):
 
     assert result['code'] == 422
     assert result['data']['detail'].split('\n') == [
-        'Row 1: missing columns: page, note',
+        'Row 1: missing columns: page',
         'Row 1: columns this import does not know: pages, extra']
+
+
+def test_the_header_is_found_below_a_preamble_in_any_order_with_columns_of_its_own(app):
+    result = import_sheet([['Loans of November'],
+                           [None],
+                           ['Page', 'my comments', 'Loan', '  MEMBER *', 'title:'],
+                           ['p1', 'call Erin', 'L1', 'Erin', 'Dune'],
+                           ['p2', None, 'L1', 'Erin', 'Dune']])
+
+    assert result['status'] == 'success', result
+    assert result['data']['detail'].split('\n')[-1] == 'Columns not read: my comments'
+    assert [(title, pages) for title, _, _, pages in written(app)] == [('Dune', ['p1', 'p2'])]
+
+
+def test_the_header_repeated_further_down_is_not_a_row(app):
+    result = import_sheet([HEADER, ['L1', 'Erin', 'Dune', 'p1', None],
+                           HEADER, ['L1', 'Erin', 'Dune', 'p2', None]])
+
+    assert result['status'] == 'success', result
+    assert [(title, pages) for title, _, _, pages in written(app)] == [('Dune', ['p1', 'p2'])]
+
+
+def test_a_sheet_without_titles_is_read_by_position(app):
+    result = import_sheet([['L1', 'Erin', 'Dune', 'p1', 'for the reader'],
+                           ['L1', 'Erin', 'Dune', 'p2']])
+
+    assert result['status'] == 'success', result
+    assert [(title, pages) for title, _, _, pages in written(app)] == [('Dune', ['p1', 'p2'])]
+
+
+def test_a_column_of_the_layout_named_twice_is_refused(app):
+    result = import_sheet([['loan', 'member', 'title', 'page', 'Page'], ['L1', 'Erin', 'Dune', 'p1', 'p2']])
+
+    assert result['code'] == 422
+    assert result['data']['detail'] == 'Row 1: column page appears twice'
 
 
 def test_every_mistake_of_the_rows_is_reported_in_sheet_order_and_nothing_written(app):
