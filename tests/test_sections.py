@@ -8,7 +8,7 @@ with the core's checks.
 """
 import pytest
 
-from kitebase import sections
+from kitebase import sections, vocabulary
 from kitebase.diagnostics import _descriptor_sections, _owned_sections, run_checks
 from kitebase.plugins import PluginsManager
 from kitebase.sections import get_section, register_section
@@ -132,3 +132,27 @@ def test_the_vocabulary_judges_only_the_cores_roots():
     unknown = [i['path'] for i in by_code(run_checks(FakeApp(pm)), 'key-unknown')]
 
     assert unknown == ['pages.p.titel']
+
+
+def test_a_plugins_root_is_read_with_the_plugins_vocabulary(tmp_path, monkeypatch):
+    """The grammar of a root is its owner's: a typo in it is named, with the
+    file the key would go into; the update writes there, not in the core's."""
+    own = tmp_path / 'acme' / 'vocabulary.yaml'
+    own.parent.mkdir()
+    own.write_text(vocabulary.render({'gadgets.*': ['items', 'label'],
+                                      'gadgets.*.items[]': ['name', 'type']}))
+    register_from('acme.reader', 'gadgets', vocabulary=own)
+    pm = PluginsManager()
+    pm.merge_dicts({'gadgets': {'g': {'label': 'G', 'items': [{'name': 'x', 'tipe': 'Integer'}]}}},
+                   'shop')
+
+    [issue] = by_code(run_checks(FakeApp(pm)), 'key-unknown')
+    assert issue['path'] == 'gadgets.g.items[0].tipe'
+    assert "did you mean 'type'" in issue['message']
+    assert 'acme/vocabulary.yaml' in issue['message']
+
+    core_before = vocabulary.VOCABULARY_FILE.read_text()
+    monkeypatch.setenv('KITEBASE_VOCABULARY_UPDATE', '1')
+    run_checks(FakeApp(pm))
+    assert 'tipe' in vocabulary.load(own)['gadgets.*.items[]']
+    assert vocabulary.VOCABULARY_FILE.read_text() == core_before

@@ -12,9 +12,11 @@ a root. A root means something only to the module that reads it: the core for
   checks of diagnostics ($ref, views, commands, collections).
 - `check=`: a function `(app) -> [issue]`, run by `kitebase check` with the
   core's own checks. It is how a plugin brings its rules to `check`.
-- `vocabulary=True`: the keys inside the root are checked against the core's
-  vocabulary (kitebase.vocabulary). Only the core's roots: the keys of a
-  plugin's root are the plugin's, and its `check=` judges them.
+- `vocabulary=`: the file of the keys the root may use, path by path
+  (kitebase.vocabulary). The grammar of a root belongs to its owner: the core's
+  roots use kitebase/vocabulary.yaml, a plugin passes a file of its own, in a
+  subfolder (`vocabulary/`): every .yaml beside config.yaml is merged into the
+  tree. A root without one has its keys unchecked.
 
 A root nobody registers is read by nobody: `check` warns about it, and it is
 neither walked nor dumped. The registry is per process, like the validators'
@@ -22,7 +24,10 @@ neither walked nor dumped. The registry is per process, like the validators'
 """
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+
+from kitebase.vocabulary import VOCABULARY_FILE
 
 Check = Callable[[Any], List[Dict[str, Any]]]
 
@@ -33,14 +38,15 @@ class Section:
     owner: str                      # module that registered it
     descriptor: bool = False
     check: Optional[Check] = None
-    vocabulary: bool = False
+    vocabulary: Optional[Path] = None
 
 
 _SECTIONS: Dict[str, Section] = {}
 
 
 def register_section(name: str, *, descriptor: bool = False,
-                     check: Optional[Check] = None, vocabulary: bool = False) -> None:
+                     check: Optional[Check] = None,
+                     vocabulary: Optional[Path] = None) -> None:
     """Declare that the calling module owns the root `name` of the merged tree.
 
     Two modules owning the same root would read one tree by two sets of rules:
@@ -70,6 +76,6 @@ def sections() -> List[Section]:
 # feed model and type generation and have checks and dumpers of their own; the
 # others are descriptor trees.
 for _name in ('tables', 'types', 'schemas'):
-    register_section(_name, vocabulary=True)
+    register_section(_name, vocabulary=VOCABULARY_FILE)
 for _name in ('pages', 'views', 'menus', 'menu_items'):
-    register_section(_name, descriptor=True, vocabulary=True)
+    register_section(_name, descriptor=True, vocabulary=VOCABULARY_FILE)

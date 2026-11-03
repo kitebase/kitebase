@@ -84,8 +84,13 @@ def walk(data: Dict[str, Any], vocabulary: Vocabulary
             yield from visit(item, f'{section}.{OPEN}', f'{section}.{name}', None)
 
 
-def check(data: Dict[str, Any], vocabulary: Vocabulary) -> List[Dict[str, Any]]:
-    """A warning for each key the vocabulary does not have at its path."""
+def check(data: Dict[str, Any], vocabulary: Vocabulary,
+          where: str = 'kitebase/vocabulary.yaml') -> List[Dict[str, Any]]:
+    """A warning for each key the vocabulary does not have at its path.
+
+    `where` names the file a new key goes into: the vocabulary of whoever owns
+    the root (kitebase.sections).
+    """
     from kitebase.diagnostics import make_issue
 
     issues = []
@@ -98,7 +103,7 @@ def check(data: Dict[str, Any], vocabulary: Vocabulary) -> List[Dict[str, Any]]:
         if near:
             message += f" (did you mean '{near[0]}'?)"
         message += (". A key of the application is written with a dot (app.key); "
-                    "a new key of the core goes into kitebase/vocabulary.yaml")
+                    f"a new key of this root goes into {where}")
         issues.append(make_issue('warning', 'key-unknown', f'{real}.{key}', message, plugin))
     return issues
 

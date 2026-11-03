@@ -30,7 +30,7 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set
 
-from kitebase import access, media
+from kitebase import access, media, settings
 from kitebase.sections import get_section
 
 # Only plain identifiers ('title') and dotted fields ('Publisher.name') are
@@ -115,6 +115,7 @@ def run_checks(app: Any) -> List[Dict[str, Any]]:
     _check_vocabulary(app, issues)
     issues.extend(access.diagnose(app))
     issues.extend(media.diagnose(app))
+    issues.extend(settings.diagnose(app, _descriptor_sections(pm)))
     _check_sections(app, issues)
 
     # Orphan views: defined but never targeted by a $ref
@@ -453,27 +454,35 @@ def _check_validators(app: Any, issues: List[Dict[str, Any]]) -> None:
 
 
 def _check_vocabulary(app: Any, issues: List[Dict[str, Any]]) -> None:
-    """Keys the merged YAML uses where the core has never used them: a typo,
-    or a key of the core that is new and goes into its vocabulary.
+    """Keys the merged YAML uses where the owner of the root has never used
+    them: a typo, or a new key that goes into the owner's vocabulary.
 
-    Only in the roots registered with `vocabulary=True`, the core's: the keys
-    of a plugin's root are judged by its own `check=`, and a root nobody owns
-    already has its warning.
+    Each root is read with the vocabulary its owner registered (kitebase.sections):
+    the core's file for the core's roots, a plugin's own for a plugin's. A root
+    registered without one has its keys unchecked; a root nobody owns already
+    has its warning.
 
-    With KITEBASE_VOCABULARY_UPDATE=1 the vocabulary takes them in instead:
+    With KITEBASE_VOCABULARY_UPDATE=1 the vocabularies take them in instead:
     run it on the applications that show the new key, then read the diff.
     """
     import os
     from kitebase import vocabulary
 
-    data = {k: v for k, v in app.pm.data.items()
-            if (section := get_section(k)) is not None and section.vocabulary}
-    if os.environ.get('KITEBASE_VOCABULARY_UPDATE') == '1':
-        added = vocabulary.update(data)
-        issues.append(make_issue('info', 'vocabulary-updated', str(vocabulary.VOCABULARY_FILE),
-                                 f'{added} keys added to the vocabulary'))
-        return
-    issues.extend(vocabulary.check(data, vocabulary.load()))
+    by_file: Dict[Any, Dict[str, Any]] = {}
+    for root, content in app.pm.data.items():
+        section = get_section(root)
+        if section is not None and section.vocabulary is not None:
+            by_file.setdefault(section.vocabulary, {})[root] = content
+
+    update = os.environ.get('KITEBASE_VOCABULARY_UPDATE') == '1'
+    for path, data in by_file.items():
+        where = '/'.join(path.parts[-3:])
+        if update:
+            added = vocabulary.update(data, path)
+            issues.append(make_issue('info', 'vocabulary-updated', str(path),
+                                     f'{added} keys added to {where}'))
+        else:
+            issues.extend(vocabulary.check(data, vocabulary.load(path), where))
 
 
 def _check_client(app: Any, issues: List[Dict[str, Any]]) -> None:

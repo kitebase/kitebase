@@ -79,9 +79,13 @@ def test_what_yaml_would_misread_is_written_so_it_reads_back():
 
 @needs_commons
 def test_the_shipped_vocabulary_covers_devtest(monkeypatch):
-    """devtest is one of the applications it was made from: no key unknown."""
+    """devtest is one of the applications it was made from: no key unknown in
+    the core's roots (a plugin's root is read with the plugin's vocabulary)."""
+    from kitebase.sections import get_section
     data = merged_tree(APPS['devtest'], monkeypatch)
-    assert [i['path'] for i in v.check(data, v.load())] == []
+    core = {k: c for k, c in data.items()
+            if get_section(k) is not None and get_section(k).vocabulary == v.VOCABULARY_FILE}
+    assert [i['path'] for i in v.check(core, v.load())] == []
 
 
 def test_a_server_start_writes_the_warnings_in_the_log(monkeypatch, caplog):

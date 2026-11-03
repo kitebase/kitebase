@@ -1,6 +1,6 @@
 from typing import Any, Dict
 import kitebase.utils
-from kitebase import access
+from kitebase import access, settings
 from kitebase.endpoints import endpoint
 from kitebase.i18n import translate_labels
 from kitebase.pages import load_page, page_permissions, restrict, restrict_columns, strip_meta
@@ -16,7 +16,8 @@ def get_page(data: Dict[str, Any]) -> Dict[str, Any]:
     Resolves all $ref fields, completes collection nodes (a node's `model:` fills
     its view's `source.model`), gives commands without a label the one their id
     spells, strips internal $plugin metadata, and translates the labels to the
-    current locale before sending to the client.
+    current locale before sending to the client. A `$setting.<key>` string is
+    replaced by the setting's value (kitebase.settings).
 
     Opening a page asks `<Model>.read` on the model it shows and the page's own
     `access:`; a refusal is a 403 naming the permission. What the user cannot
@@ -51,5 +52,6 @@ def get_page(data: Dict[str, Any]) -> Dict[str, Any]:
         access.check(permission)
     restrict(app, page)
     restrict_columns(app, page)
+    settings.resolve_tokens(page)
 
     return {'status': 'success', 'data': translate_labels(strip_meta(page)), 'code': 200}
