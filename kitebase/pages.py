@@ -63,6 +63,9 @@ class Collection:
     domain: Any = None
     defaults: Dict[str, Any] = field(default_factory=dict)
     order_by: Optional[List[Any]] = None
+    # The column that keeps the order the reader gave the rows: declared on the
+    # node, it is the order they load in and the client renumbers it 1, 2, 3
+    sequence: Optional[str] = None
     collections: Dict[str, 'Collection'] = field(default_factory=dict)
 
 
@@ -188,6 +191,7 @@ def resolve_collections(page: Dict[str, Any], page_id: str) -> Dict[str, Collect
             domain=node.get('domain'),
             defaults=node.get('defaults') or {},
             order_by=order_by,
+            sequence=node.get('sequence'),
         )
 
     return result

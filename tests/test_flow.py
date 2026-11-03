@@ -51,6 +51,7 @@ TABLES = {
         'columns': [
             {'name': 'id', 'type': 'Integer', 'primary_key': True, 'autoincrement': True},
             {'name': 'text', 'type': 'String', 'length': 60},
+            {'name': 'position', 'type': 'Integer', 'nullable': True},
             {'name': 'loan_id', 'type': 'Integer',
              'foreign_key': {'target': 'Loan.id', 'owned': True}},
         ],
@@ -62,6 +63,13 @@ PAGES = {
         'type': 'form', 'source': {'model': 'Loan'},
         'layout': [{'name': 'title'},
                    {'type': 'collection', 'id': 'pages', 'model': 'Page', 'fk': 'loan_id'}],
+    }},
+    # The pages in the order the reader gave them
+    'loan_ordered': {'content': {
+        'type': 'form', 'source': {'model': 'Loan'},
+        'layout': [{'name': 'title'},
+                   {'type': 'collection', 'id': 'pages', 'model': 'Page', 'fk': 'loan_id',
+                    'sequence': 'position'}],
     }},
     # The same document in two phases, the step to the pages judged
     'loan_doc': {'content': {
@@ -974,8 +982,8 @@ def test_a_duplicate_is_the_document_without_keys_links_and_what_must_not_repeat
     assert result['data']['action'] == 'open_form' and result['data']['page'] == 'loan_tree'
     assert result['data']['draft'] == {
         'values': {'title': 'Dune', 'note': 'n', 'member_id': 1, 'serial': 'S1'},
-        'children': {'pages': [{'values': {'text': 'p1'}, 'children': {}},
-                               {'values': {'text': 'p2'}, 'children': {}}]}}
+        'children': {'pages': [{'values': {'text': 'p1', 'position': None}, 'children': {}},
+                               {'values': {'text': 'p2', 'position': None}, 'children': {}}]}}
     assert titles(app) == ['Dune']
 
 
@@ -1061,3 +1069,16 @@ def test_a_sheet_into_an_empty_collection_asks_nothing_and_a_wrong_one_is_refuse
 
     refused = sheet_into([['page', 'note'], [None, 'x']], pages=())
     assert refused['code'] == 422 and 'Row 2, page: missing' in refused['message']
+
+
+def test_a_collection_with_a_sequence_loads_in_its_order(app, stored_loan):
+    with app.get_session() as session:
+        Page = app.models['Page']
+        for page, position in zip(session.query(Page).order_by(Page.id), (2, 1)):
+            page.position = position
+        session.commit()
+
+    tree = send('load_tree', {'page': 'loan_ordered', 'id': stored_loan})['data']
+    assert [r['values']['text'] for r in tree['children']['pages']] == ['p2', 'p1']
+    by_key = send('load_tree', {'page': 'loan_tree', 'id': stored_loan})['data']
+    assert [r['values']['text'] for r in by_key['children']['pages']] == ['p1', 'p2']

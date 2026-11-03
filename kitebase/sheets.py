@@ -176,7 +176,7 @@ class Lookup(Column):
 class SheetImport:
     page: str = ''                       # the form whose documents the sheet holds
     collection: str = 'lines'            # the collection the rows go into
-    sequence: Optional[str] = None       # a field numbered 10, 20... in sheet order
+    sequence: Optional[str] = None       # a field numbered 1, 2, 3... in sheet order
     columns: Dict[str, Column] = {}
     max_bytes = 2 * 1024 * 1024
     header_window = 20                   # the rows where the header is looked for
@@ -260,7 +260,7 @@ class SheetImport:
         if self.sequence:
             last = max((r.get(self.sequence) or 0 for r in rows), default=0)
             for n, values in enumerate(new, start=1):
-                values[self.sequence] = last + n * 10
+                values[self.sequence] = last + n
         rows.extend(new)
         ctx.info(_f('{n} rows from {name}', n=len(new), name=upload.filename))
         if self.left_out:
@@ -455,7 +455,7 @@ class SheetImport:
             first_row.setdefault(label, n)
             rows = doc['children'][self.collection]
             if self.sequence:
-                line[self.sequence] = (len(rows) + 1) * 10
+                line[self.sequence] = len(rows) + 1
             rows.append({'values': line})
         return list(documents.items())
 

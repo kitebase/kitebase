@@ -106,6 +106,8 @@ pages:
                   id: lines
                   model: PurchaseOrderLine
                   fk: purchase_order_id
+                  # The order of the lines is the buyer's: moved by hand, numbered on save
+                  sequence: sequence
                   prefill:
                     discount: $record.default_discount
                   view:
@@ -182,6 +184,7 @@ pages:
                   id: lines
                   model: ReceiptLine
                   fk: receipt_id
+                  sequence: sequence
                   view:
                     type: table
                     source:

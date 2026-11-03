@@ -142,8 +142,10 @@ def _load_level(app, session, parent_model: str, collections: Dict[str, Collecti
         by_link = {node['values'].get(link): node for node in parents.values()}
         by_link.pop(None, None)
         conditions = [{coll.fk: ['in', list(by_link)]}] + _conditions_of(coll.domain)
-        rows = _select(app, session, coll.model, conditions,
-                       coll.order_by or [f'{coll.model}.{pk}'], covered=[coll.model])
+        # A declared sequence is the order; the key settles rows written together
+        order = ([f'{coll.model}.{coll.sequence}', f'{coll.model}.{pk}'] if coll.sequence
+                 else coll.order_by or [f'{coll.model}.{pk}'])
+        rows = _select(app, session, coll.model, conditions, order, covered=[coll.model])
 
         # The key exists even when empty: a collection with no rows is a fact,
         # and the client should not have to tell it from a collection it forgot.

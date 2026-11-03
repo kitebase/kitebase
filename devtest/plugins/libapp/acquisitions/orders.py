@@ -73,7 +73,7 @@ def purchase_order_sort_by_publication(ctx):
     lines.sort(key=lambda r: (published.get(r.get('book_id')) is None,
                               published.get(r.get('book_id')) or ''))
     for n, line in enumerate(lines, start=1):
-        line['sequence'] = n * 10
+        line['sequence'] = n
 
 
 @duplicator('purchaseorder_form', options='purchaseorder_duplicate')

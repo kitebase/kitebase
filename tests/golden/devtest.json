@@ -2726,6 +2726,7 @@
           "id": "lines",
           "model": "PurchaseOrderLine",
           "fk": "purchase_order_id",
+          "sequence": "sequence",
           "prefill": {
            "discount": "$record.default_discount"
           },
@@ -2875,6 +2876,7 @@
           "id": "lines",
           "model": "ReceiptLine",
           "fk": "receipt_id",
+          "sequence": "sequence",
           "view": {
            "type": "table",
            "source": {
