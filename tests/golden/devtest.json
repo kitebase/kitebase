@@ -2758,15 +2758,25 @@
               "label": "Sort by publication date",
               "scope": "global",
               "endpoint": "purchase_order_sort_by_publication"
+             },
+             {
+              "id": "publisher_sheet_lines",
+              "label": "Lines from a publisher's sheet",
+              "scope": "global",
+              "endpoint": "publisher_sheet_lines",
+              "$plugin": "acq_publisher_sheet"
              }
-            ]
+            ],
+            "$plugin": "acq_publisher_sheet"
            }
-          }
+          },
+          "$plugin": "acq_publisher_sheet"
          }
-        ]
+        ],
+        "$plugin": "acq_publisher_sheet"
        }
       ],
-      "$plugin": "acquisitions"
+      "$plugin": "acq_publisher_sheet"
      }
     ],
     "$plugin": "acquisitions"

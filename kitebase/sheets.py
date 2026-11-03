@@ -27,6 +27,10 @@ every mistake collected by row and column. The rows are grouped into documents b
 through `flow.run_forms`: the proposals of the form's phases, then one
 transaction for the whole sheet.
 
+A sheet can also go into a form already open: `into(ctx)`, from a command
+on the rows, reads the rows of one document and adds them to the draft, or
+puts them in place of those there, as the person chooses.
+
 A sheet can also be opened rather than written: `draft` reads one document
 and answers `open_form`, the form opens on it as a new document, and the
 person finishes and saves it there; `propose` adds what the sheet does not
@@ -41,7 +45,7 @@ from sqlalchemy import func
 
 import kitebase
 from kitebase import access
-from kitebase.i18n import _f
+from kitebase.i18n import _, _f
 
 
 class CellError(ValueError):
@@ -227,6 +231,40 @@ class SheetImport:
         return {'status': 'success',
                 'data': {'action': 'open_form', 'page': self.page, 'draft': tree,
                          'title': data['file'].filename}}
+
+    def into(self, ctx, accept: Tuple[str, ...] = ('.xlsx',)) -> None:
+        """
+        The rows of the sheet into the draft of a form, from a command on its
+        rows (a `flow.Proposal`): the file is asked for, read and checked as
+        `run` does; with rows already there the person chooses whether to add
+        to them or replace them. Nothing is written until the form is saved.
+        """
+        upload = ctx.file('sheet', list(accept))
+        documents, refusal = self.load({'file': upload})
+        if refusal:
+            detail = (refusal.get('data') or {}).get('detail')
+            ctx.stay(refusal['message'] + (f'\n{detail}' if detail else ''))
+        if len(documents) > 1:
+            ctx.stay(_f('The sheet holds {n} {nouns}: here it goes into one',
+                        n=len(documents), nouns=self.nouns))
+        new = [dict(node['values']) for node in documents[0][1]['children'][self.collection]]
+
+        rows = ctx.rows.setdefault(self.collection, [])
+        if rows:
+            how = ctx.choose('sheet_rows', _f('There are already {n} rows: what of the {m} '
+                                              'in the sheet?', n=len(rows), m=len(new)),
+                             [{'value': 'add', 'label': _('Add them after')},
+                              {'value': 'replace', 'label': _('Put them in place of these')}])
+            if how == 'replace':
+                rows.clear()
+        if self.sequence:
+            last = max((r.get(self.sequence) or 0 for r in rows), default=0)
+            for n, values in enumerate(new, start=1):
+                values[self.sequence] = last + n * 10
+        rows.extend(new)
+        ctx.info(_f('{n} rows from {name}', n=len(new), name=upload.filename))
+        if self.left_out:
+            ctx.info(_f('Columns not read: {names}', names=', '.join(self.left_out)))
 
     def propose(self, session, tree: Dict[str, Any]) -> None:
         """

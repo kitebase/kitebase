@@ -5,11 +5,13 @@ The sheet holds no order number and no publisher: one sheet is one order,
 and the publisher is proposed from its books. When the books belong to more
 than one publisher nothing is proposed: the person chooses, and the step to
 the rows offers to drop the others (acquisitions/orders.py). Nothing is
-written until the form is saved. Sample sheet: devtest/sample_data/publisher_order.xlsx.
+written until the form is saved. The same sheet goes into an order already
+open, from a command of its rows. Sample sheet: devtest/sample_data/publisher_order.xlsx.
 """
 import kitebase
 from kitebase import access
 from kitebase.endpoints import endpoint
+from kitebase.flow import proposal
 from kitebase.sheets import Ignored, Lookup, Number, SheetImport
 
 
@@ -55,3 +57,10 @@ def publisher_sheet_draft(data):
     """The sheet, opened in the order form as a new order to finish."""
     access.check_table('PurchaseOrder', 'create')
     return PublisherSheet().draft(data)
+
+
+@endpoint('publisher_sheet_lines', access=access.PER_TABLE)
+@proposal('PurchaseOrder')
+def publisher_sheet_lines(ctx):
+    """The lines of the sheet into the order being edited: added, or in place of those there."""
+    PublisherSheet().into(ctx)

@@ -1014,3 +1014,50 @@ def test_a_duplicator_with_options_asks_them_first(app, stored_loan):
 
 def test_a_record_that_is_not_there_is_refused_before_asking(app, stored_loan):
     assert send('duplicate', {'page': 'loan_tree', 'id': 999})['code'] == 404
+
+
+# ── A sheet into the rows of a form already open (SheetImport.into) ─────────
+
+class PageSheet(SheetImport):
+    page = 'loan_doc'
+    collection = 'pages'
+    noun, nouns = 'loan', 'loans'
+    columns = {'page': Text('text', required=True), 'note': Ignored()}
+
+
+def sheet_into(rows, answers=None, pages=('p1',), with_file=True):
+    from kitebase.media import UploadedFile
+    data = {'tree': document(pages=pages), 'answers': answers or {},
+            'scope': {'collection': 'pages', 'checked': []}}
+    if with_file:
+        data['file'] = UploadedFile('pages.xlsx', iter([xlsx(rows)]))
+    return flow.propose('Loan', lambda ctx: PageSheet().into(ctx), data)
+
+
+def test_a_sheet_into_the_rows_asks_for_the_file_first(app):
+    asked = sheet_into([], with_file=False)
+
+    assert asked['code'] == 409
+    assert asked['$flow']['ask'] == {'key': 'sheet', 'kind': 'file', 'accept': ['.xlsx']}
+
+
+def test_a_sheet_into_rows_already_there_asks_whether_to_add_or_replace(app):
+    sheet = [['page', 'my notes'], ['s1', 'x'], ['s2', None]]
+
+    asked = sheet_into(sheet)
+    assert asked['$flow']['ask']['key'] == 'sheet_rows'
+
+    added = sheet_into(sheet, {'sheet_rows': 'add'})
+    assert [(r['id'], r['values']['text']) for r in added['data']['rows']['pages']] == [
+        (-2, 'p1'), (None, 's1'), (None, 's2')]
+    assert added['$flow']['info'] == ['2 rows from pages.xlsx', 'Columns not read: my notes']
+
+    replaced = sheet_into(sheet, {'sheet_rows': 'replace'})
+    assert [r['values']['text'] for r in replaced['data']['rows']['pages']] == ['s1', 's2']
+
+
+def test_a_sheet_into_an_empty_collection_asks_nothing_and_a_wrong_one_is_refused(app):
+    assert [r['values']['text'] for r in sheet_into([['page'], ['s1']], pages=())['data']['rows']['pages']] == ['s1']
+
+    refused = sheet_into([['page', 'note'], [None, 'x']], pages=())
+    assert refused['code'] == 422 and 'Row 2, page: missing' in refused['message']

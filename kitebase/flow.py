@@ -134,6 +134,7 @@ class Context:
         self.stage = 'check'
         self.infos: List[str] = []
         self.actions: List[Dict[str, Any]] = []
+        self.upload = None           # the file the client sent, after ctx.file asked for it
 
     # Questions: an answer present is used, an answer missing stops the write.
 
@@ -163,6 +164,18 @@ class Context:
         descriptor, first = form_view(view)
         self._ask({'key': key, 'kind': 'form', 'text': text, 'view': descriptor,
                    'values': {**first, **(values or {})}})
+
+    def file(self, key: str, accept: Optional[List[str]] = None,
+             text: Optional[str] = None):
+        """
+        A file from the person (`accept`: the extensions the picker offers).
+        The client picks it and sends the same call again through the upload
+        route, with the file and the answers so far; the file comes back as
+        an `UploadedFile`.
+        """
+        if self.upload is not None:
+            return self.upload
+        self._ask({'key': key, 'kind': 'file', 'text': text, 'accept': accept})
 
     def _ask(self, question: Dict[str, Any]) -> NoReturn:
         if self.stage != 'check':
@@ -272,7 +285,7 @@ def _read_only(ctx: Context, fns: List[Callable]) -> Optional[Dict[str, Any]]:
             for fn in fns:
                 fn(ctx)
     except Ask as a:
-        return {'status': 'error', 'code': 409, 'message': a.question['text'],
+        return {'status': 'error', 'code': 409, 'message': a.question.get('text') or 'An answer is needed',
                 '$flow': _flow(ctx, ask=a.question)}
     except Stay as s:
         return {'status': 'error', 'code': 422, 'message': s.message,
@@ -392,6 +405,7 @@ def propose(table: str, fn: Callable, data: Dict[str, Any]) -> Dict[str, Any]:
     """
     ctx = Proposal(table, data.get('tree') or {}, dict(data.get('answers') or {}),
                    data.get('scope'))
+    ctx.upload = data.get('file')
     values = dict(ctx.record)
     rows = {cid: [dict(r) for r in current] for cid, current in ctx.rows.items()}
     refusal = _read_only(ctx, [fn])

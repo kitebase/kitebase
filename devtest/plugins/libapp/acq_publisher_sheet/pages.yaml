@@ -1,5 +1,7 @@
-# One more command in the list of orders: the sheet a publisher sends, which
-# is not written but opened in the order form, to be finished there.
+# The sheet a publisher sends, in two places: a command of the list of
+# orders opens it as a new order; a command of the rows of an order already
+# open adds its lines, or puts them in place of those there. Nothing is
+# written until the order is saved.
 
 pages:
 
@@ -11,3 +13,20 @@ pages:
             label: Open a publisher's sheet
             scope: global
             endpoint: publisher_sheet
+
+  # Reached through the ids of the nodes: relations > lines_tab > lines
+  purchaseorder_form:
+    content:
+      layout:
+        - id: relations
+          pages:
+            - id: lines_tab
+              layout:
+                - id: lines
+                  view:
+                    navigator:
+                      commands:
+                        - id: publisher_sheet_lines
+                          label: Lines from a publisher's sheet
+                          scope: global
+                          endpoint: publisher_sheet_lines
