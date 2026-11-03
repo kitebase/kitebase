@@ -304,49 +304,252 @@
    "$plugin": "devtypes"
   }
  },
+ "menus": {
+  "main": {
+   "label": "DevTest",
+   "home_page": "welcome",
+   "$plugin": "menu"
+  },
+  "$plugin": "menu"
+ },
+ "menu_items": {
+  "masters": {
+   "label": "Masters",
+   "icon": "database",
+   "order": 10,
+   "$plugin": "menu"
+  },
+  "catalog": {
+   "label": "Catalog",
+   "icon": "book",
+   "order": 20,
+   "$plugin": "menu"
+  },
+  "library": {
+   "label": "Library",
+   "icon": "library",
+   "order": 30,
+   "$plugin": "menu"
+  },
+  "playground": {
+   "label": "Playground",
+   "icon": "flask-conical",
+   "order": 90,
+   "$plugin": "menu"
+  },
+  "account": {
+   "label": "Account",
+   "icon": "user-round",
+   "order": 95,
+   "$plugin": "menu"
+  },
+  "users": {
+   "label": "Users",
+   "icon": "users",
+   "parent": "masters",
+   "order": 10,
+   "action": "stack_push",
+   "panel": "user_list",
+   "$plugin": "menu"
+  },
+  "userlogs": {
+   "label": "User logs",
+   "icon": "file-text",
+   "parent": "masters",
+   "order": 20,
+   "action": "stack_push",
+   "panel": "userlog_list",
+   "$plugin": "menu"
+  },
+  "password": {
+   "label": "Change password",
+   "icon": "lock",
+   "parent": "account",
+   "order": 10,
+   "action": "stack_push",
+   "panel": "password_change",
+   "$plugin": "menu"
+  },
+  "$plugin": "menu",
+  "demo_hello": {
+   "label": "Hello demo",
+   "icon": "sparkles",
+   "parent": "playground",
+   "order": 10,
+   "action": "stack_push",
+   "panel": "hello_demo",
+   "$plugin": "panels"
+  },
+  "demo_msgbox": {
+   "label": "Msgbox demo",
+   "icon": "message-square",
+   "parent": "playground",
+   "order": 15,
+   "action": "stack_push",
+   "panel": "msgbox_demo",
+   "$plugin": "panels"
+  },
+  "demo_panels": {
+   "label": "Book panels",
+   "icon": "layout",
+   "parent": "playground",
+   "order": 20,
+   "action": "stack_push",
+   "panel": "book_demo_nested",
+   "$plugin": "panels"
+  },
+  "demo_reviews": {
+   "label": "Book + reviews",
+   "icon": "git-branch",
+   "parent": "playground",
+   "order": 30,
+   "action": "stack_push",
+   "panel": "book_with_reviews",
+   "$plugin": "panels"
+  },
+  "wizard_payment": {
+   "label": "Payment wizard",
+   "icon": "wand",
+   "parent": "playground",
+   "order": 40,
+   "action": "stack_push",
+   "panel": "payment_wizard_params",
+   "$plugin": "wizards"
+  },
+  "wizard_product": {
+   "label": "Product demo",
+   "icon": "package",
+   "parent": "playground",
+   "order": 50,
+   "action": "stack_push",
+   "panel": "product_demo_form",
+   "$plugin": "wizards"
+  },
+  "authors": {
+   "label": "Authors",
+   "icon": "user",
+   "parent": "catalog",
+   "order": 10,
+   "action": "stack_push",
+   "panel": "author_list",
+   "$plugin": "books"
+  },
+  "publishers": {
+   "label": "Publishers",
+   "icon": "building",
+   "parent": "catalog",
+   "order": 20,
+   "action": "stack_push",
+   "panel": "publisher_list",
+   "$plugin": "books"
+  },
+  "books": {
+   "label": "Books",
+   "icon": "book",
+   "parent": "catalog",
+   "order": 30,
+   "action": "stack_push",
+   "panel": "book_list",
+   "$plugin": "books"
+  },
+  "members": {
+   "label": "Members",
+   "icon": "users",
+   "parent": "library",
+   "order": 5,
+   "action": "stack_push",
+   "panel": "libraryuser_list",
+   "$plugin": "library"
+  },
+  "loans": {
+   "label": "Loans",
+   "icon": "repeat",
+   "parent": "library",
+   "order": 10,
+   "action": "stack_push",
+   "panel": "loan_manager",
+   "$plugin": "library"
+  },
+  "stats": {
+   "label": "Loan statistics",
+   "icon": "chart-column",
+   "parent": "library",
+   "order": 15,
+   "action": "stack_push",
+   "panel": "loan_stats",
+   "$plugin": "library"
+  },
+  "reviews": {
+   "label": "Reviews",
+   "icon": "star",
+   "parent": "library",
+   "order": 20,
+   "action": "stack_push",
+   "panel": "review_list",
+   "$plugin": "library"
+  },
+  "acquisitions": {
+   "label": "Acquisitions",
+   "icon": "truck",
+   "order": 40,
+   "$plugin": "acquisitions"
+  },
+  "orders": {
+   "label": "Orders",
+   "icon": "clipboard-list",
+   "parent": "acquisitions",
+   "order": 10,
+   "action": "stack_push",
+   "panel": "purchaseorder_list",
+   "$plugin": "acquisitions"
+  },
+  "receipts": {
+   "label": "Receipts",
+   "icon": "package-check",
+   "parent": "acquisitions",
+   "order": 20,
+   "action": "stack_push",
+   "panel": "receipt_list",
+   "$plugin": "acquisitions"
+  }
+ },
  "tables": {
-  "Config": {
-   "name": "configs",
-   "label": "Configuration",
-   "help": "Wide app configuration file\n",
-   "tags": [
-    "short"
-   ],
+  "Setting": {
+   "name": "settings",
+   "label": "Setting",
    "columns": [
     {
-     "name": "id",
-     "type": "ShortID",
-     "$plugin": "common"
-    },
-    {
-     "name": "description",
-     "type": "Description",
-     "$plugin": "common"
-    },
-    {
-     "name": "group",
-     "type": "ShortStr",
-     "$plugin": "common"
-    },
-    {
-     "name": "help",
-     "type": "Markdown",
-     "$plugin": "common"
+     "name": "key",
+     "type": "String",
+     "length": 100,
+     "primary_key": true,
+     "label": "Key",
+     "$plugin": "settings"
     },
     {
      "name": "value",
-     "type": "String",
-     "$plugin": "common"
+     "type": "Json",
+     "label": "Value",
+     "$plugin": "settings"
     },
     {
-     "name": "values",
-     "type": "Json",
-     "$plugin": "common"
+     "name": "updated_at",
+     "type": "DateTime",
+     "label": "Updated",
+     "default": "$now",
+     "$plugin": "settings"
+    },
+    {
+     "name": "updated_by",
+     "type": "Integer",
+     "nullable": true,
+     "label": "Updated by",
+     "$plugin": "settings"
     }
    ],
-   "$plugin": "common"
+   "$plugin": "settings"
   },
-  "$plugin": "common",
+  "$plugin": "settings",
   "User": {
    "name": "users",
    "label": "User",
@@ -1127,224 +1330,6 @@
      "$plugin": "acquisitions"
     }
    ],
-   "$plugin": "acquisitions"
-  }
- },
- "menus": {
-  "main": {
-   "label": "DevTest",
-   "home_page": "welcome",
-   "$plugin": "menu"
-  },
-  "$plugin": "menu"
- },
- "menu_items": {
-  "masters": {
-   "label": "Masters",
-   "icon": "database",
-   "order": 10,
-   "$plugin": "menu"
-  },
-  "catalog": {
-   "label": "Catalog",
-   "icon": "book",
-   "order": 20,
-   "$plugin": "menu"
-  },
-  "library": {
-   "label": "Library",
-   "icon": "library",
-   "order": 30,
-   "$plugin": "menu"
-  },
-  "playground": {
-   "label": "Playground",
-   "icon": "flask-conical",
-   "order": 90,
-   "$plugin": "menu"
-  },
-  "account": {
-   "label": "Account",
-   "icon": "user-round",
-   "order": 95,
-   "$plugin": "menu"
-  },
-  "users": {
-   "label": "Users",
-   "icon": "users",
-   "parent": "masters",
-   "order": 10,
-   "action": "stack_push",
-   "panel": "user_list",
-   "$plugin": "menu"
-  },
-  "userlogs": {
-   "label": "User logs",
-   "icon": "file-text",
-   "parent": "masters",
-   "order": 20,
-   "action": "stack_push",
-   "panel": "userlog_list",
-   "$plugin": "menu"
-  },
-  "config": {
-   "label": "Configuration",
-   "icon": "settings",
-   "parent": "masters",
-   "order": 90,
-   "action": "stack_push",
-   "panel": "config_list",
-   "$plugin": "menu"
-  },
-  "password": {
-   "label": "Change password",
-   "icon": "lock",
-   "parent": "account",
-   "order": 10,
-   "action": "stack_push",
-   "panel": "password_change",
-   "$plugin": "menu"
-  },
-  "$plugin": "menu",
-  "demo_hello": {
-   "label": "Hello demo",
-   "icon": "sparkles",
-   "parent": "playground",
-   "order": 10,
-   "action": "stack_push",
-   "panel": "hello_demo",
-   "$plugin": "panels"
-  },
-  "demo_msgbox": {
-   "label": "Msgbox demo",
-   "icon": "message-square",
-   "parent": "playground",
-   "order": 15,
-   "action": "stack_push",
-   "panel": "msgbox_demo",
-   "$plugin": "panels"
-  },
-  "demo_panels": {
-   "label": "Book panels",
-   "icon": "layout",
-   "parent": "playground",
-   "order": 20,
-   "action": "stack_push",
-   "panel": "book_demo_nested",
-   "$plugin": "panels"
-  },
-  "demo_reviews": {
-   "label": "Book + reviews",
-   "icon": "git-branch",
-   "parent": "playground",
-   "order": 30,
-   "action": "stack_push",
-   "panel": "book_with_reviews",
-   "$plugin": "panels"
-  },
-  "wizard_payment": {
-   "label": "Payment wizard",
-   "icon": "wand",
-   "parent": "playground",
-   "order": 40,
-   "action": "stack_push",
-   "panel": "payment_wizard_params",
-   "$plugin": "wizards"
-  },
-  "wizard_product": {
-   "label": "Product demo",
-   "icon": "package",
-   "parent": "playground",
-   "order": 50,
-   "action": "stack_push",
-   "panel": "product_demo_form",
-   "$plugin": "wizards"
-  },
-  "authors": {
-   "label": "Authors",
-   "icon": "user",
-   "parent": "catalog",
-   "order": 10,
-   "action": "stack_push",
-   "panel": "author_list",
-   "$plugin": "books"
-  },
-  "publishers": {
-   "label": "Publishers",
-   "icon": "building",
-   "parent": "catalog",
-   "order": 20,
-   "action": "stack_push",
-   "panel": "publisher_list",
-   "$plugin": "books"
-  },
-  "books": {
-   "label": "Books",
-   "icon": "book",
-   "parent": "catalog",
-   "order": 30,
-   "action": "stack_push",
-   "panel": "book_list",
-   "$plugin": "books"
-  },
-  "members": {
-   "label": "Members",
-   "icon": "users",
-   "parent": "library",
-   "order": 5,
-   "action": "stack_push",
-   "panel": "libraryuser_list",
-   "$plugin": "library"
-  },
-  "loans": {
-   "label": "Loans",
-   "icon": "repeat",
-   "parent": "library",
-   "order": 10,
-   "action": "stack_push",
-   "panel": "loan_manager",
-   "$plugin": "library"
-  },
-  "stats": {
-   "label": "Loan statistics",
-   "icon": "chart-column",
-   "parent": "library",
-   "order": 15,
-   "action": "stack_push",
-   "panel": "loan_stats",
-   "$plugin": "library"
-  },
-  "reviews": {
-   "label": "Reviews",
-   "icon": "star",
-   "parent": "library",
-   "order": 20,
-   "action": "stack_push",
-   "panel": "review_list",
-   "$plugin": "library"
-  },
-  "acquisitions": {
-   "label": "Acquisitions",
-   "icon": "truck",
-   "order": 40,
-   "$plugin": "acquisitions"
-  },
-  "orders": {
-   "label": "Orders",
-   "icon": "clipboard-list",
-   "parent": "acquisitions",
-   "order": 10,
-   "action": "stack_push",
-   "panel": "purchaseorder_list",
-   "$plugin": "acquisitions"
-  },
-  "receipts": {
-   "label": "Receipts",
-   "icon": "package-check",
-   "parent": "acquisitions",
-   "order": 20,
-   "action": "stack_push",
-   "panel": "receipt_list",
    "$plugin": "acquisitions"
   }
  },
@@ -2660,6 +2645,10 @@
     "source": {
      "model": "PurchaseOrder",
      "id": "$props.id",
+     "defaults": {
+      "default_discount": "$setting.acquisitions.default_discount",
+      "$plugin": "acquisitions"
+     },
      "$plugin": "acquisitions"
     },
     "phases": [
@@ -4571,5 +4560,23 @@
    ],
    "$plugin": "acquisitions"
   }
+ },
+ "settings": {
+  "acquisitions": {
+   "label": "Purchasing",
+   "help": "How a new purchase order starts",
+   "items": [
+    {
+     "name": "default_discount",
+     "type": "Percent",
+     "default": 10,
+     "label": "Discount for new lines",
+     "help": "The discount a new order proposes for its lines: each order may change it",
+     "$plugin": "acquisitions"
+    }
+   ],
+   "$plugin": "acquisitions"
+  },
+  "$plugin": "acquisitions"
  }
 }

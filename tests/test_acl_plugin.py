@@ -444,7 +444,7 @@ def test_check_names_a_table_no_role_reads(app):
     guard.roles = sys.modules['acl.guard'].resolve_roles(
         {'a': {'grants': ['Book.read']}, 'b': {'grants': ['Loan.label']}})
     try:
-        assert set(acl_issues(app, 'acl-table-closed')) == {'tables.User', 'tables.UserLog', 'tables.Config'}
+        assert set(acl_issues(app, 'acl-table-closed')) == {'tables.User', 'tables.UserLog'}
     finally:
         guard.roles = roles
 

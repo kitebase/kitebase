@@ -1,7 +1,7 @@
 # App-layout plugin — devtest.
 # Owns the menu STRUCTURE (docs/pending/menu.md §1): the root, the top-level
 # groups (hook points), and the placement of the COMMONS plugins' pages
-# (User/Config) — commons are menu-silent because they are reused across apps.
+# (User) — commons are menu-silent because they are reused across apps.
 # App-specific plugins (books, library, panels, wizards) append their own leaf
 # items to these groups by parent-id.
 #
@@ -23,9 +23,8 @@ menu_items:
   playground: { label: Playground, icon: flask-conical, order: 90 }
   account:    { label: Account,    icon: user-round,    order: 95 }
 
-  # ── Commons pages (User/Config): the APP decides whether/where they surface ──
+  # ── Commons pages (User): the APP decides whether/where they surface ──
   users:    { label: Users,         icon: users,     parent: masters, order: 10, action: stack_push, panel: user_list }
   userlogs: { label: User logs,     icon: file-text, parent: masters, order: 20, action: stack_push, panel: userlog_list }
-  config:   { label: Configuration, icon: settings,  parent: masters, order: 90, action: stack_push, panel: config_list }
   # One's own password: every user, whatever the roles, since the page reads no table.
   password: { label: Change password, icon: lock,  parent: account, order: 10, action: stack_push, panel: password_change }

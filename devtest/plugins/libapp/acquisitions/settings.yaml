@@ -1,0 +1,13 @@
+# What the installation may change in purchasing, without a restart. The
+# settings plugin keeps what changed; without it the order form simply opens
+# with no discount proposed (`kitebase check` says so).
+settings:
+  acquisitions:
+    label: Purchasing
+    help: "How a new purchase order starts"
+    items:
+      - name: default_discount
+        type: Percent
+        default: 10
+        label: Discount for new lines
+        help: "The discount a new order proposes for its lines: each order may change it"

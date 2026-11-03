@@ -15,7 +15,7 @@ author: "Claudio Driussi"
 # What devtest adds to them is in its own plugins (devtypes, libapp/library).
 plugins:
   - path: ../../commons/plugins
-    include: [common, users, acl]
+    include: [common, users, acl, settings]
   - plugins
   - plugins/libapp
 
