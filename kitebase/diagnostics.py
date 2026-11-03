@@ -8,18 +8,19 @@ to embed them; neither uses argparse):
       Validate the merged plugin data after everything is loaded
       (calc_db done): unresolved $ref, views pointing at unknown
       tables/columns, stack_push targets that don't exist, orphan
-      views. Merge-time issues collected by PluginsManager (value
+      views, roots nobody owns, and the checks the owners of the
+      others registered. Merge-time issues collected by PluginsManager (value
       overlaps, positional anchors not found) are included first.
 
   dump_app(app)    -> Dict
       Complete JSON-serializable snapshot of the effective application
-      state: plugins, issues, tables, types, every descriptor section
-      (pages, views, menus, menu_items, … with $ref resolved), endpoints,
+      state: plugins, issues, tables, types, every owned root of the
+      merged tree (pages, views, menus, … with $ref resolved), endpoints,
       merge history, and source_files (raw pre-merge YAML per plugin/file).
       $plugin attribution keys are kept so an external viewer (web app,
       tkinter, jq, ...) can show which plugin contributed each piece.
-      DB/type sections (tables/types/schemas) are special-cased; all other
-      sections are treated uniformly.
+      DB/type roots (tables/types/schemas) are special-cased; the other
+      owned roots are treated uniformly (owners: kitebase.sections).
 
 Issue format (shared with PluginsManager.add_issue):
   {severity: 'error'|'warning'|'info', code, path, message, plugin}
@@ -30,24 +31,46 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Set
 
 from kitebase import access, media
+from kitebase.sections import get_section
 
 # Only plain identifiers ('title') and dotted fields ('Publisher.name') are
 # checkable against the schema; anything else (SQL expressions, aliases,
 # functions) is passed through to the querybuilder untouched.
 _CHECKABLE_FIELD = re.compile(r'^[A-Za-z_]\w*(\.[A-Za-z_]\w*)?$')
 
-# Sections that feed model/type generation, not UI descriptors. They have their
-# own dedicated dumpers/checks (tables via _table_dict, types via the schema
-# registry) and must NOT be walked as generic descriptor trees. Every OTHER
-# top-level section (pages, views, menus, menu_items, future chrome/quickbar/...)
-# is a descriptor and is validated/dumped uniformly — see docs/pending/menu.md §10.
+# Roots with dumpers of their own (tables via _table_dict, types via the schema
+# registry): every other owned root is dumped as it was merged.
 _DB_SECTIONS = frozenset({'tables', 'types', 'schemas'})
 
 
-def _descriptor_sections(pm: Any) -> List[str]:
-    """Top-level descriptor sections: everything mergeable that isn't DB/type."""
+def _owned_sections(pm: Any) -> List[str]:
+    """The roots of the merged tree that a registered module owns."""
     return [k for k, v in pm.data.items()
-            if not k.startswith('$') and k not in _DB_SECTIONS and isinstance(v, dict)]
+            if get_section(k) is not None and isinstance(v, dict)]
+
+
+def _descriptor_sections(pm: Any) -> List[str]:
+    """The roots that are trees of descriptors (pages, views, menus, ...)."""
+    return [k for k in _owned_sections(pm) if get_section(k).descriptor]
+
+
+def _check_sections(app: Any, issues: List[Dict[str, Any]]) -> None:
+    """A root nobody owns is read by nobody: a typo, or the plugin that reads it
+    is not loaded. The owned ones bring their own checks."""
+    pm = app.pm
+    for root in pm.data:
+        if root.startswith('$') or get_section(root) is not None:
+            continue
+        declared_by = sorted(set(pm.history.get(root, [])))
+        issues.append(make_issue(
+            'warning', 'section-unowned', root,
+            f"no loaded plugin owns '{root}': load the plugin that reads it, "
+            f"or remove the declaration",
+            ', '.join(declared_by) or None))
+    for root in _owned_sections(pm):
+        check = get_section(root).check
+        if check is not None:
+            issues.extend(check(app))
 
 
 def make_issue(severity: str, code: str, path: str, message: str,
@@ -74,9 +97,10 @@ def run_checks(app: Any) -> List[Dict[str, Any]]:
     issues: List[Dict[str, Any]] = list(getattr(pm, 'issues', []))
     referenced: Set[str] = set()
 
-    # Generic descriptor validation: walk every descriptor section uniformly
-    # (pages, views, menus, menu_items, and any future section). The per-node
-    # checks ($ref, view source, stack_push target) fire wherever they appear.
+    # Generic descriptor validation: walk every descriptor root uniformly
+    # (pages, views, menus, menu_items, and any root registered as one). The
+    # per-node checks ($ref, view source, stack_push target) fire wherever they
+    # appear.
     for section in _descriptor_sections(pm):
         data = pm.data.get(section) or {}
         for item_id, item in data.items():
@@ -91,6 +115,7 @@ def run_checks(app: Any) -> List[Dict[str, Any]]:
     _check_vocabulary(app, issues)
     issues.extend(access.diagnose(app))
     issues.extend(media.diagnose(app))
+    _check_sections(app, issues)
 
     # Orphan views: defined but never targeted by a $ref
     views = pm.data.get('views') or {}
@@ -619,11 +644,14 @@ def dump_app(app: Any) -> Dict[str, Any]:
 
     pm = app.pm
 
-    # Every descriptor section, dumped uniformly with $ref resolved and $plugin
-    # attribution kept (pages, views, menus, menu_items, future sections). DB/type
-    # sections are excluded — they have dedicated dumpers below.
+    # Every owned root, dumped uniformly with $ref resolved and $plugin
+    # attribution kept (pages, views, menus, menu_items, the plugins' roots).
+    # DB/type roots have dedicated dumpers below; unowned roots are left out,
+    # the section-unowned warning among the issues says they are there.
     sections: Dict[str, Dict[str, Any]] = {}
-    for name in _descriptor_sections(pm):
+    for name in _owned_sections(pm):
+        if name in _DB_SECTIONS:
+            continue
         out: Dict[str, Any] = {}
         for item_id, item in pm.data[name].items():
             if item_id.startswith('$'):
