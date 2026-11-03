@@ -514,6 +514,38 @@ def test_a_proposal_asks_and_refuses_as_a_rule_does(app):
     assert [r['id'] for r in done['data']['rows']['pages']] == [-3]
 
 
+def test_a_command_on_the_rows_asks_through_a_form_and_works_on_the_chosen_rows(app):
+    app.pm.data.setdefault('views', {})['page_mark'] = {
+        'type': 'form', 'layout': [{'name': 'mark', 'label': 'Mark', 'type': 'String', 'default': '*'}]}
+
+    def mark(ctx):
+        typed = ctx.form('mark', 'page_mark', text='How to mark them?')
+        for row in ctx.chosen():
+            row['text'] += typed['mark']
+
+    def command(answers=None, checked=(), visible=None):
+        return flow.propose('Loan', mark, {
+            'tree': document(pages=('p1', 'p2', 'p3')), 'answers': answers or {},
+            'scope': {'collection': 'pages', 'current': -2, 'checked': list(checked),
+                      'visible': visible}})
+
+    asked = command()['$flow']['ask']
+    assert asked['kind'] == 'form' and asked['values'] == {'mark': '*'}
+    assert asked['view']['layout'][0]['name'] == 'mark'
+
+    ticked = command({'mark': {'mark': '!'}}, checked=[-3])['data']['rows']['pages']
+    assert [r['values']['text'] for r in ticked] == ['p1', 'p2!', 'p3']
+
+    every = command({'mark': {'mark': '!'}})['data']['rows']['pages']
+    assert [r['values']['text'] for r in every] == ['p1!', 'p2!', 'p3!']
+
+    # Without ticks, a filtered grid means the rows on screen; ticks win over it
+    shown = command({'mark': {'mark': '!'}}, visible=[-2, -4])['data']['rows']['pages']
+    assert [r['values']['text'] for r in shown] == ['p1!', 'p2', 'p3!']
+    ticked = command({'mark': {'mark': '!'}}, checked=[-3], visible=[-2])['data']['rows']['pages']
+    assert [r['values']['text'] for r in ticked] == ['p1', 'p2!', 'p3']
+
+
 def test_a_proposal_writes_nothing(app):
     def write(ctx):
         ctx.session.add(kitebase.utils.get_app().models['Stamp'](what='proposed'))

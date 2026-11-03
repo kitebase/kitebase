@@ -113,6 +113,18 @@ pages:
                         title: Price
                       - field: discount
                         title: Discount
+                    # On the draft, not the database (orders.py): the ticked
+                    # lines, or all of them, until the order is saved.
+                    navigator:
+                      commands:
+                        - id: discount_lines
+                          label: Discount on lines
+                          scope: global
+                          endpoint: purchase_order_discount
+                        - id: sort_by_publication
+                          label: Sort by publication date
+                          scope: global
+                          endpoint: purchase_order_sort_by_publication
 
   receipt_form:
     title: Receipt
@@ -175,6 +187,20 @@ pages:
                         title: Order row
 
 views:
+
+  # What "Discount on lines" asks (orders.py, purchase_order_discount)
+  purchaseorder_discount:
+    type: form
+    presentation: dialog
+    source: {}
+    layout:
+      - type: section
+        id: discount
+        fields:
+          - name: discount
+            label: Discount %
+            type: Number
+            required: true
 
   # What a duplicate of an order asks first (orders.py, order_duplicate). The
   # date is proposed from the order copied: a month after it.

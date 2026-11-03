@@ -31,8 +31,10 @@ pages.*.content.layout[].pages[].layout[].columns[].fields[]: [choices_endpoint,
 pages.*.content.layout[].pages[].layout[].defaults: '*'
 pages.*.content.layout[].pages[].layout[].domain[]: '*'
 pages.*.content.layout[].pages[].layout[].prefill: '*'
-pages.*.content.layout[].pages[].layout[].view: [columns, source, type]
+pages.*.content.layout[].pages[].layout[].view: [columns, navigator, source, type]
 pages.*.content.layout[].pages[].layout[].view.columns[]: [field, title, width]
+pages.*.content.layout[].pages[].layout[].view.navigator: [commands]
+pages.*.content.layout[].pages[].layout[].view.navigator.commands[]: [endpoint, id, label, scope]
 pages.*.content.layout[].pages[].layout[].view.source: [order_by]
 pages.*.content.navigator: [commands]
 pages.*.content.navigator.commands[]: [endpoint, id, key, label, params, scope]

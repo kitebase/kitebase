@@ -34,13 +34,12 @@ first values of that view computed from the record:
 
 The answer is `open_form`: nothing is written until the person saves.
 """
-import copy
 from typing import Any, Callable, Dict, Optional, Tuple
 
 import kitebase
 from kitebase import access
 from kitebase.endpoints import endpoint
-from kitebase.i18n import _, _f, translate_labels
+from kitebase.i18n import _, _f
 
 
 class _Duplicator:
@@ -158,29 +157,13 @@ _CALL_KEYS = {'page', 'id', 'confirm', '$asked', 'table', 'query_params', 'ids',
 def _ask_options(page_id: str, custom: _Duplicator, source: Dict[str, Any],
                  again: Dict[str, Any]) -> Dict[str, Any]:
     """The options view as the question, its first values computed from the record."""
-    app = kitebase.utils.get_app()
-    view = app.pm.get(f'views.{custom.options}')
-    if view is None:
-        return {'status': 'error', 'code': 500,
-                'message': f"The options view '{custom.options}' of '{page_id}' does not exist"}
-    from kitebase.pages import strip_meta
-    view = translate_labels(strip_meta(copy.deepcopy(app.pm.resolve_refs(view))))
-    values = {f['name']: f['default'] for f in _fields(view.get('layout') or [])
-              if 'default' in f}
+    from kitebase.flow import form_view
+    try:
+        view, values = form_view(custom.options)
+    except ValueError as e:
+        return {'status': 'error', 'code': 500, 'message': f"{e} (duplicate of '{page_id}')"}
     if custom.values:
         values.update(custom.values(source) or {})
     return {'status': 'success', 'data': {
         'action': 'form', 'title': _('Duplicate'), 'view': view, 'values': values,
         'then': again}}
-
-
-def _fields(layout):
-    """The fields of a layout, at any depth."""
-    for node in layout:
-        if not isinstance(node, dict):
-            continue
-        if 'name' in node:
-            yield node
-        for key in ('fields', 'columns', 'layout', 'pages'):
-            if isinstance(node.get(key), list):
-                yield from _fields(node[key])

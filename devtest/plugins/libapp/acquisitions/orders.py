@@ -42,6 +42,40 @@ def purchase_order_head(ctx):
     ctx.info(f"Removed: {', '.join(_titles(ctx, foreign))}")
 
 
+@endpoint('purchase_order_discount', access=access.PER_TABLE)
+@proposal('PurchaseOrder')
+def purchase_order_discount(ctx):
+    """A discount on the ticked lines, or on all of them: the draft changes, nothing is written."""
+    lines = ctx.chosen('lines')
+    if not lines:
+        ctx.stay('No lines to discount')
+    typed = ctx.form('discount', 'purchaseorder_discount',
+                     text=f"Discount on {len(lines)} line{'s' if len(lines) != 1 else ''}")
+    percent = typed.get('discount')
+    if percent is None or not 0 <= float(percent) <= 100:
+        ctx.stay('A discount is between 0 and 100')
+    for line in lines:
+        line['discount'] = float(percent)
+
+
+@endpoint('purchase_order_sort_by_publication', access=access.PER_TABLE)
+@proposal('PurchaseOrder')
+def purchase_order_sort_by_publication(ctx):
+    """
+    The lines in the order their books came out, oldest first; a book without
+    a date goes last. All the lines, whatever is ticked: sorting a part of them
+    would leave the rest nowhere. The sequence follows the new order.
+    """
+    lines = ctx.rows.get('lines', [])
+    Book = kitebase.utils.get_app().model.Book
+    ids = [r['book_id'] for r in lines if r.get('book_id') is not None]
+    published = dict(ctx.session.query(Book.id, Book.publication_date).filter(Book.id.in_(ids)))
+    lines.sort(key=lambda r: (published.get(r.get('book_id')) is None,
+                              published.get(r.get('book_id')) or ''))
+    for n, line in enumerate(lines, start=1):
+        line['sequence'] = n * 10
+
+
 @duplicator('purchaseorder_form', options='purchaseorder_duplicate')
 def order_duplicate(tree, choices):
     """A new order from another: the same publisher, the date chosen, the lines if asked."""

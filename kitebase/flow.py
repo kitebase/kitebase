@@ -44,7 +44,7 @@ in a second place, and what holds always stays a rule of the table.
 """
 import functools
 import logging
-from typing import Any, Callable, Dict, List, NoReturn, Optional
+from typing import Any, Callable, Dict, List, NoReturn, Optional, Tuple
 
 from sqlalchemy import event, inspect as sa_inspect
 
@@ -151,6 +151,19 @@ class Context:
             return self.answers[key]
         self._ask({'key': key, 'kind': 'choose', 'text': text, 'options': options})
 
+    def form(self, key: str, view: str, values: Optional[Dict[str, Any]] = None,
+             text: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Values typed in a form: `view` names a form view of the plugins (a
+        percentage, a date), `values` are its first values over the view's
+        defaults. The values come back as a dict.
+        """
+        if key in self.answers:
+            return dict(self.answers[key] or {})
+        descriptor, first = form_view(view)
+        self._ask({'key': key, 'kind': 'form', 'text': text, 'view': descriptor,
+                   'values': {**first, **(values or {})}})
+
     def _ask(self, question: Dict[str, Any]) -> NoReturn:
         if self.stage != 'check':
             raise RuntimeError(f"A '{self.stage}' rule cannot ask: questions belong "
@@ -183,6 +196,36 @@ class Context:
             raise RuntimeError("Actions are answered once the record is saved: "
                                "register the rule for 'after'")
         self.actions.append(action)
+
+
+def form_view(view_id: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """
+    A form view of the plugins as the client shows it (references resolved,
+    metadata out, labels translated), and its first values from `default`.
+    """
+    import copy
+    from kitebase.i18n import translate_labels
+    from kitebase.pages import strip_meta
+
+    app = kitebase.utils.get_app()
+    view = app.pm.get(f'views.{view_id}')
+    if view is None:
+        raise ValueError(f"The form view '{view_id}' does not exist")
+    view = translate_labels(strip_meta(copy.deepcopy(app.pm.resolve_refs(view))))
+    return view, {f['name']: f['default'] for f in _fields(view.get('layout') or [])
+                  if 'default' in f}
+
+
+def _fields(layout):
+    """The fields of a layout, at any depth."""
+    for node in layout:
+        if not isinstance(node, dict):
+            continue
+        if 'name' in node:
+            yield node
+        for key in ('fields', 'columns', 'layout', 'pages'):
+            if isinstance(node.get(key), list):
+                yield from _fields(node[key])
 
 
 # ── Running the stages ───────────────────────────────────────────────────────
@@ -289,9 +332,15 @@ class Proposal(Context):
     row a dict of its values with its `id` (negative for a row never written;
     a row the proposal adds has none). Change them in place, or replace a list
     whole: the form receives what differs from what it sent.
+
+    A command on the rows also says where it was given: `collection`, the id
+    of the collection; `current`, the row under the cursor; `checked`, the
+    rows ticked; `visible`, the rows the column filters leave, None when
+    they leave all. None and empty when the proposal is a step between phases.
     """
 
-    def __init__(self, table: str, tree: Dict[str, Any], answers: Dict[str, Any]):
+    def __init__(self, table: str, tree: Dict[str, Any], answers: Dict[str, Any],
+                 scope: Optional[Dict[str, Any]] = None):
         root_id = tree.get('id')
         mode = 'insert' if root_id is None or (isinstance(root_id, int) and root_id < 0) else 'update'
         super().__init__(table, mode, dict(tree.get('values') or {}), None, answers)
@@ -300,6 +349,26 @@ class Proposal(Context):
                   if node.get('op') != 'delete']
             for cid, nodes in (tree.get('children') or {}).items()
         }
+        scope = scope or {}
+        self.collection: Optional[str] = scope.get('collection')
+        self.current: Any = scope.get('current')
+        self.checked: List[Any] = list(scope.get('checked') or [])
+        visible = scope.get('visible')
+        self.visible: Optional[List[Any]] = None if visible is None else list(visible)
+
+    def chosen(self, collection: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        The rows a command works on: the ticked ones; without ticks, those the
+        filters leave on screen; without filters, all of them.
+        """
+        rows = self.rows.get(collection or self.collection, [])
+        if self.checked:
+            keep = self.checked
+        elif self.visible is not None:
+            keep = self.visible
+        else:
+            return rows
+        return [r for r in rows if r.get('id') in keep]
 
     def patch(self, values: Dict[str, Any], rows: Dict[str, List[Dict[str, Any]]]) -> Dict[str, Any]:
         """What changed against what the form sent: values by key, collections whole."""
@@ -321,7 +390,8 @@ def propose(table: str, fn: Callable, data: Dict[str, Any]) -> Dict[str, Any]:
     `save_tree`, and `answers`). The answer is the endpoint's: the patch on
     success, a question or a refusal as the rules give them.
     """
-    ctx = Proposal(table, data.get('tree') or {}, dict(data.get('answers') or {}))
+    ctx = Proposal(table, data.get('tree') or {}, dict(data.get('answers') or {}),
+                   data.get('scope'))
     values = dict(ctx.record)
     rows = {cid: [dict(r) for r in current] for cid, current in ctx.rows.items()}
     refusal = _read_only(ctx, [fn])

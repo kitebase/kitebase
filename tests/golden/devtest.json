@@ -2744,7 +2744,23 @@
              "field": "discount",
              "title": "Discount"
             }
-           ]
+           ],
+           "navigator": {
+            "commands": [
+             {
+              "id": "discount_lines",
+              "label": "Discount on lines",
+              "scope": "global",
+              "endpoint": "purchase_order_discount"
+             },
+             {
+              "id": "sort_by_publication",
+              "label": "Sort by publication date",
+              "scope": "global",
+              "endpoint": "purchase_order_sort_by_publication"
+             }
+            ]
+           }
           }
          }
         ]
@@ -4292,6 +4308,29 @@
     "$plugin": "library"
    },
    "$plugin": "library"
+  },
+  "purchaseorder_discount": {
+   "type": "form",
+   "presentation": "dialog",
+   "source": {
+    "$plugin": "acquisitions"
+   },
+   "layout": [
+    {
+     "type": "section",
+     "id": "discount",
+     "fields": [
+      {
+       "name": "discount",
+       "label": "Discount %",
+       "type": "Number",
+       "required": true
+      }
+     ],
+     "$plugin": "acquisitions"
+    }
+   ],
+   "$plugin": "acquisitions"
   },
   "purchaseorder_duplicate": {
    "type": "form",
