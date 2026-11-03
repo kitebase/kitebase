@@ -11,3 +11,12 @@ settings:
         default: 10
         label: Discount for new lines
         help: "The discount a new order proposes for its lines: each order may change it"
+
+# The form of the group: the fields come from the catalog above.
+pages:
+  acquisitions_settings:
+    title: Purchasing settings
+    content:
+      type: plugin
+      component: settings.group
+      props: { group: acquisitions }

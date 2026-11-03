@@ -361,6 +361,15 @@
    "panel": "userlog_list",
    "$plugin": "menu"
   },
+  "settings": {
+   "label": "Settings",
+   "icon": "settings",
+   "parent": "masters",
+   "order": 90,
+   "action": "stack_push",
+   "panel": "settings_admin",
+   "$plugin": "menu"
+  },
   "password": {
    "label": "Change password",
    "icon": "lock",
@@ -510,6 +519,15 @@
    "order": 20,
    "action": "stack_push",
    "panel": "receipt_list",
+   "$plugin": "acquisitions"
+  },
+  "acquisitions_settings": {
+   "label": "Settings",
+   "icon": "settings",
+   "parent": "acquisitions",
+   "order": 90,
+   "action": "stack_push",
+   "panel": "acquisitions_settings",
    "$plugin": "acquisitions"
   }
  },
@@ -1334,6 +1352,17 @@
   }
  },
  "pages": {
+  "settings_admin": {
+   "title": "Settings",
+   "access": "Setting.read",
+   "content": {
+    "type": "plugin",
+    "component": "settings.admin",
+    "$plugin": "settings"
+   },
+   "$plugin": "settings"
+  },
+  "$plugin": "settings",
   "user_form": {
    "title": "User",
    "content": {
@@ -1543,7 +1572,6 @@
    },
    "$plugin": "users"
   },
-  "$plugin": "users",
   "book_with_reviews": {
    "title": "Books & Reviews",
    "content": {
@@ -2523,6 +2551,19 @@
     "$plugin": "library"
    },
    "$plugin": "library"
+  },
+  "acquisitions_settings": {
+   "title": "Purchasing settings",
+   "content": {
+    "type": "plugin",
+    "component": "settings.group",
+    "props": {
+     "group": "acquisitions",
+     "$plugin": "acquisitions"
+    },
+    "$plugin": "acquisitions"
+   },
+   "$plugin": "acquisitions"
   },
   "purchaseorder_list": {
    "title": "Purchase orders",
