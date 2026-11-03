@@ -19,7 +19,7 @@ pages.*.content.layout[].children[].layout[].opens.view: [columns, type]
 pages.*.content.layout[].children[].layout[].opens.view.columns[]: [field, title]
 pages.*.content.layout[].children[].layout[].pass: '*'
 pages.*.content.layout[].columns[]: [fields, id]
-pages.*.content.layout[].columns[].fields[]: [choices, filler, foreign_key, label, lookup, name, widget, width]
+pages.*.content.layout[].columns[].fields[]: [choices, filler, foreign_key, label, lookup, name, transient, type, widget, width]
 pages.*.content.layout[].columns[].fields[].choices[]: [label, value]
 pages.*.content.layout[].columns[].fields[].foreign_key: [field, target]
 pages.*.content.layout[].columns[].fields[].lookup: [filters]

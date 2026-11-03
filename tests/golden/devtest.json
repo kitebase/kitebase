@@ -2698,6 +2698,13 @@
           "filler": null
          },
          {
+          "name": "default_discount",
+          "label": "Discount for new lines",
+          "type": "Number",
+          "transient": true,
+          "width": "20%"
+         },
+         {
           "name": "notes"
          }
         ]
@@ -2719,6 +2726,9 @@
           "id": "lines",
           "model": "PurchaseOrderLine",
           "fk": "purchase_order_id",
+          "prefill": {
+           "discount": "$record.default_discount"
+          },
           "view": {
            "type": "table",
            "source": {

@@ -84,6 +84,13 @@ pages:
                 - name: supplier_reference
                   width: 20%
                 - filler:
+                # A help for writing the lines, not a fact of the order: no
+                # column holds it, the new lines take it (prefill below).
+                - name: default_discount
+                  label: Discount for new lines
+                  type: Number
+                  transient: true
+                  width: 20%
                 - name: notes
 
         # In a tabs even alone: the hook another plugin needs to add a
@@ -99,6 +106,8 @@ pages:
                   id: lines
                   model: PurchaseOrderLine
                   fk: purchase_order_id
+                  prefill:
+                    discount: $record.default_discount
                   view:
                     type: table
                     source:
