@@ -17,6 +17,7 @@ to embed them; neither uses argparse):
       state: plugins, issues, tables, types, every owned root of the
       merged tree (pages, views, menus, … with $ref resolved), endpoints,
       merge history, and source_files (raw pre-merge YAML per plugin/file).
+      Secret values and URL credentials are masked (mask_secrets).
       $plugin attribution keys are kept so an external viewer (web app,
       tkinter, jq, ...) can show which plugin contributed each piece.
       DB/type roots (tables/types/schemas) are special-cased; the other
@@ -645,6 +646,71 @@ def _check_push_target(app: Any, action: Dict[str, Any], path: str,
             plugin))
 
 
+# ── Secrets ────────────────────────────────────────────────────────────────────
+# The dump goes to tools and to whoever develops, never to production readers:
+# it still holds no secrets, whatever a plugin writes in its YAML. A value is
+# hidden by the name of its key, and the credentials of a URL wherever it is.
+
+MASK = '***'
+_SECRET_NAMES = {'token', 'api_key', 'apikey', 'access_token', 'private_key'}
+_URL_CREDENTIALS = re.compile(r'([a-z][a-z0-9+.-]*://[^/\s:@]+):[^@\s/]+@', re.IGNORECASE)
+# A YAML mapping line: indent (and list dash), key (maybe quoted), value.
+_YAML_LINE = re.compile(r'^(\s*(?:-\s+)?)(["\']?)([\w.-]+)\2(\s*:\s+)(.*)$')
+_YAML_PLAIN = {'true', 'false', 'yes', 'no', 'null', '~', ''}
+
+
+def is_secret_key(key: Any) -> bool:
+    name = str(key).lower()
+    return 'password' in name or 'secret' in name or name in _SECRET_NAMES
+
+
+def _secret_value(value: Any) -> bool:
+    """What a secret key hides: a written value, not a flag or an absence."""
+    if isinstance(value, bool) or value is None:
+        return False
+    return isinstance(value, (int, float)) or (isinstance(value, str) and value != '')
+
+
+def mask_secrets(obj: Any) -> Any:
+    """A copy of `obj` with secret values and URL credentials replaced by MASK."""
+    if isinstance(obj, dict):
+        return {k: MASK if is_secret_key(k) and _secret_value(v) else mask_secrets(v)
+                for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [mask_secrets(v) for v in obj]
+    if isinstance(obj, str):
+        return _URL_CREDENTIALS.sub(rf'\1:{MASK}@', obj)
+    return obj
+
+
+def mask_yaml_text(text: str) -> str:
+    """The raw YAML with the same masking, comments and layout untouched.
+    A block scalar under a secret key (`key: |`) loses its whole body; an
+    inline mapping or list is a structure, as in the parsed content."""
+    out: List[str] = []
+    block_indent: Optional[int] = None
+    for line in text.splitlines(keepends=True):
+        if block_indent is not None:
+            if not line.strip() or len(line) - len(line.lstrip()) > block_indent:
+                if line.strip():
+                    out.append(line[:len(line) - len(line.lstrip())] + MASK + '\n')
+                else:
+                    out.append(line)
+                continue
+            block_indent = None
+        m = _YAML_LINE.match(line.rstrip('\r\n'))
+        if m and is_secret_key(m.group(3)):
+            value = m.group(5)
+            bare = re.sub(r'\s+#.*$', '', value).strip()
+            if bare[:1] in ('|', '>'):
+                block_indent = len(m.group(1))
+            elif bare[:1] not in ('{', '[') and bare.lower() not in _YAML_PLAIN:
+                eol = line[len(line.rstrip('\r\n')):]
+                line = m.group(1) + m.group(2) + m.group(3) + m.group(2) + m.group(4) + MASK + eol
+        out.append(_URL_CREDENTIALS.sub(rf'\1:{MASK}@', line))
+    return ''.join(out)
+
+
 # ── Full dump ──────────────────────────────────────────────────────────────────
 
 def dump_app(app: Any) -> Dict[str, Any]:
@@ -699,10 +765,13 @@ def dump_app(app: Any) -> Dict[str, Any]:
                 text = path.read_text(encoding='utf-8')
             except OSError:
                 text = None
-            files[path.name] = {'content': parsed, 'text': text}
+            files[path.name] = {'content': parsed,
+                                'text': mask_yaml_text(text) if text is not None else None}
         source_files[name] = {'dir': str(p.plugin_dir), 'files': files}
 
-    return {
+    # Masked as a whole: a secret written in a data root reaches the merged
+    # sections too, not only source_files.
+    return mask_secrets({
         # Contract version for external consumers (inspector, tooling).
         # Bump on any structural change to the sections below.
         # v2: descriptor sections are generic (pages/views + menus/menu_items/…)
@@ -735,4 +804,4 @@ def dump_app(app: Any) -> Dict[str, Any]:
         'contested_keys': contested,
         'merge_history': dict(sorted(pm.history.items())),
         'source_files': source_files,
-    }
+    })
