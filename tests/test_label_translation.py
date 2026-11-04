@@ -1,7 +1,7 @@
 """Labels written in the YAML reach the client translated to the user's locale.
 
 The YAML is English, the key of `_()`; a page, a menu and the column labels of
-the server config pass from `translate_labels` on their way out. What a
+the server config pass from `outbound.to_client` on their way out. What a
 descriptor hands to the data (a filter, a default, a choice's value) stays as
 written.
 """
@@ -11,7 +11,8 @@ import kitebase.utils
 from kitebase import i18n
 from kitebase.endpoint_menu import get_menu
 from kitebase.endpoint_panels import get_page
-from kitebase.i18n import register_translations, translate_labels
+from kitebase.i18n import register_translations
+from kitebase.outbound import to_client
 from kitebase.pages import command_label
 from kitebase.plugins import PluginsManager
 
@@ -58,14 +59,14 @@ def patch_app(monkeypatch):
 def test_labels_titles_and_placeholders_are_translated(xx):
     tree = {'title': 'Partners', 'content': {'fields': [
         {'name': 'name', 'label': 'Name', 'placeholder': 'Search'}]}}
-    out = translate_labels(tree)
+    out = to_client(tree)
     assert out['title'] == 'Soggetti'
     assert out['content']['fields'][0] == {'name': 'name', 'label': 'Nome', 'placeholder': 'Cerca'}
     assert tree['title'] == 'Partners'  # a copy: the merged YAML stays English
 
 
 def test_a_choice_is_translated_only_with_a_value(xx):
-    out = translate_labels({'choices': [{'value': 'organization', 'label': 'Organization'},
+    out = to_client({'choices': [{'value': 'organization', 'label': 'Organization'},
                                         {'label': 'Organization'}]})
     assert out['choices'] == [{'value': 'organization', 'label': 'Organizzazione'},
                               {'label': 'Organization'}]
@@ -75,15 +76,15 @@ def test_what_goes_to_the_data_stays_as_written(xx):
     tree = {'source': {'model': 'Book', 'query': {'filters': [['title', '=', 'Name']]}},
             'domain': {'label': 'Name'}, 'defaults': {'title': 'Name'},
             'params': {'label': 'Name'}, 'values': {'title': 'Name'}}
-    assert translate_labels(tree) == tree
+    assert to_client(tree) == tree
 
 
 def test_without_a_translation_the_english_stays(xx):
-    assert translate_labels({'label': 'Untranslated'}) == {'label': 'Untranslated'}
+    assert to_client({'label': 'Untranslated'}) == {'label': 'Untranslated'}
 
 
 def test_english_is_the_key():
-    assert translate_labels({'label': 'Name'}) == {'label': 'Name'}
+    assert to_client({'label': 'Name'}) == {'label': 'Name'}
 
 
 def test_command_label_spells_the_id():

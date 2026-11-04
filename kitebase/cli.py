@@ -112,7 +112,7 @@ def dump_page(app: Any, page_id: str, auto: bool = False, raw: bool = False) -> 
 # Column attributes exposed in the dump (superset of what get_table_schema sends
 # to the client — here we want the full developer view).
 _COL_ATTRS = (
-    'type', 'label', 'help',
+    'type', 'label', 'help', 'doc',
     'primary_key', 'autoincrement',
     'nullable', 'unique', 'index', 'default',
     'virtual', 'secret', 'editable',
@@ -150,7 +150,7 @@ def _table_dict(table: Any) -> Dict[str, Any]:
     d: Dict[str, Any] = {'pk_fields': pk_fields}
 
     # Table-level metadata
-    for attr in ('label', 'help', 'tags', 'mixins'):
+    for attr in ('label', 'help', 'doc', 'tags', 'mixins'):
         val = table.attributes.get(attr)
         if val:
             d[attr] = val

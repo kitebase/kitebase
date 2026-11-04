@@ -2,8 +2,8 @@ from typing import Any, Dict
 import kitebase.utils
 from kitebase import access, settings
 from kitebase.endpoints import endpoint
-from kitebase.i18n import translate_labels
-from kitebase.pages import load_page, page_permissions, restrict, restrict_columns, strip_meta
+from kitebase.outbound import to_client
+from kitebase.pages import load_page, page_permissions, restrict, restrict_columns
 # Note: context is set globally via BaseApp.set_context() before each call —
 # endpoint functions receive only (data).
 
@@ -54,4 +54,4 @@ def get_page(data: Dict[str, Any]) -> Dict[str, Any]:
     restrict_columns(app, page)
     settings.resolve_tokens(page)
 
-    return {'status': 'success', 'data': translate_labels(strip_meta(page)), 'code': 200}
+    return {'status': 'success', 'data': to_client(page), 'code': 200}

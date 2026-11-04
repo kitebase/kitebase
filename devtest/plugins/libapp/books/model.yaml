@@ -67,6 +67,9 @@ tables:
 
   Book:
     name: books
+    doc: |
+      One row per title. The library plugin adds the columns it needs to lend
+      and show a book (status, cover, sample) to this same table.
     tags: [anag]
     mixins: [Archivable]
     columns:

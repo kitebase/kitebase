@@ -31,9 +31,9 @@ BUTTON = 'button'
 def strip_meta(obj: Any) -> Any:
     """Remove $plugin metadata keys and non-JSON-serializable objects.
 
-    The last step before a descriptor leaves for a consumer — the client, or the
-    CLI dump. Everything that reads a descriptor as data runs it, so what one sees
-    is what the other gets.
+    For a consumer that reads the whole descriptor, like the CLI dump. What goes
+    to the client passes from `kitebase.outbound.to_client` instead, which also
+    translates the labels and drops what is written for whoever develops.
     """
     if isinstance(obj, dict):
         return {k: strip_meta(v) for k, v in obj.items() if k != '$plugin'}

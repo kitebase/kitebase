@@ -732,12 +732,11 @@ def update_context(data):
         return {"status": "error", "message": str(e), "code": 500}
 
 
-def _translated_columns(tables: Dict[str, Any]) -> Dict[str, Any]:
-    for table in tables.values():
-        for col in table.get('columns', []):
-            if isinstance(col.get('label'), str):
-                col['label'] = _(col['label'])
-    return tables
+def _each_to_client(names: Dict[str, Any]) -> Dict[str, Any]:
+    """A map of names with each value through the outbound gate: the names are
+    data (a type or a field may be called `doc`), what they name is a descriptor."""
+    from kitebase.outbound import to_client
+    return {name: to_client(value) for name, value in names.items()}
 
 
 @endpoint('get_server_config', access=access.AUTHENTICATED)
@@ -783,10 +782,11 @@ def get_server_config(data: Dict[str, Any]) -> Dict[str, Any]:
                     'locale': app.pm.config.get('locale', 'en'),
                     'app_title': app.pm.config.get('title'),
                 },
-                'types': app.get_type_schema(include_builtin),
+                'types': _each_to_client(app.get_type_schema(include_builtin)),
                 # The column labels name the fields in filters and pickers.
-                'tables': _translated_columns(app.get_table_schema()),
-                'schemas': app.get_schema_registry(),
+                'tables': _each_to_client(app.get_table_schema()),
+                'schemas': {schema_id: _each_to_client(fields)
+                            for schema_id, fields in app.get_schema_registry().items()},
             },
             'code': 200,
         }

@@ -29,10 +29,10 @@ tables:
         length: 50
         unique: false
 
-      # Uploaded before the book is saved too: book files lay out by date.
       - name: cover
         type: Image
         root: books
+        doc: Uploaded before the book is saved too, so book files lay out by date.
 
       - name: sample
         type: File

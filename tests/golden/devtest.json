@@ -808,6 +808,7 @@
   },
   "Book": {
    "name": "books",
+   "doc": "One row per title. The library plugin adds the columns it needs to lend\nand show a book (status, cover, sample) to this same table.\n",
    "tags": [
     "anag"
    ],
@@ -895,6 +896,7 @@
      "name": "cover",
      "type": "Image",
      "root": "books",
+     "doc": "Uploaded before the book is saved too, so book files lay out by date.",
      "$plugin": "library"
     },
     {

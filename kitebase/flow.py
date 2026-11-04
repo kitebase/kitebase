@@ -223,15 +223,13 @@ def form_view(view_id: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     A form view of the plugins as the client shows it (references resolved,
     metadata out, labels translated), and its first values from `default`.
     """
-    import copy
-    from kitebase.i18n import translate_labels
-    from kitebase.pages import strip_meta
+    from kitebase.outbound import to_client
 
     app = kitebase.utils.get_app()
     view = app.pm.get(f'views.{view_id}')
     if view is None:
         raise ValueError(f"The form view '{view_id}' does not exist")
-    view = translate_labels(strip_meta(copy.deepcopy(app.pm.resolve_refs(view))))
+    view = to_client(app.pm.resolve_refs(view))
     return view, {f['name']: f['default'] for f in _fields(view.get('layout') or [])
                   if 'default' in f}
 

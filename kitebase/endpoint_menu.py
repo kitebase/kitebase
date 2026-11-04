@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Optional
 import kitebase.utils
 from kitebase import access
 from kitebase.endpoints import endpoint
-from kitebase.i18n import translate_labels
+from kitebase.outbound import to_client
 from kitebase.pages import can_open
 
 # Merge metadata (`$plugin`) plus keys consumed server-side (`parent`/`root` drive
@@ -130,9 +130,7 @@ def get_menu(data: Dict[str, Any]) -> Dict[str, Any]:
         groups.add(_effective_parent(app, item))
         if not _passes_access(app, item):
             continue
-        # Translated before the sort, so siblings without an order sort by
-        # the label the user reads.
-        selected[item_id] = translate_labels(app.pm.resolve_refs(item))
+        selected[item_id] = app.pm.resolve_refs(item)
 
     # 4. Build the parent → children map. An item whose effective parent is not a
     #    selected node of this root (missing, self, or belongs elsewhere) attaches
@@ -150,8 +148,10 @@ def get_menu(data: Dict[str, Any]) -> Dict[str, Any]:
             if item_id in _seen:  # cycle guard (a↔b parent loop)
                 continue
             item = selected[item_id]
-            node = {k: v for k, v in item.items()
-                    if k not in _INTERNAL_KEYS and not k.startswith('$')}
+            # Through the gate before the sort, so siblings without an order
+            # sort by the label the user reads.
+            node = to_client({k: v for k, v in item.items()
+                              if k not in _INTERNAL_KEYS and not k.startswith('$')})
             node['id'] = item_id
             kids = build(item_id, _seen | {item_id})
             if kids:
@@ -164,8 +164,8 @@ def get_menu(data: Dict[str, Any]) -> Dict[str, Any]:
 
     tree = build(None, frozenset())
 
-    root_out = translate_labels({k: v for k, v in root_def.items()
-                                 if k not in _INTERNAL_KEYS and k != 'items'})
+    root_out = to_client({k: v for k, v in root_def.items()
+                          if k not in _INTERNAL_KEYS and k != 'items'})
     root_out['id'] = root_id
     root_out['items'] = tree
 
