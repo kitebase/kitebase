@@ -4,7 +4,7 @@
    "base": "Integer",
    "primary_key": true,
    "autoincrement": true,
-   "label": "Unique Identifier",
+   "label": "ID",
    "help": "The primary key for the table\n",
    "$plugin": "common"
   },
@@ -12,7 +12,7 @@
    "base": "String",
    "length": 32,
    "primary_key": true,
-   "label": "Unique Identifier",
+   "label": "ID",
    "help": "The primary key for the table\n",
    "$plugin": "common"
   },
@@ -721,9 +721,30 @@
      "$plugin": "books"
     },
     {
+     "name": "death_date",
+     "type": "Date",
+     "nullable": true,
+     "$plugin": "books"
+    },
+    {
      "name": "nationality",
      "type": "String",
      "length": 50,
+     "$plugin": "books"
+    },
+    {
+     "name": "wikidata",
+     "type": "String",
+     "length": 20,
+     "nullable": true,
+     "label": "Wikidata",
+     "$plugin": "books"
+    },
+    {
+     "name": "bio",
+     "type": "Text",
+     "nullable": true,
+     "label": "Biography",
      "$plugin": "books"
     },
     {
@@ -825,6 +846,19 @@
      "name": "title",
      "type": "Description",
      "index": true,
+     "$plugin": "books"
+    },
+    {
+     "name": "original_title",
+     "type": "Description",
+     "nullable": true,
+     "$plugin": "books"
+    },
+    {
+     "name": "first_published",
+     "type": "Integer",
+     "nullable": true,
+     "label": "First published",
      "$plugin": "books"
     },
     {
@@ -2199,6 +2233,25 @@
    },
    "$plugin": "wizards"
   },
+  "author_list": {
+   "$auto": true,
+   "content": {
+    "navigator": {
+     "commands": [
+      {
+       "id": "fetch_bio",
+       "label": "Fetch biography",
+       "scope": "row",
+       "endpoint": "author_fetch_bio",
+       "$plugin": "books"
+      }
+     ],
+     "$plugin": "books"
+    },
+    "$plugin": "books"
+   },
+   "$plugin": "books"
+  },
   "loan_stats": {
    "title": "Loan statistics",
    "access": "library.loan_stats",
@@ -3187,6 +3240,13 @@
       "scope": "global",
       "key": "a",
       "endpoint": "archivable",
+      "$plugin": "panels"
+     },
+     {
+      "id": "fetch_description",
+      "label": "Fetch description",
+      "scope": "row",
+      "endpoint": "book_fetch_description",
       "$plugin": "panels"
      }
     ],

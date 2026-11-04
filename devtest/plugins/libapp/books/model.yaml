@@ -21,9 +21,26 @@ tables:
         type: Date
         nullable: true
 
+      - name: death_date
+        type: Date
+        nullable: true
+
       - name: nationality
         type: String
         length: 50
+
+      # The author's item on Wikidata (Q154756): the key the biography and the
+      # dates are looked up by, since a name is no key.
+      - name: wikidata
+        type: String
+        length: 20
+        nullable: true
+        label: Wikidata
+
+      - name: bio
+        type: Text
+        nullable: true
+        label: Biography
 
       - name: full_name
         type: String
@@ -79,6 +96,17 @@ tables:
       - name: title
         type: Description
         index: True
+
+      # The work's title when this edition is a translation, or carries another.
+      - name: original_title
+        type: Description
+        nullable: true
+
+      # The year of the work, not of this edition (publication_date).
+      - name: first_published
+        type: Integer
+        nullable: true
+        label: First published
 
       - name: isbn
         type: String

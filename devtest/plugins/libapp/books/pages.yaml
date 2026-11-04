@@ -1,0 +1,13 @@
+pages:
+
+  # The generated list of the authors, with one command on top of it: the
+  # biography from Wikipedia, through the author's Wikidata id (lookup.py).
+  author_list:
+    $auto: true
+    content:
+      navigator:
+        commands:
+          - id: fetch_bio
+            label: Fetch biography
+            scope: row
+            endpoint: author_fetch_bio

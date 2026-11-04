@@ -38,8 +38,8 @@ with what each is meant to see, and the login page says whom to try.
 | `librarian` | Librarian | cataloguer and loans desk together, plus the reviews and the Playground demos |
 | `stats` | Statistics | Loan statistics, by book and by month; the loan list answers 403, it shows the members' names; no Playground group |
 
-A database made before them gets them with `devtest.seed_staff`; a new one has
-them from the seed. `kitebase check` lists what the roles leave uncovered.
+The seed adds the ones a database lacks on the next start.
+`kitebase check` lists what the roles leave uncovered.
 
 ## Running it
 
@@ -56,6 +56,22 @@ regenerates `model.py` from the YAML schema and fills an empty
 `devtest.sqlite` with the sample data, so the tests and the two servers always
 run the same application. Run on its own, it also prints the merged panels and
 a few queries.
+
+## The sample data
+
+`seed.py` fills the database in steps, each while its tables are empty: the
+users, the catalogue of `sample_data/` (some 840 books, 720 authors, 480
+publishers), forty invented members, loans and reviews over the last six months,
+two purchase orders and a receipt. The movements are dated back from today with
+a fixed random seed, so a rebuilt database is always fresh and always alike.
+To rebuild it:
+
+```bash
+rm devtest.sqlite && uv run devtest.py
+```
+
+The catalogue is real, from Open Library and Wikidata; how it is made again is
+in [sample_data/README.md](sample_data/README.md).
 
 It carries the library commands as well (`cli: devtest.py` in `config.yaml`):
 

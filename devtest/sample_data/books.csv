@@ -1,451 +1,844 @@
-id,title,isbn,publication_date,price,language,pages,publisher_id,description,tags,authors
-1,1984,978-0451524935,1949-06-08,12.99,en,328,1,Dystopian masterpiece about totalitarianism and surveillance.,fiction dystopian classic,1
-2,Pride and Prejudice,978-0141439518,1813-01-28,9.99,en,432,1,Elizabeth Bennet navigates love and society in Regency England.,fiction romance classic,2
-3,To Kill a Mockingbird,978-0061120084,1960-07-11,14.99,en,324,2,Scout Finch witnesses racial injustice in Depression-era Alabama.,fiction classic southern-gothic,78
-4,The Great Gatsby,978-0743273565,1925-04-10,11.99,en,180,3,Jay Gatsby pursues the American Dream in the Jazz Age.,fiction classic literary,5
-5,Harry Potter and the Philosopher's Stone,978-0747532699,1997-06-26,15.99,en,223,4,Young wizard discovers his magical heritage at Hogwarts School.,fantasy young-adult adventure,61
-6,The Lord of the Rings,978-0618640157,1954-07-29,24.99,en,1178,5,Epic quest to destroy the One Ring and save Middle-earth.,fantasy epic-fantasy adventure,62
-7,Animal Farm,978-0452284244,1945-08-17,10.99,en,112,1,Satirical allegory of Soviet totalitarianism through farm animals.,fiction political-satire classic,1
-8,Brave New World,978-0060850524,1932-01-01,13.99,en,268,6,Dystopian vision of a genetically engineered society.,fiction dystopian science-fiction,70
-9,The Catcher in the Rye,978-0316769488,1951-07-16,12.99,en,277,7,Holden Caulfield's alienated journey through New York City.,fiction coming-of-age classic,181
-10,The Hobbit,978-0547928227,1937-09-21,14.99,en,310,5,Bilbo Baggins' unexpected adventure with dwarves and a dragon.,fantasy adventure classic,62
-11,The Shadow of the Wind,978-0143034902,2001-04-15,16.99,en,487,8,A young boy discovers a mysterious book that changes his life in post-war Barcelona.,fiction mystery historical,48
-12,Dune,978-0441172719,1965-06-01,18.99,en,688,9,Paul Atreides must navigate desert politics and prophecy on planet Arrakis.,science-fiction space-opera adventure,182
-13,Foundation,978-0553293357,1951-05-01,15.99,en,255,10,Psychohistorian Hari Seldon predicts the fall of the Galactic Empire.,science-fiction hard-sf classic,72
-14,Neuromancer,978-0441569595,1984-07-01,14.99,en,271,11,Console cowboy Case enters cyberspace for one last job.,science-fiction cyberpunk noir,171
-15,The Name of the Rose,978-0156001311,1980-09-01,17.99,en,536,12,Franciscan friar investigates mysterious deaths in a medieval monastery.,mystery historical literary,24
-16,One Hundred Years of Solitude,978-0060883287,1967-05-30,16.99,en,417,13,The Buendía family saga spans generations in magical Macondo.,fiction magical-realism literary,8
-17,The Handmaid's Tale,978-0385490818,1985-06-01,14.99,en,311,14,Offred survives in a totalitarian theocracy where women are enslaved.,fiction dystopian feminist,11
-18,The Road,978-0307387899,2006-09-26,15.99,en,287,15,A father and son journey through post-apocalyptic America.,fiction post-apocalyptic literary,17
-19,American Gods,978-0380789030,2001-06-19,17.99,en,635,16,Ex-convict Shadow Moon discovers old gods living in modern America.,fantasy urban-fantasy mythology,183
-20,Good Omens,978-0060853983,1990-05-01,16.99,en,432,17,An angel and demon team up to prevent the apocalypse.,fantasy comedy paranormal,183 184
-21,The Silence of the Lambs,978-0312924584,1988-06-01,14.99,en,338,18,FBI trainee Clarice Starling seeks help from imprisoned cannibal Hannibal Lecter.,thriller crime horror,185
-22,Gone Girl,978-0307588371,2012-06-05,15.99,en,415,19,Amy Dunne disappears on her fifth wedding anniversary.,thriller mystery psychological,186
-23,The Girl with the Dragon Tattoo,978-0307454546,2005-08-01,16.99,en,465,20,Journalist and hacker investigate a decades-old disappearance.,mystery thriller crime,187
-24,The Shining,978-0307743657,1977-01-28,14.99,en,447,21,Jack Torrance descends into madness at the isolated Overlook Hotel.,horror psychological supernatural,188
-25,It,978-0451169518,1986-09-15,19.99,en,1138,21,Seven children confront an ancient evil in the town of Derry.,horror supernatural coming-of-age,188
-26,Dracula,978-0486411095,1897-05-26,10.99,en,418,22,Count Dracula leaves Transylvania for England seeking new blood.,horror gothic classic,189
-27,Frankenstein,978-0486282114,1818-01-01,9.99,en,280,22,Victor Frankenstein creates life with horrifying consequences.,horror gothic science-fiction classic,190
-28,Wuthering Heights,978-0141439556,1847-12-01,11.99,en,416,1,Heathcliff and Catherine's destructive love spans two generations.,fiction romance gothic classic,191
-29,Jane Eyre,978-0141441146,1847-10-16,12.99,en,507,1,Orphaned Jane becomes governess at Thornfield Hall.,fiction romance gothic classic,192
-30,Moby-Dick,978-0142437247,1851-10-18,13.99,en,635,23,Captain Ahab obsessively pursues the white whale.,fiction adventure classic,193
-31,Catch-22,978-1451626650,1961-11-10,15.99,en,453,24,Bombardier Yossarian struggles with military absurdity in World War II.,fiction satire war classic,194
-32,Slaughterhouse-Five,978-0385333849,1969-03-31,14.99,en,275,25,Billy Pilgrim becomes unstuck in time during World War II.,fiction science-fiction war postmodern,76
-33,The Hitchhiker's Guide to the Galaxy,978-0345391803,1979-10-12,13.99,en,224,26,Arthur Dent survives Earth's destruction with alien friend Ford Prefect.,science-fiction comedy space-opera,195
-34,Ender's Game,978-0812550702,1985-01-15,15.99,en,324,27,Child genius Ender Wiggin trains to fight an alien invasion.,science-fiction military-sf young-adult,196
-35,The Left Hand of Darkness,978-0441478125,1969-03-01,14.99,en,304,11,Diplomat Genly Ai navigates gender politics on planet Gethen.,science-fiction literary anthropological,75
-36,A Game of Thrones,978-0553103540,1996-08-01,19.99,en,694,28,Noble families vie for control of the Iron Throne.,fantasy epic-fantasy political,197
-37,The Eye of the World,978-0812511819,1990-01-15,17.99,en,782,29,Farm boy Rand al'Thor discovers he's part of an ancient prophecy.,fantasy epic-fantasy adventure,198
-38,The Way of Kings,978-0765326355,2010-08-31,21.99,en,1007,30,Knights Radiant return as the world faces Desolation.,fantasy epic-fantasy military,199
-39,Mistborn: The Final Empire,978-0765311788,2006-07-17,16.99,en,541,30,Street urchin Vin learns she's a powerful Mistborn allomancer.,fantasy epic-fantasy heist,199
-40,The Name of the Wind,978-0756404741,2007-03-27,17.99,en,662,31,Kvothe recounts his journey from innkeeper to legendary wizard.,fantasy literary-fantasy coming-of-age,200
-41,A Wizard of Earthsea,978-0547722023,1968-11-01,13.99,en,183,32,Young wizard Ged must face the shadow he unleashed.,fantasy coming-of-age classic,75
-42,The Princess Bride,978-0156035217,1973-11-01,14.99,en,465,33,True love and high adventure in the tale of Westley and Buttercup.,fantasy romance comedy adventure,201
-43,The Once and Future King,978-0441627400,1958-01-01,16.99,en,639,34,Arthur's rise from boy to legendary king of Britain.,fantasy arthurian classic,202
-44,Jonathan Strange & Mr Norrell,978-0765356154,2004-09-08,19.99,en,1006,35,Two magicians restore English magic during the Napoleonic Wars.,fantasy historical literary,203
-45,The Ocean at the End of the Lane,978-0062255655,2013-06-18,14.99,en,178,16,A man returns home and remembers supernatural events from childhood.,fantasy dark-fantasy literary,183
-46,Neverwhere,978-0380789016,1996-09-16,15.99,en,370,16,Richard Mayhew falls through the cracks into magical London Below.,fantasy urban-fantasy adventure,183
-47,The Graveyard Book,978-0060530921,2008-09-30,14.99,en,312,16,Nobody Owens is raised by ghosts in a graveyard.,fantasy young-adult gothic,183
-48,Coraline,978-0380977789,2002-07-02,12.99,en,162,16,Girl discovers alternate world behind a secret door.,fantasy horror young-adult,183
-49,The Chronicles of Narnia: The Lion the Witch and the Wardrobe,978-0064471046,1950-10-16,13.99,en,206,5,Four children enter magical Narnia through a wardrobe.,fantasy young-adult classic adventure,63
-50,A Wrinkle in Time,978-0312367541,1962-01-01,12.99,en,211,4,Meg Murry travels through space and time to rescue her father.,science-fiction young-adult adventure,204
-51,The Giver,978-0544336261,1993-04-26,11.99,en,179,8,Jonas discovers the dark truth behind his seemingly perfect community.,science-fiction dystopian young-adult,205
-52,Fahrenheit 451,978-1451673319,1953-10-19,13.99,en,249,24,Fireman Guy Montag burns books in a future where reading is forbidden.,science-fiction dystopian classic,71
-53,The Hunger Games,978-0439023481,2008-09-14,15.99,en,374,9,Katniss Everdeen volunteers for a televised fight to the death.,science-fiction dystopian young-adult,180
-54,Divergent,978-0062024039,2011-04-25,14.99,en,487,10,Tris Prior must hide her Divergent nature in faction-based Chicago.,science-fiction dystopian young-adult,206
-55,The Maze Runner,978-0385737951,2009-10-06,14.99,en,375,11,Thomas wakes in a maze with no memory of his past.,science-fiction dystopian young-adult,207
-56,Ready Player One,978-0307887436,2011-08-16,16.99,en,374,12,Wade Watts hunts for Easter egg in massive virtual reality game.,science-fiction cyberpunk adventure,179
-57,Snow Crash,978-0553380958,1992-06-01,15.99,en,440,13,Hacker Hero Protagonist uncovers a mind virus in the Metaverse.,science-fiction cyberpunk thriller,172
-58,The Martian,978-0553418026,2011-09-27,16.99,en,369,14,Astronaut Mark Watney must survive alone on Mars.,science-fiction hard-sf survival,176
-59,Project Hail Mary,978-0593135204,2021-05-04,18.99,en,476,15,Ryland Grace wakes on a spaceship with no memory of his mission.,science-fiction hard-sf space-opera,176
-60,The Three-Body Problem,978-0765382030,2008-05-01,17.99,en,399,17,Scientist Ye Wenjie makes contact with alien Trisolaran civilization.,science-fiction hard-sf first-contact,208
-61,Children of Time,978-0316452502,2015-06-04,16.99,en,600,18,Uplifted spiders and last humans compete for habitable world.,science-fiction space-opera evolution,209
-62,The Expanse: Leviathan Wakes,978-0316129084,2011-06-02,17.99,en,561,19,Detective and ship captain uncover conspiracy in colonized solar system.,science-fiction space-opera mystery,210
-63,Hyperion,978-0553283686,1989-05-26,16.99,en,482,20,Seven pilgrims journey to meet the Shrike on planet Hyperion.,science-fiction space-opera literary,211
-64,The Stars My Destination,978-0679767800,1956-01-01,14.99,en,236,21,Gully Foyle seeks revenge in a future where teleportation is common.,science-fiction space-opera classic,212
-65,Do Androids Dream of Electric Sheep?,978-0345404473,1968-01-01,13.99,en,210,22,Bounty hunter Rick Deckard must retire six escaped androids.,science-fiction cyberpunk philosophical classic,74
-66,I Robot,978-0553382563,1950-12-02,12.99,en,224,23,Nine stories explore the Three Laws of Robotics.,science-fiction robot-fiction classic,72
-67,The Time Machine,978-0486284729,1895-05-07,9.99,en,118,22,Time Traveler journeys to year 802701 and beyond.,science-fiction time-travel classic,213
-68,The War of the Worlds,978-0486295060,1898-01-01,10.99,en,192,22,Martians invade Victorian England with devastating heat-rays.,science-fiction alien-invasion classic,213
-69,Twenty Thousand Leagues Under the Sea,978-0486440682,1870-01-01,11.99,en,335,24,Professor Aronnax becomes captive on Captain Nemo's submarine.,science-fiction adventure classic,38
-70,Journey to the Center of the Earth,978-0486440880,1864-11-25,10.99,en,183,24,Professor Lidenbrock descends into an Icelandic volcano.,science-fiction adventure classic,38
-71,The Count of Monte Cristo,978-0140449266,1844-08-28,16.99,en,1276,25,Edmond Dantès escapes prison to exact elaborate revenge.,fiction adventure classic,37
-72,The Three Musketeers,978-0140440089,1844-03-01,14.99,en,625,25,D'Artagnan joins three legendary musketeers in 17th century France.,fiction adventure historical classic,37
-73,Les Misérables,978-0451419439,1862-04-03,19.99,en,1463,26,Jean Valjean seeks redemption in post-revolutionary France.,fiction historical classic,36
-74,Crime and Punishment,978-0486415871,1866-01-01,12.99,en,430,27,Raskolnikov commits murder to test his theory of the extraordinary man.,fiction philosophical crime classic,52
-75,The Brothers Karamazov,978-0374528379,1880-01-01,18.99,en,796,28,Three brothers struggle with faith morality and patricide.,fiction philosophical classic,52
-76,War and Peace,978-0307266934,1869-01-01,21.99,en,1296,29,Russian aristocracy during Napoleonic invasion.,fiction historical epic classic,51
-77,Anna Karenina,978-0143035008,1877-01-01,17.99,en,864,30,Anna's affair with Count Vronsky leads to tragedy.,fiction romance classic,51
-78,The Picture of Dorian Gray,978-0486278070,1890-07-01,10.99,en,254,22,Dorian Gray's portrait ages while he remains young.,fiction gothic philosophical classic,214
-79,The Strange Case of Dr Jekyll and Mr Hyde,978-0486266886,1886-01-05,8.99,en,96,22,Dr. Jekyll's experiments unleash his dark alter ego.,horror gothic classic,215
-80,The Turn of the Screw,978-0486266848,1898-01-01,9.99,en,96,22,Governess believes ghosts haunt her young charges.,horror gothic psychological classic,85
-81,The Metamorphosis,978-0486290300,1915-01-01,9.99,en,72,31,Gregor Samsa wakes transformed into a giant insect.,fiction absurdist classic,7
-82,The Trial,978-0805209990,1925-01-01,13.99,en,255,32,Josef K is arrested and prosecuted by unknown authority.,fiction absurdist philosophical classic,7
-83,The Stranger,978-0679720201,1942-01-01,12.99,en,123,33,Meursault commits murder and faces existential trial.,fiction existentialist classic,31
-84,Siddhartha,978-0553208849,1922-01-01,11.99,en,152,34,Young Brahmin searches for enlightenment.,fiction philosophical spiritual,41
-86,The Iliad,978-0140275360,,13.99,en,683,1,Achilles' wrath during the Trojan War.,poetry epic classic mythology,216
-87,The Odyssey,978-0140268867,,13.99,en,541,1,Odysseus' ten-year journey home from Troy.,poetry epic classic mythology adventure,216
-88,The Divine Comedy,978-0142437223,1320-01-01,15.99,en,798,2,Dante's journey through Hell Purgatory and Paradise.,poetry epic classic religion,217
-89,Paradise Lost,978-0140424393,1667-01-01,14.99,en,453,3,Satan's rebellion and the fall of man.,poetry epic classic religion,218
-90,Beowulf,978-0393320978,1000-01-01,12.99,en,213,4,Geatish hero battles Grendel and dragon.,poetry epic classic mythology,
-91,The Canterbury Tales,978-0140424386,1400-01-01,14.99,en,504,3,Pilgrims tell stories on journey to Canterbury.,poetry classic medieval,219
-92,Don Quixote,978-0060934347,1605-01-01,17.99,en,1023,5,Delusional knight errant seeks adventure in Spain.,fiction classic satire,46
-93,Hamlet,978-0743477123,1603-01-01,11.99,en,342,6,Prince of Denmark seeks revenge for his father's murder.,drama tragedy classic,220
-94,Macbeth,978-0743477109,1623-01-01,10.99,en,249,6,Scottish general's ambition leads to tyranny and madness.,drama tragedy classic,220
-95,Romeo and Juliet,978-0743477116,1597-01-01,10.99,en,283,6,Star-crossed lovers from feuding families.,drama tragedy romance classic,220
-96,Othello,978-0743477550,1603-01-01,11.99,en,314,6,Moorish general destroyed by jealousy and manipulation.,drama tragedy classic,220
-97,King Lear,978-0743482769,1606-01-01,11.99,en,311,6,Aging king divides kingdom with tragic consequences.,drama tragedy classic,220
-98,A Midsummer Night's Dream,978-0743477543,1600-01-01,10.99,en,142,6,Fairies meddle in lovers' affairs in enchanted forest.,drama comedy fantasy classic,220
-99,The Tempest,978-0743482837,1611-01-01,10.99,en,199,6,Prospero uses magic to reclaim his dukedom.,drama comedy fantasy classic,220
-100,Medea,978-0486275482,,9.99,en,64,7,Sorceress takes terrible revenge on unfaithful husband.,drama tragedy classic mythology,221
-101,Oedipus Rex,978-0486268774,,9.99,en,64,7,King discovers he fulfilled prophecy he tried to avoid.,drama tragedy classic mythology,222
-102,Antigone,978-0486278049,,9.99,en,64,7,Woman defies king to bury her brother.,drama tragedy classic mythology,222
-103,The Republic,978-0872201361,,15.99,en,416,8,Plato's dialogue on justice and the ideal state.,philosophy classic political-theory,223
-104,The Prince,978-0486272740,1532-01-01,9.99,en,96,22,Machiavelli's treatise on political power.,philosophy political-theory classic,224
-105,Leviathan,978-0140431957,1651-01-01,16.99,en,736,1,Hobbes argues for social contract and absolute sovereignty.,philosophy political-theory classic,225
-106,On Liberty,978-0486421308,1859-01-01,10.99,en,128,22,Mill defends individual freedom against state power.,philosophy political-theory classic,226
-107,The Communist Manifesto,978-0486424651,1848-02-21,8.99,en,63,22,Marx and Engels call for workers' revolution.,philosophy political-theory classic,227 228
-108,The Wealth of Nations,978-0553585971,1776-03-09,19.99,en,1152,9,Adam Smith's foundational work on economics.,economics philosophy classic,229
-109,On the Origin of Species,978-0486450063,1859-11-24,13.99,en,502,22,Darwin's theory of evolution by natural selection.,science biology classic,230
-110,A Brief History of Time,978-0553380163,1988-04-01,16.99,en,212,10,Stephen Hawking explains cosmology for general readers.,science physics cosmology,99
-111,The Selfish Gene,978-0199291151,1976-01-01,15.99,en,360,11,Richard Dawkins presents gene-centered view of evolution.,science biology evolution,98
-112,Cosmos,978-0345539434,1980-01-01,18.99,en,365,12,Carl Sagan explores the universe and humanity's place in it.,science astronomy popular-science,100
-113,Sapiens: A Brief History of Humankind,978-0062316097,2011-01-01,19.99,en,443,13,Yuval Noah Harari traces human history from Stone Age to present.,history anthropology popular-science,91
-114,Guns Germs and Steel,978-0393317558,1997-03-01,18.99,en,480,14,Jared Diamond explains why some civilizations dominated others.,history anthropology social-science,92
-115,The History of the Peloponnesian War,978-0140440393,,16.99,en,648,1,Thucydides chronicles the war between Athens and Sparta.,history classic military-history,336
-116,The Histories,978-0140449082,,15.99,en,716,1,Herodotus recounts the Greco-Persian Wars.,history classic ancient-history,337
-117,The Decline and Fall of the Roman Empire,978-0140433937,1776-01-01,24.99,en,1952,1,Gibbon traces Rome's decline from 2nd century to 1453.,history classic roman-history,338
-118,A People's History of the United States,978-0060838652,1980-01-01,19.99,en,729,15,Howard Zinn tells American history from marginalized perspectives.,history social-history political,231
-119,The Diary of a Young Girl,978-0553296983,1947-06-25,12.99,en,283,16,Anne Frank's diary while hiding from Nazis.,biography history wwii classic,151
-120,Night,978-0374500016,1960-01-01,11.99,en,120,17,Elie Wiesel's memoir of surviving the Holocaust.,biography history wwii classic,153
-121,Man's Search for Meaning,978-0807014271,1946-01-01,13.99,en,165,18,Viktor Frankl finds meaning in concentration camp suffering.,psychology philosophy biography,152
-122,The Autobiography of Malcolm X,978-0345350688,1965-01-01,14.99,en,466,19,Malcolm X's journey from street criminal to civil rights leader.,biography history social-justice,232
-123,Long Walk to Freedom,978-0316548182,1994-01-01,17.99,en,656,20,Nelson Mandela's autobiography from childhood to presidency.,biography history politics,120
-124,The Story of My Life,978-0486292496,1903-01-01,9.99,en,441,22,Helen Keller overcomes blindness and deafness.,biography classic inspirational,233
-125,Into the Wild,978-0385486804,1996-01-01,15.99,en,207,21,Christopher McCandless abandons civilization for Alaskan wilderness.,biography adventure non-fiction,107
-126,Into Thin Air,978-0385494786,1997-05-01,16.99,en,332,21,Jon Krakauer survives deadly 1996 Mount Everest disaster.,biography adventure mountaineering,107
-127,Unbroken,978-0812974492,2010-11-16,17.99,en,473,22,Louis Zamperini survives plane crash Japanese POW camp and PTSD.,biography history wwii survival,234
-128,Educated,978-0399590504,2018-02-20,17.99,en,334,23,Tara Westover escapes survivalist family to earn PhD.,biography memoir education,235
-129,Born a Crime,978-0399588174,2016-11-15,16.99,en,304,24,Trevor Noah grows up mixed-race in apartheid South Africa.,biography memoir comedy,236
-130,The Glass Castle,978-0743247542,2005-03-01,15.99,en,288,25,Jeannette Walls' unconventional upbringing with dysfunctional parents.,biography memoir family,237
-131,Wild,978-0307476074,2012-03-20,15.99,en,315,26,Cheryl Strayed hikes Pacific Crest Trail to heal from trauma.,biography memoir adventure,238
-132,Eat Pray Love,978-0143038419,2006-02-16,15.99,en,334,27,Elizabeth Gilbert's journey of self-discovery in Italy India and Indonesia.,biography memoir travel self-help,239
-133,The Immortal Life of Henrietta Lacks,978-1400052189,2010-02-02,16.99,en,381,28,Story of woman whose cancer cells revolutionized medical research.,biography science medical-ethics,104
-134,Just Mercy,978-0812994520,2014-10-21,16.99,en,336,29,Bryan Stevenson fights for wrongly condemned death row prisoners.,biography law social-justice,240
-135,When Breath Becomes Air,978-0812988406,2016-01-12,15.99,en,228,30,Neurosurgeon Paul Kalanithi confronts terminal cancer.,biography memoir medicine philosophy,241
-136,The Subtle Art of Not Giving a F*ck,978-0062457714,2016-09-13,16.99,en,224,31,Mark Manson's counterintuitive approach to living a good life.,self-help philosophy popular-psychology,242
-137,Atomic Habits,978-0735211292,2018-10-16,17.99,en,320,32,James Clear explains how tiny changes create remarkable results.,self-help psychology productivity,132
-138,Thinking Fast and Slow,978-0374533557,2011-10-25,18.99,en,499,33,Daniel Kahneman explores two systems that drive human thinking.,psychology behavioral-economics science,95
-139,The Power of Habit,978-0812981605,2012-02-28,16.99,en,371,34,Charles Duhigg explains the science of habit formation.,psychology self-help business,243
-140,Outliers: The Story of Success,978-0316017923,2008-11-18,16.99,en,309,35,Malcolm Gladwell examines what makes high-achievers successful.,psychology sociology business,94
-141,Blink: The Power of Thinking Without Thinking,978-0316010665,2005-01-11,15.99,en,296,35,Malcolm Gladwell explores the power of snap judgments.,psychology decision-making popular-science,94
-142,The Tipping Point,978-0316346627,2000-01-01,15.99,en,301,35,Malcolm Gladwell analyzes how ideas spread like epidemics.,sociology marketing popular-science,94
-143,Freakonomics,978-0060731335,2005-04-12,16.99,en,336,1,Levitt and Dubner reveal hidden side of everything with economics.,economics sociology popular-science,244
-144,Nudge,978-0143115267,2008-04-08,16.99,en,312,2,Thaler and Sunstein show how choice architecture influences decisions.,behavioral-economics psychology policy,245
-145,Predictably Irrational,978-0061353239,2008-02-19,16.99,en,368,3,Dan Ariely explores hidden forces that shape our decisions.,behavioral-economics psychology popular-science,246
-146,The Black Swan,978-0812973815,2007-04-17,17.99,en,444,4,Nassim Taleb analyzes highly improbable events with massive impact.,economics philosophy risk-management,96
-147,Antifragile,978-0812979688,2012-11-27,18.99,en,519,4,Nassim Taleb explains things that gain from disorder.,philosophy economics risk-management,96
-148,Zero to One,978-0804139298,2014-09-16,16.99,en,224,5,Peter Thiel shares insights on innovation and startups.,business entrepreneurship technology,247
-149,The Lean Startup,978-0307887894,2011-09-13,17.99,en,336,6,Eric Ries presents methodology for developing successful businesses.,business entrepreneurship innovation,248
-150,Good to Great,978-0066620992,2001-10-16,18.99,en,300,7,Jim Collins identifies what separates great companies from good ones.,business leadership management,249
-151,The 7 Habits of Highly Effective People,978-0743269513,1989-08-15,16.99,en,381,8,Stephen Covey's principles for personal effectiveness.,self-help leadership productivity,137
-152,How to Win Friends and Influence People,978-0671027032,1936-10-01,14.99,en,288,9,Dale Carnegie's timeless advice on human relations.,self-help communication business classic,136
-153,The 4-Hour Workweek,978-0307465351,2007-04-24,16.99,en,308,10,Tim Ferriss shows how to escape 9-5 and live anywhere.,self-help business lifestyle,134
-154,Shoe Dog,978-1501135910,2016-04-26,17.99,en,386,11,Phil Knight's memoir of creating Nike.,biography business entrepreneurship,250
-155,Steve Jobs,978-1451648539,2011-10-24,19.99,en,656,12,Walter Isaacson's authorized biography of Apple co-founder.,biography business technology,113
-156,Elon Musk,978-0062301239,2015-05-12,18.99,en,400,13,Ashlee Vance chronicles the life of SpaceX and Tesla founder.,biography business technology,251
-157,The Code Breaker,978-1982115852,2021-03-09,18.99,en,560,14,Walter Isaacson tells story of CRISPR and Jennifer Doudna.,biography science biotechnology,113
-158,Leonardo da Vinci,978-1501139154,2017-10-17,19.99,en,624,12,Walter Isaacson explores genius of Renaissance polymath.,biography history art science,113
-159,The Wright Brothers,978-1476728742,2015-05-05,17.99,en,320,15,David McCullough recounts aviation pioneers' achievement.,biography history technology,110
-160,Alexander Hamilton,978-0143034759,2004-04-01,18.99,en,818,1,Ron Chernow's biography inspired the hit musical.,biography history politics,112
-161,John Adams,978-0743223133,2001-05-22,18.99,en,751,16,David McCullough portrays America's second president.,biography history politics,110
-162,Benjamin Franklin,978-0743258074,2003-07-01,18.99,en,608,17,Walter Isaacson chronicles Franklin's remarkable life.,biography history science politics,113
-163,Churchill: A Life,978-0805023961,1991-10-01,24.99,en,1066,18,Martin Gilbert's single-volume biography of Winston Churchill.,biography history wwii politics,252
-164,Team of Rivals,978-0743270755,2005-10-25,21.99,en,916,19,Doris Kearns Goodwin shows how Lincoln led his cabinet.,biography history politics leadership,111
-165,The Rise of Theodore Roosevelt,978-0375756788,1979-01-01,19.99,en,886,20,Edmund Morris covers TR's life up to presidency.,biography history politics,253
-166,Catherine the Great,978-0679456728,2011-11-01,19.99,en,626,21,Robert Massie's biography of Russia's longest-ruling female leader.,biography history politics,254
-167,Cleopatra: A Life,978-0316001946,2010-11-01,17.99,en,368,22,Stacy Schiff separates myth from reality of Egypt's last pharaoh.,biography history ancient-history,255
-168,The Rape of Nanking,978-0465068364,1997-12-01,16.99,en,290,23,Iris Chang documents the 1937 massacre in China.,history wwii war-crimes,256
-169,The Warmth of Other Suns,978-0679763888,2010-09-07,18.99,en,622,24,Isabel Wilkerson chronicles the Great Migration of Black Americans.,history social-history race,257
-170,The Devil in the White City,978-0375725609,2003-02-11,17.99,en,447,25,Erik Larson interweaves 1893 World's Fair with serial killer's story.,history true-crime architecture,109
-171,Dead Wake,978-0307408860,2015-03-10,17.99,en,430,25,Erik Larson recounts the sinking of the Lusitania.,history wwi maritime,109
-172,In the Garden of Beasts,978-0307408853,2011-05-10,16.99,en,448,25,Erik Larson portrays American ambassador in Nazi Germany.,history wwii biography,109
-173,The Lost City of Z,978-1400078455,2009-02-24,16.99,en,339,26,David Grann searches for explorer who vanished in Amazon.,biography adventure history,115
-174,Killers of the Flower Moon,978-0307742483,2017-04-18,17.99,en,399,27,David Grann investigates murders of Osage Nation members.,true-crime history native-american,115
-175,The Professor and the Madman,978-0060175962,1998-09-01,15.99,en,242,28,Simon Winchester tells story of Oxford English Dictionary's creation.,history biography linguistics,258
-176,The Ghost Map,978-1594482694,2006-10-19,15.99,en,299,29,Steven Johnson recounts 1854 cholera outbreak that changed cities.,history science medicine urban-planning,259
-177,The Innovators,978-1476708690,2014-10-07,19.99,en,542,12,Walter Isaacson chronicles digital revolution's pioneers.,history technology biography,113
-178,Bad Blood,978-1524731656,2018-05-21,17.99,en,339,30,John Carreyrou exposes Theranos fraud.,true-crime business technology,260
-179,Say Nothing,978-0385521314,2019-02-26,17.99,en,464,31,Patrick Radden Keefe investigates murder during the Troubles.,true-crime history political-violence,261
-180,Empire of Pain,978-0385545686,2021-04-13,18.99,en,560,32,Patrick Radden Keefe traces Sackler family and opioid crisis.,true-crime business medical-history,261
-181,I Promessi Sposi,978-8817014632,1827-06-01,14.99,it,720,1,Alessandro Manzoni racconta amore e ingiustizia nella Lombardia del 1600.,fiction historical romance classic,262
-182,Il Nome della Rosa,978-8845292606,1980-09-01,16.99,it,503,2,Frate francescano indaga misteriose morti in abbazia medievale.,mystery historical literary,24
-183,Se questo è un uomo,978-8806181178,1947-01-01,13.99,it,174,3,Primo Levi testimonia orrori di Auschwitz.,biography history wwii classic,26
-184,Il Gattopardo,978-8807880353,1958-11-01,15.99,it,286,4,Principe siciliano osserva il tramonto dell'aristocrazia.,fiction historical literary,263
-185,La Storia,978-8806220068,1974-06-01,17.99,it,651,5,Elsa Morante racconta una famiglia durante la Seconda Guerra Mondiale.,fiction historical literary,264
-186,Il Giardino dei Finzi-Contini,978-8807880612,1962-06-01,14.99,it,229,6,Amicizia e amore in una famiglia ebraica prima della Shoah.,fiction historical romance,265
-187,Cristo si è fermato a Eboli,978-8806220181,1945-01-01,13.99,it,230,7,Carlo Levi descrive esilio in Lucania durante fascismo.,biography history social-commentary,266
-188,Fontamara,978-8804668237,1933-01-01,12.99,it,156,8,Ignazio Silone racconta sofferenze dei cafoni abruzzesi.,fiction social-commentary classic,267
-189,La Coscienza di Zeno,978-8807900242,1923-01-01,14.99,it,437,9,Zeno Cosini analizza la propria vita in chiave psicoanalitica.,fiction psychological modernist,268
-190,Il Fu Mattia Pascal,978-8807900358,1904-01-01,12.99,it,268,10,Uomo approfitta della propria morte presunta per rifarsi una vita.,fiction philosophical classic,269
-191,Uno Nessuno e Centomila,978-8807900549,1926-01-01,13.99,it,218,10,Vitangelo Moscarda scopre di essere diverso per ciascuno.,fiction philosophical modernist,269
-192,Il Deserto dei Tartari,978-8817070843,1940-01-01,14.99,it,212,11,Ufficiale attende invano battaglia nella fortezza Bastiani.,fiction existentialist literary,270
-193,Le Città Invisibili,978-8804668015,1972-11-01,14.99,it,165,12,Marco Polo descrive città immaginarie a Kublai Khan.,fiction fantasy literary postmodern,23
-194,Se una notte d'inverno un viaggiatore,978-8804668022,1979-11-01,15.99,it,254,12,Lettore insegue dieci romanzi incompiuti.,fiction metafiction postmodern,23
-195,Il Barone Rampante,978-8804668091,1957-06-01,13.99,it,277,12,Nobile bambino sale su un albero e non scende più.,fiction fantasy philosophical,23
-196,Il Visconte Dimezzato,978-8804668107,1952-01-01,12.99,it,122,12,Visconte tagliato a metà da palla di cannone.,fiction fantasy philosophical,23
-197,Il Cavaliere Inesistente,978-8804668114,1959-01-01,12.99,it,138,12,Armatura vuota combatte nelle guerre di Carlomagno.,fiction fantasy philosophical,23
-198,La Giornata d'uno Scrutatore,978-8804668121,1963-01-01,11.99,it,82,12,Intellettuale comunista fa lo scrutatore in manicomio.,fiction political philosophical,23
-199,Il Sentiero dei Nidi di Ragno,978-8804668138,1947-01-01,12.99,it,186,12,Bambino vive resistenza partigiana in Liguria.,fiction war coming-of-age,23
-200,La Luna e i Falò,978-8806220495,1950-04-01,13.99,it,174,13,Emigrato torna nelle Langhe dopo la guerra.,fiction literary post-war,30
-201,Paesi Tuoi,978-8806220501,1941-01-01,11.99,it,122,13,Storia violenta nelle campagne piemontesi.,fiction neorealism,30
-202,La Casa in Collina,978-8806220518,1948-09-01,13.99,it,202,13,Intellettuale fugge dalla guerra civile torinese.,fiction war literary,30
-203,L'Amica Geniale,978-8866320319,2011-10-31,16.99,it,331,14,Amicizia tra due donne nel rione napoletano.,fiction literary coming-of-age,25
-204,Storia del Nuovo Cognome,978-8866321989,2012-11-01,17.99,it,471,14,Elena e Lila negli anni sessanta tra matrimonio e trasformazione.,fiction literary social,25
-205,Storia di Chi Fugge e di Chi Resta,978-8866323419,2013-11-01,17.99,it,415,14,Elena studia a Pisa mentre Lila resta nel rione.,fiction literary feminist,25
-206,Storia della Bambina Perduta,978-8866324805,2014-11-01,18.99,it,470,14,Maturità e vecchiaia di Elena e Lila.,fiction literary feminist,25
-207,Gomorra,978-8804560807,2006-03-01,15.99,it,331,15,Roberto Saviano svela il sistema camorristico.,non-fiction true-crime social-commentary,271
-208,La Solitudine dei Numeri Primi,978-8804571773,2008-01-01,15.99,it,304,16,Due anime ferite si cercano per tutta la vita.,fiction literary coming-of-age,272
-209,Io Non Ho Paura,978-8807880711,2001-01-01,14.99,it,211,17,Bambino scopre terribile segreto nel grano del Sud.,fiction thriller coming-of-age,273
-210,Come Dio Comanda,978-8807880728,2006-01-01,15.99,it,378,17,Padre e figlio nella provincia italiana violenta.,fiction literary social,273
-211,Tre Metri Sopra il Cielo,978-8817070256,1992-01-01,13.99,it,394,11,Storia d'amore adolescenziale a Roma.,romance young-adult,274
-212,Il Codice da Vinci,978-8804559344,2003-03-01,16.99,it,512,15,Simbologista indaga omicidio al Louvre.,thriller mystery historical,275
-213,Le Avventure di Pinocchio,978-8811685296,1883-01-01,11.99,it,159,18,Burattino di legno vuole diventare bambino vero.,fantasy young-adult classic,276
-214,Cuore,978-8811689812,1886-10-01,10.99,it,278,18,Diario scolastico di bambino torinese.,fiction young-adult classic,277
-215,Il Piccolo Principe,978-8845292613,1943-04-06,12.99,it,96,2,Principino viaggia tra pianeti cercando senso della vita.,fiction fantasy philosophical classic,278
-216,La Metamorfosi,978-8807900594,1915-01-01,10.99,it,80,9,Gregor Samsa si sveglia trasformato in insetto.,fiction absurdist classic,7
-217,Il Processo,978-8807900600,1925-01-01,14.99,it,280,9,Josef K è arrestato senza sapere perché.,fiction absurdist philosophical classic,7
-218,Le Città Invisibili,978-8804668015,1972-11-01,14.99,it,165,12,Marco Polo descrive città fantastiche.,fiction literary postmodern,23
-219,Cent'Anni di Solitudine,978-8807880919,1967-05-30,17.99,it,430,19,Saga della famiglia Buendía a Macondo.,fiction magical-realism literary,8
-220,L'Amore ai Tempi del Colera,978-8807880926,1985-01-01,16.99,it,428,19,Storia d'amore che dura cinquant'anni.,romance literary magical-realism,8
-221,La Fattoria degli Animali,978-8804668237,1945-08-17,11.99,it,122,8,Animali si ribellano contro il fattore.,fiction political-satire classic,1
-222,1984,978-8804668244,1949-06-08,13.99,it,340,8,Stato totalitario controlla ogni aspetto della vita.,fiction dystopian classic,1
-223,Il Signore degli Anelli,978-8845292620,1954-07-29,26.99,it,1255,2,Frodo deve distruggere Anello del Potere.,fantasy epic-fantasy adventure classic,62
-224,Harry Potter e la Pietra Filosofale,978-8831003384,1997-06-26,16.99,it,302,20,Ragazzino scopre di essere mago.,fantasy young-adult adventure,61
-225,Le Cronache di Narnia,978-8804668251,1950-10-16,24.99,it,767,8,Bambini entrano in mondo magico attraverso armadio.,fantasy young-adult adventure classic,63
-226,Lo Hobbit,978-8845292637,1937-09-21,15.99,it,323,2,Bilbo Baggins parte per avventura con nani.,fantasy adventure classic,62
-227,La Storia Infinita,978-8830100916,1979-09-01,16.99,it,505,21,Bastian legge libro magico e diventa parte della storia.,fantasy young-adult metafiction,279
-228,Momo,978-8830100923,1973-01-01,14.99,it,267,21,Bambina combatte ladri di tempo.,fantasy young-adult philosophical,279
-229,Il Conte di Montecristo,978-8811363637,1844-08-28,18.99,it,1312,18,Edmond Dantès si vendica dopo ingiusta prigionia.,fiction adventure classic,37
-230,I Tre Moschettieri,978-8811363644,1844-03-01,15.99,it,645,18,D'Artagnan si unisce ai tre moschettieri.,fiction adventure historical classic,37
-231,I Miserabili,978-8811363651,1862-04-03,21.99,it,1506,18,Jean Valjean cerca redenzione nella Francia post-rivoluzionaria.,fiction historical classic,36
-232,Delitto e Castigo,978-8807902611,1866-01-01,14.99,it,560,9,Raskolnikov uccide per provare teoria sull'uomo straordinario.,fiction philosophical crime classic,52
-233,I Fratelli Karamazov,978-8807902628,1880-01-01,19.99,it,823,9,Tre fratelli si confrontano con fede morale e parricidio.,fiction philosophical classic,52
-234,Guerra e Pace,978-8806220082,1869-01-01,23.99,it,1337,3,Aristocrazia russa durante invasione napoleonica.,fiction historical epic classic,51
-235,Anna Karenina,978-8806220099,1877-01-01,18.99,it,891,3,Storia di adulterio e tragedia nell'alta società russa.,fiction romance classic,51
-236,Don Chisciotte,978-8806220105,1605-01-01,18.99,it,1056,3,Hidalgo impazzito si crede cavaliere errante.,fiction classic satire,46
-237,La Divina Commedia,978-8807902635,1320-01-01,16.99,it,798,9,Dante viaggia attraverso Inferno Purgatorio e Paradiso.,poetry epic classic religion,217
-238,Le Petit Prince,978-2070408504,1943-04-06,12.99,fr,96,22,Petit prince voyage entre planètes cherchant sens de la vie.,fiction fantasy philosophical classic,278
-239,L'Étranger,978-2070360024,1942-01-01,11.99,fr,186,23,Meursault commet meurtre et fait face à procès existentiel.,fiction existentialist classic,31
-240,La Peste,978-2070360147,1947-06-01,14.99,fr,279,23,Épidémie de peste à Oran révèle nature humaine.,fiction existentialist philosophical,31
-241,Les Misérables,978-2253096344,1862-04-03,21.99,fr,1632,24,Jean Valjean cherche rédemption dans France post-révolutionnaire.,fiction historical classic,36
-242,Le Comte de Monte-Cristo,978-2253098508,1844-08-28,19.99,fr,1344,24,Edmond Dantès s'évade pour se venger.,fiction adventure classic,37
-243,Les Trois Mousquetaires,978-2253098515,1844-03-01,16.99,fr,704,24,D'Artagnan rejoint trois mousquetaires.,fiction adventure historical classic,37
-244,Madame Bovary,978-2253183877,1856-12-01,13.99,fr,417,24,Emma Bovary cherche romance au-delà de mariage ennuyeux.,fiction literary classic,35
-245,Germinal,978-2253004226,1885-03-01,15.99,fr,591,24,Mineurs luttent contre exploitation au 19ème siècle.,fiction social-commentary classic,39
-246,Le Rouge et le Noir,978-2253098522,1830-11-01,14.99,fr,746,24,Julien Sorel tente ascension sociale dans France de Restauration.,fiction literary classic,280
-247,À la Recherche du Temps Perdu,978-2070108169,1913-11-14,24.99,fr,2408,23,Marcel explore mémoire temps et société à travers madeleine.,fiction literary modernist classic,34
-248,Candide,978-2253003854,1759-01-01,10.99,fr,156,24,Candide voyage à travers monde cruel mais garde optimisme.,fiction satire philosophical classic,281
-249,Le Père Goriot,978-2253085416,1835-03-01,13.99,fr,368,24,Père se sacrifie pour filles ingrates dans Paris de 1819.,fiction literary classic,40
-250,Bel-Ami,978-2253004332,1885-06-01,13.99,fr,416,24,Georges Duroy séduit femmes pour grimper échelle sociale.,fiction literary social-commentary,282
-251,Notre-Dame de Paris,978-2253002840,1831-03-16,15.99,fr,698,24,Quasimodo aime bohémienne Esmeralda dans Paris médiéval.,fiction historical romance classic,36
-252,Le Horla,978-2253006343,1887-05-26,10.99,fr,96,24,Homme est hanté par présence invisible.,horror psychological classic,282
-253,Rhinocéros,978-2070368778,1959-01-01,12.99,fr,246,23,Habitants se transforment en rhinocéros un par un.,drama absurdist satire,283
-254,Huis Clos,978-2070360031,1944-05-27,11.99,fr,109,23,Trois personnages enfermés dans pièce découvrent que l'enfer c'est les autres.,drama existentialist philosophical,32
-255,Der Prozess,978-3596900732,1925-01-01,13.99,de,282,25,Josef K wird verhaftet ohne zu wissen warum.,fiction absurdist philosophical classic,7
-256,Die Verwandlung,978-3596900749,1915-01-01,10.99,de,74,25,Gregor Samsa erwacht als riesiges Insekt.,fiction absurdist classic,7
-257,Faust,978-3150000014,1808-01-01,12.99,de,364,26,Gelehrter Faust verkauft Seele an Teufel.,drama tragedy classic philosophy,284
-258,Der Steppenwolf,978-3518368015,1927-01-01,14.99,de,288,27,Harry Haller kämpft zwischen bürgerlicher und künstlerischer Existenz.,fiction philosophical modernist,41
-259,Siddhartha,978-3518368022,1922-01-01,11.99,de,136,27,Junger Brahmane sucht Erleuchtung.,fiction philosophical spiritual,41
-260,Das Parfum,978-3257228007,1985-03-01,15.99,de,320,28,Mörder mit übernatürlichem Geruchssinn kreiert ultimatives Parfüm.,fiction historical crime,45
-261,Die Blechtrommel,978-3423115827,1959-01-01,16.99,de,736,29,Oskar weigert sich zu wachsen während Nazi-Zeit.,fiction magical-realism historical,43
-262,Im Westen Nichts Neues,978-3462041699,1929-01-29,13.99,de,288,30,Junge Soldaten erleben Schrecken des Ersten Weltkriegs.,fiction war classic,285
-263,Die Leiden des Jungen Werthers,978-3150000021,1774-09-01,10.99,de,147,26,Werther leidet an unerfüllter Liebe zu Charlotte.,fiction romance epistolary classic,284
-264,Unterm Rad,978-3518368039,1906-01-01,12.99,de,208,27,Begabter Schüler zerbricht an Erwartungen.,fiction coming-of-age tragedy,41
-265,El Quijote,978-8408176664,1605-01-01,18.99,es,1376,31,Hidalgo enloquecido se cree caballero andante.,fiction classic satire,46
-266,Cien Años de Soledad,978-0307474728,1967-05-30,17.99,es,471,32,Saga de familia Buendía en Macondo mágico.,fiction magical-realism literary,8
-267,La Casa de los Espíritus,978-9500425681,1982-01-01,16.99,es,433,33,Saga familiar chilena a través de generaciones.,fiction magical-realism historical,56
-268,El Amor en los Tiempos del Cólera,978-0307387288,1985-01-01,16.99,es,368,32,Historia de amor que dura cincuenta años.,romance literary magical-realism,8
-269,Rayuela,978-8420410678,1963-01-01,15.99,es,635,34,Novela experimental que lector puede reordenar.,fiction experimental literary,60
-270,Pedro Páramo,978-8426413369,1955-03-19,13.99,es,142,35,Juan Preciado busca padre en pueblo de muertos.,fiction magical-realism gothic,286
-271,The Picture of Dorian Gray,978-0486278070,1890-07-01,10.99,en,254,22,Portrait ages while Dorian remains eternally young.,fiction gothic philosophical classic,214
-272,Heart of Darkness,978-0486264646,1899-02-01,9.99,en,72,22,Marlow journeys into Congo seeking ivory trader Kurtz.,fiction colonialism psychological classic,287
-273,Lord Jim,978-0486424538,1900-10-01,11.99,en,278,22,Ship officer seeks redemption after abandoning passengers.,fiction adventure psychological classic,287
-274,Nostromo,978-0375757808,1904-10-01,14.99,en,480,1,Silver mine corrupts men in fictional South American republic.,fiction political adventure classic,287
-275,The Secret Agent,978-0486424927,1907-09-01,11.99,en,246,22,Anarchist shopkeeper becomes unwitting terrorist in London.,fiction spy-thriller classic,287
-276,Ulysses,978-0394703800,1922-02-02,19.99,en,732,2,Leopold Bloom's day parallels Odyssey in Dublin.,fiction modernist literary classic,6
-277,Dubliners,978-0486268705,1914-06-15,10.99,en,160,22,Fifteen stories depict middle-class life in Dublin.,fiction short-stories modernist classic,6
-278,A Portrait of the Artist as a Young Man,978-0486280509,1916-12-29,10.99,en,253,22,Stephen Dedalus' intellectual and spiritual awakening.,fiction coming-of-age modernist classic,6
-279,Mrs Dalloway,978-0156628709,1925-05-14,13.99,en,194,3,Single day in Clarissa Dalloway's life in post-WWI London.,fiction modernist literary classic,4
-280,To the Lighthouse,978-0156907392,1927-05-05,13.99,en,209,3,Ramsay family summers on Isle of Skye.,fiction modernist literary classic,4
-281,Orlando,978-0156701600,1928-10-11,13.99,en,228,3,Nobleman lives through centuries changing sex.,fiction fantasy lgbt modernist,4
-282,The Waves,978-0156949606,1931-10-08,14.99,en,209,3,Six friends' inner lives from childhood to old age.,fiction modernist experimental,4
-283,The Sound and the Fury,978-0679732242,1929-10-07,14.99,en,326,4,Compson family's decline in Mississippi.,fiction modernist southern-gothic classic,80
-284,As I Lay Dying,978-0679732259,1930-10-06,13.99,en,267,4,Bundren family transports mother's corpse for burial.,fiction modernist southern-gothic classic,80
-285,Light in August,978-0679732266,1932-10-09,15.99,en,480,4,Lena Grove searches for child's father in Mississippi.,fiction modernist southern-gothic classic,80
-286,Absalom Absalom!,978-0679732181,1936-10-26,16.99,en,313,4,Sutpen family saga reveals South's tragic history.,fiction modernist southern-gothic classic,80
-287,The Grapes of Wrath,978-0143039433,1939-04-14,15.99,en,464,1,Joad family migrates to California during Dust Bowl.,fiction social-commentary classic,79
-288,Of Mice and Men,978-0142000670,1937-02-25,11.99,en,107,1,Migrant workers George and Lennie dream of own farm.,fiction tragedy classic,79
-289,East of Eden,978-0142004234,1952-09-19,17.99,en,601,1,Multigenerational saga explores nature of good and evil.,fiction family-saga classic,79
-290,Cannery Row,978-0143039587,1945-01-01,13.99,en,181,1,Colorful characters in Monterey California during Depression.,fiction humor classic,79
-291,The Pearl,978-0142000694,1947-01-01,10.99,en,90,1,Poor fisherman finds pearl bringing tragedy.,fiction parable classic,79
-292,Tortilla Flat,978-0143039495,1935-05-28,12.99,en,156,1,Paisanos enjoy carefree life in Monterey after WWI.,fiction humor classic,79
-293,In Cold Blood,978-0679745587,1966-01-01,15.99,en,343,4,Truman Capote reconstructs murder of Kansas family.,true-crime non-fiction classic,88
-294,Breakfast at Tiffany's,978-0679745655,1958-01-01,11.99,en,179,4,Holly Golightly enchants narrator in New York.,fiction literary romance,88
-295,A Clockwork Orange,978-0393312836,1962-01-01,14.99,en,192,5,Alex leads gang in ultra-violent future before being reformed.,science-fiction dystopian philosophical,288
-296,The Spy Who Came in from the Cold,978-0143124757,1963-09-01,14.99,en,224,1,Burned-out spy Leamas undertakes last mission in Cold War.,spy-thriller classic,289
-297,Tinker Tailor Soldier Spy,978-0143120933,1974-01-01,15.99,en,379,1,George Smiley hunts Soviet mole in British intelligence.,spy-thriller mystery,289
-298,The Russia House,978-0345418265,1989-06-01,14.99,en,353,6,Publisher Barley Blair becomes unlikely spy.,spy-thriller romance,289
-299,The Constant Gardener,978-0743262484,2001-01-04,15.99,en,492,7,Diplomat investigates wife's murder in Kenya.,thriller political mystery,289
-300,The Remains of the Day,978-0679731726,1989-05-01,14.99,en,245,4,Butler reflects on life of service and lost love.,fiction historical literary,158
-301,Never Let Me Go,978-1400078776,2005-04-05,15.99,en,288,8,Students discover they're clones raised for organ donation.,science-fiction dystopian literary,158
-302,Klara and the Sun,978-0593318171,2021-03-02,16.99,en,307,9,Artificial Friend Klara observes human behavior from store.,science-fiction literary philosophical,158
-303,On Chesil Beach,978-1400075997,2007-05-29,13.99,en,166,8,Newlyweds' disastrous wedding night in 1962.,fiction historical literary,159
-304,Atonement,978-0385721790,2001-09-20,16.99,en,351,10,Briony's lie destroys lives on eve of WWII.,fiction historical literary romance,159
-305,The Sense of an Ending,978-0307957122,2011-10-05,13.99,en,150,11,Tony Webster confronts past after ex-girlfriend's suicide.,fiction literary psychological,160
-306,The Blind Assassin,978-0385720953,2000-09-02,16.99,en,637,12,Iris Chase recounts sister's suicide and family secrets.,fiction literary mystery,11
-307,Alias Grace,978-0385490443,1996-09-01,16.99,en,468,13,Servant convicted of murder in 1843 Canada.,fiction historical mystery,11
-308,The Handmaid's Tale,978-0385490818,1985-06-01,14.99,en,311,14,Offred survives as reproductive servant in theocratic regime.,fiction dystopian feminist,11
-309,Oryx and Crake,978-0385721677,2003-05-01,15.99,en,376,12,Snowman survives bioengineered apocalypse.,science-fiction dystopian literary,11
-310,Cat's Eye,978-0385491204,1988-09-01,15.99,en,462,15,Painter returns to Toronto confronting traumatic childhood.,fiction literary psychological,11
-311,Life of Pi,978-0156027328,2001-09-11,15.99,en,319,3,Pi Patel survives 227 days at sea with Bengal tiger.,fiction adventure philosophical,156
-312,Midnight's Children,978-0812976533,1981-04-18,17.99,en,646,4,Saleem Sinai born at India's independence possesses telepathy.,fiction magical-realism historical,12
-313,The Satanic Verses,978-0812976717,1988-09-26,17.99,en,546,4,Two Indian actors fall from exploding plane over England.,fiction magical-realism philosophical,12
-314,Shame,978-0812976700,1983-09-01,16.99,en,287,4,Allegorical history of Pakistan through two families.,fiction magical-realism political,12
-315,White Teeth,978-0375703867,2000-01-27,16.99,en,448,5,Two families navigate multicultural London across generations.,fiction literary comedy,14
-316,On Beauty,978-0143037743,2005-09-06,15.99,en,443,1,Academic families clash over politics art and love.,fiction literary contemporary,14
-317,NW,978-0143123934,2012-09-04,15.99,en,333,1,Four Londoners from same estate live different lives.,fiction literary contemporary,14
-318,Swing Time,978-0143111641,2016-11-15,16.99,en,453,1,Two girls bond over dance but take different paths.,fiction literary contemporary,14
-319,The Remains of the Day,978-0679731726,1989-05-01,14.99,en,245,4,Stevens reflects on life as butler at Darlington Hall.,fiction historical literary,158
-320,An Artist of the Floating World,978-0679722663,1986-05-01,13.99,en,206,4,Retired artist confronts his role in Japanese nationalism.,fiction historical literary,158
-321,The Unconsoled,978-0679735878,1995-05-09,15.99,en,535,4,Pianist Ryder navigates surreal European city.,fiction surrealism literary,158
-322,When We Were Orphans,978-0375724404,2000-09-12,14.99,en,313,5,Detective returns to Shanghai seeking kidnapped parents.,fiction mystery historical,158
-323,A Pale View of Hills,978-0679722670,1982-02-04,13.99,en,183,4,Japanese woman in England recalls postwar Nagasaki.,fiction literary psychological,158
-324,Half of a Yellow Sun,978-1400095209,2006-09-12,16.99,en,433,6,Biafran War seen through eyes of Igbo family.,fiction historical war,13
-325,Americanah,978-0307455925,2013-05-14,16.99,en,477,7,Nigerian woman navigates race in America and returns home.,fiction literary contemporary,13
-326,Purple Hibiscus,978-1565129419,2003-10-01,14.99,en,307,8,Nigerian teen finds voice in oppressive religious household.,fiction coming-of-age contemporary,13
-327,Things Fall Apart,978-0385474542,1958-06-17,13.99,en,209,9,Okonkwo's life and Igbo culture disrupted by colonialism.,fiction historical postcolonial classic,290
-328,No Longer at Ease,978-0385474511,1960-01-01,12.99,en,169,9,Okonkwo's grandson faces corruption in modern Nigeria.,fiction postcolonial contemporary,290
-329,Arrow of God,978-0385478403,1964-01-01,13.99,en,230,9,Chief priest confronts colonial administration.,fiction historical postcolonial,290
-330,Disgrace,978-0140296396,1999-01-01,14.99,en,220,10,Disgraced professor retreats to daughter's farm in post-apartheid South Africa.,fiction literary contemporary,291
-331,Waiting for the Barbarians,978-0140154764,1980-01-01,13.99,en,156,10,Magistrate questions Empire's treatment of nomadic people.,fiction allegory postcolonial,291
-332,Life & Times of Michael K,978-0140072792,1983-09-01,13.99,en,184,10,Simple man seeks peace during South African civil war.,fiction literary war,291
-333,The God of Small Things,978-0812979657,1997-04-04,15.99,en,340,11,Twins in Kerala face forbidden love and family tragedy.,fiction literary postcolonial,292
-334,The Ministry for the Future,978-0316300131,2020-10-06,17.99,en,576,12,Global efforts to combat climate change.,science-fiction climate-fiction political,293
-335,Red Mars,978-0553560732,1992-10-01,17.99,en,519,13,First hundred colonists terraform Mars.,science-fiction hard-sf space-colonization,293
-336,Green Mars,978-0553572391,1993-10-01,17.99,en,535,13,Revolution brews on partially terraformed Mars.,science-fiction hard-sf political,293
-337,Blue Mars,978-0553573350,1996-06-01,18.99,en,609,13,Mars becomes independent as Earth deteriorates.,science-fiction hard-sf political,293
-338,2312,978-0316198387,2012-05-22,16.99,en,561,12,Swan Er Hong investigates conspiracy in colonized solar system.,science-fiction hard-sf space-opera,293
-339,Aurora,978-0316098106,2015-07-07,16.99,en,466,12,Generation ship approaches Tau Ceti.,science-fiction hard-sf generation-ship,293
-340,The Years of Rice and Salt,978-0553580075,2002-03-01,17.99,en,763,14,Alternate history where Black Death killed 99% of Europeans.,science-fiction alternate-history literary,293
-341,Shaman,978-0316097529,2013-10-08,16.99,en,447,12,Young man trains as shaman in Ice Age.,fiction historical prehistoric,293
-342,The Dispossessed,978-0061054884,1974-05-01,14.99,en,387,15,Physicist from anarchist moon visits capitalist planet.,science-fiction political philosophical,75
-343,The Word for World is Forest,978-0765324641,1972-02-01,13.99,en,189,16,Colonists exploit forest planet's peaceful inhabitants.,science-fiction political environmental,75
-344,The Fifth Season,978-0316229296,2015-08-04,16.99,en,468,17,Continent plagued by catastrophic climate change.,fantasy apocalyptic literary,174
-345,The Obelisk Gate,978-0316229265,2016-08-16,16.99,en,410,17,Essun searches for daughter as world ends.,fantasy apocalyptic literary,174
-346,The Stone Sky,978-0316229241,2017-08-15,17.99,en,464,17,Final confrontation to save or end the world.,fantasy apocalyptic literary,174
-347,The Broken Earth Trilogy,978-0316527194,2018-11-13,24.99,en,1344,17,Complete trilogy in one volume.,fantasy apocalyptic literary,174
-348,How Long 'til Black Future Month?,978-0316491372,2018-11-27,15.99,en,400,17,Short story collection exploring futures.,science-fiction fantasy short-stories,174
-349,The City We Became,978-0316509848,2020-03-24,17.99,en,434,17,New York City comes alive to fight extradimensional threat.,fantasy urban-fantasy contemporary,174
-350,Ancillary Justice,978-0316246620,2013-10-01,15.99,en,409,18,AI warship seeks revenge for destroyed consciousness.,science-fiction space-opera military-sf,294
-351,Ancillary Sword,978-0316246651,2014-10-07,15.99,en,356,18,Breq commands ship on civilized station.,science-fiction space-opera political,294
-352,Ancillary Mercy,978-0316246682,2015-10-06,16.99,en,330,18,Breq must choose sides in brewing civil war.,science-fiction space-opera political,294
-353,The Long Way to a Small Angry Planet,978-0062444134,2014-07-29,15.99,en,518,19,Diverse crew tunnels wormholes through space.,science-fiction space-opera character-driven,295
-354,A Closed and Common Orbit,978-0062569370,2016-10-18,15.99,en,365,19,AI learns to be human in illegal body.,science-fiction character-driven philosophical,295
-355,Record of a Spaceborn Few,978-0062699237,2018-07-24,16.99,en,359,19,Life in aging Exodus Fleet generation ships.,science-fiction character-driven slice-of-life,295
-356,The Galaxy and the Ground Within,978-0062936011,2021-02-16,16.99,en,336,19,Five strangers stranded at rest stop.,science-fiction character-driven slice-of-life,295
-357,To Be Taught If Fortunate,978-0062936042,2019-09-03,13.99,en,144,19,Four astronauts explore exoplanets.,science-fiction hard-sf philosophical,295
-358,Gideon the Ninth,978-1250313195,2019-09-10,16.99,en,448,20,Necromancer and cavalier compete for immortality.,fantasy gothic sapphic space-opera,296
-359,Harrow the Ninth,978-1250313218,2020-08-04,17.99,en,512,20,Harrowhark serves God as Lyctor.,fantasy gothic psychological space-opera,296
-360,Nona the Ninth,978-1250313225,2022-09-13,17.99,en,480,20,Nona has six months before world ends.,fantasy gothic contemporary space-opera,296
-361,The Poppy War,978-0062662569,2018-05-01,16.99,en,530,19,War orphan Rin discovers dangerous shamanic powers.,fantasy military dark chinese-mythology,297
-362,The Dragon Republic,978-0062662620,2019-08-06,17.99,en,658,19,Rin becomes pirate seeking vengeance.,fantasy military dark political,297
-363,The Burning God,978-0062662668,2020-11-17,18.99,en,640,19,Final war between warlord and goddess.,fantasy military dark epic,297
-364,A Memory Called Empire,978-1250186430,2019-03-26,16.99,en,462,21,Ambassador investigates predecessor's murder in alien empire.,science-fiction space-opera political,298
-365,A Desolation Called Peace,978-1250186447,2021-03-02,17.99,en,496,21,Mahit and Three Seagrass negotiate with alien threat.,science-fiction space-opera first-contact,298
-366,This Is How You Lose the Time War,978-1534431003,2019-07-16,14.99,en,198,22,Two time-traveling agents from opposing sides fall in love.,science-fiction romance epistolary,299 300
-367,The Space Between Worlds,978-1250209603,2020-08-04,16.99,en,329,23,Woman can travel to parallel Earths where her doppelgängers died.,science-fiction multiverse thriller,346
-368,Mexican Gothic,978-0525620785,2020-06-30,16.99,en,301,24,Socialite investigates cousin's disturbing marriage in creepy mansion.,horror gothic historical,301
-369,The Only Good Indians,978-1982136437,2020-07-14,15.99,en,308,25,Four men hunted by vengeful entity from their past.,horror thriller native-american,345
-370,Ring Shout,978-1250767028,2020-10-13,13.99,en,192,26,Sword-wielding woman fights Ku Klux Klan monsters in 1920s Georgia.,horror fantasy alternate-history,344
-371,A Song for a New Day,978-0358042082,2019-09-10,15.99,en,374,27,Musicians navigate world after terrorist attacks ban gatherings.,science-fiction dystopian music,349
-372,The Vanished Birds,978-1250169808,2020-01-14,16.99,en,421,28,Ship captain and mute boy travel through time-dilated space.,science-fiction literary time-dilation,348
-373,The Lesson,978-1250782687,2022-05-10,16.99,en,320,29,Alien invasion told from perspective of Black British family.,science-fiction alien-invasion contemporary,347
-374,Piranesi,978-1635575637,2020-09-15,16.99,en,245,30,Man lives in infinite house with tides and statues.,fantasy literary mystery surrealism,203
-375,The Invisible Life of Addie LaRue,978-0765387561,2020-10-06,17.99,en,444,31,Woman cursed to be forgotten makes deal with devil.,fantasy historical romance,302
-376,The Ten Thousand Doors of January,978-0316421997,2019-09-10,16.99,en,374,32,Girl discovers doors to other worlds.,fantasy historical portal-fantasy,303
-377,The Night Circus,978-0307744432,2011-09-13,15.99,en,387,33,Two magicians compete in mysterious circus.,fantasy romance historical,304
-378,The Starless Sea,978-1101971383,2019-11-05,17.99,en,498,34,Graduate student discovers underground library.,fantasy literary metafiction,304
-379,House of Leaves,978-0375703768,2000-03-07,18.99,en,709,35,Family moves into house larger inside than outside.,horror experimental psychological,350
-380,The Library at Mount Char,978-0553418620,2015-06-16,16.99,en,388,1,Orphans raised by godlike Father possess strange powers.,fantasy horror dark,351
-381,The Bear and the Nightingale,978-1101885956,2017-01-10,16.99,en,322,2,Girl with magical sight defends village from darkness in medieval Russia.,fantasy historical russian-folklore,305
-382,The Girl and the Stars,978-0008284695,2020-01-30,16.99,en,416,3,Girl thrown into pit discovers civilization beneath ice.,fantasy ya survival,306
-383,Circe,978-0316556347,2018-04-10,16.99,en,333,4,Witch Circe exiled to island discovers her powers.,fantasy mythology literary feminist,307
-384,The Song of Achilles,978-0062060624,2011-09-20,15.99,en,352,5,Patroclus and Achilles' relationship during Trojan War.,fantasy mythology historical romance,307
-385,A Thousand Ships,978-0525656654,2019-08-29,16.99,en,368,6,Trojan War told from women's perspectives.,fantasy mythology historical feminist,308
-386,The Silence of the Girls,978-0525563938,2018-08-23,15.99,en,291,7,Briseis recounts life as Achilles' war prize.,fiction mythology historical feminist,309
-387,Lavinia,978-0547247496,2008-04-03,14.99,en,279,8,Roman woman from Aeneid tells her story.,fantasy mythology historical,75
-388,Till We Have Faces,978-0062565426,1956-09-10,13.99,en,308,9,Psyche myth retold from ugly sister's perspective.,fantasy mythology philosophical classic,63
-389,The Mists of Avalon,978-0345441188,1982-01-01,17.99,en,876,10,Arthurian legend from female characters' viewpoints.,fantasy historical feminist,310
-390,The Once and Future Witches,978-0316422048,2020-10-13,16.99,en,512,32,Three sisters join suffragettes and witches in 1893 New Salem.,fantasy historical feminist,303
-391,The Priory of the Orange Tree,978-1635570304,2019-02-26,19.99,en,848,11,Queendom threatened by ancient dragon enemy.,fantasy epic-fantasy dragons lgbt,311
-392,Black Sun,978-1534437678,2020-10-13,16.99,en,454,22,Blind man travels to holy city on winter solstice.,fantasy epic-fantasy pre-columbian,312
-393,Fevered Star,978-1534437692,2022-04-19,17.99,en,400,22,Gods walk earth as war brews.,fantasy epic-fantasy pre-columbian,312
-394,She Who Became the Sun,978-1250621795,2021-07-20,16.99,en,416,12,Girl assumes brother's identity to escape death.,fantasy historical chinese-history lgbt,313
-395,He Who Drowned the World,978-1250621818,2023-09-05,17.99,en,480,12,Zhu Chongba fights to claim Mandate of Heaven.,fantasy historical chinese-history lgbt,313
-396,The Jasmine Throne,978-0316538558,2021-06-01,17.99,en,560,13,Imprisoned princess and maidservant with forbidden magic.,fantasy epic-fantasy south-asian lgbt,314
-397,The Oleander Sword,978-0316538602,2022-07-05,18.99,en,576,13,Malini and Priya wage war across empire.,fantasy epic-fantasy south-asian lgbt,314
-398,Babel,978-0063021426,2022-08-23,18.99,en,545,14,Oxford student uncovers truth about empire's translation magic.,fantasy historical academia postcolonial,297
-399,The Atlas Six,978-1250854445,2020-03-03,16.99,en,372,15,Six magicians compete for place in secret society.,fantasy dark-academia contemporary,315
-400,The Atlas Paradox,978-1250854506,2022-10-25,17.99,en,464,15,Magical society members face consequences of initiation.,fantasy dark-academia contemporary,315
-401,Ninth House,978-1250313072,2019-10-08,17.99,en,458,16,Survivor sees ghosts and monitors Yale's secret societies.,fantasy dark-academia urban-fantasy,316
-402,Hell Bent,978-1250313102,2023-01-10,18.99,en,480,16,Galaxy and Dawes attempt to rescue soul from hell.,fantasy dark-academia urban-fantasy,316
-403,A Deadly Education,978-0593128527,2020-09-29,15.99,en,313,17,Students survive magical school designed to kill them.,fantasy dark-academia ya,317
-404,The Last Graduate,978-0593128541,2021-09-28,15.99,en,388,17,El must save classmates during deadly graduation.,fantasy dark-academia ya,317
-405,The Golden Enclaves,978-0593128565,2022-09-27,16.99,en,405,17,El hunts monstrous threat to magical enclaves.,fantasy dark-academia ya,317
-406,Legendborn,978-1534441606,2020-09-15,16.99,en,501,18,Black teen infiltrates secret society hunting magical creatures.,fantasy ya arthurian contemporary,339
-407,Bloodmarked,978-1534441620,2022-11-08,17.99,en,544,18,Bree embraces powers to fight coming war.,fantasy ya arthurian contemporary,339
-408,Elatsoe,978-1646140039,2020-08-25,15.99,en,368,19,Lipan Apache teen investigates cousin's death with ghost dog.,fantasy ya mystery native-american,340
-409,A Snake Falls to Earth,978-1646140596,2021-11-09,15.99,en,352,19,Teen and cottonmouth person face environmental disaster.,fantasy ya native-american climate,340
-410,The Gilded Wolves,978-1250144546,2019-01-15,16.99,en,432,20,Diverse crew pulls off heist in 1889 Paris.,fantasy historical heist ya,341
-411,Ace of Spades,978-1250800817,2021-06-01,15.99,en,424,21,Two Black students targeted by anonymous texter at elite school.,thriller ya contemporary mystery,342
-412,Cemetery Boys,978-1250250469,2020-09-01,15.99,en,352,22,Trans brujo tries to prove himself and accidentally summons ghost.,fantasy ya lgbt contemporary,343
-413,The Extraordinaries,978-1250231260,2020-06-23,15.99,en,416,23,Fanboy writes fic about superhero who's secretly his friend.,fantasy ya lgbt superhero,318
-414,Red White & Royal Blue,978-1250316776,2019-05-14,15.99,en,421,24,President's son falls for Prince of Wales.,romance lgbt contemporary,319
-415,One Last Stop,978-1250244499,2021-06-01,16.99,en,432,25,Girl falls for time-displaced punk from 1970s on subway.,romance lgbt time-travel contemporary,319
-416,The House in the Cerulean Sea,978-1250217318,2020-03-17,15.99,en,394,26,Caseworker investigates orphanage of dangerous magical children.,fantasy lgbt contemporary feel-good,318
-417,Under the Whispering Door,978-1250217349,2021-09-21,16.99,en,373,26,Dead man learns about life at tea shop way-station.,fantasy lgbt contemporary philosophical,318
-418,The Midnight Library,978-0525559474,2020-08-13,15.99,en,304,27,Nora explores infinite library of lives she could have lived.,fiction fantasy philosophical contemporary,320
-419,Klara and the Sun,978-0593318171,2021-03-02,16.99,en,307,9,Artificial Friend observes humans from store window.,science-fiction literary philosophical,158
-420,Cloud Cuckoo Land,978-1982168438,2021-09-28,18.99,en,626,28,Five characters connected across time by ancient text.,fiction historical literary,321
-421,The Lincoln Highway,978-0735222359,2021-10-05,18.99,en,592,29,Four boys road trip across 1950s America.,fiction historical adventure,322
-422,Apples Never Fall,978-1250220264,2021-09-14,17.99,en,480,30,Mother disappears and four siblings suspect father.,thriller mystery family-drama,323
-423,The Silent Patient,978-1250301697,2019-02-05,16.99,en,325,31,Psychotherapist obsessed with mute woman who killed husband.,thriller psychological mystery,324
-424,The Woman in the Window,978-0062678416,2018-01-02,16.99,en,427,32,Agoraphobic woman witnesses crime across the street.,thriller psychological domestic,352
-425,The Last Thing He Told Me,978-1501171345,2021-05-04,16.99,en,309,33,Woman searches for truth when husband vanishes.,thriller mystery contemporary,325
-426,The Guest List,978-0062868930,2020-06-02,15.99,en,320,34,Murder during wedding on remote Irish island.,thriller mystery domestic,326
-427,The Hunting Party,978-1250221551,2019-02-12,15.99,en,288,35,One of nine friends found dead during New Year celebration.,thriller mystery locked-room,326
-428,The Thursday Murder Club,978-0241425459,2020-09-03,15.99,en,368,1,Four retirees investigate cold cases.,mystery cozy humor contemporary,327
-429,The Man Who Died Twice,978-0241425466,2021-09-16,16.99,en,421,1,Thursday Murder Club tackles diamonds and assassins.,mystery cozy humor contemporary,327
-430,The Bullet That Missed,978-0241425473,2022-09-15,16.99,en,389,1,Club investigates murder of TV presenter.,mystery cozy humor contemporary,327
-431,Finlay Donovan Is Killing It,978-1250241702,2021-02-02,15.99,en,336,2,Struggling author mistaken for contract killer.,mystery comedy contemporary,328
-432,Finlay Donovan Knocks 'Em Dead,978-1250241726,2022-02-01,15.99,en,352,2,Finlay accidentally becomes actual hitwoman.,mystery comedy contemporary,328
-433,The Seven Husbands of Evelyn Hugo,978-1501139239,2017-06-13,16.99,en,388,3,Aging actress tells life story to unknown journalist.,fiction historical lgbt hollywood,329
-434,Daisy Jones & The Six,978-1524798628,2019-03-05,16.99,en,355,4,Oral history of fictional 1970s rock band.,fiction historical music,329
-435,Malibu Rising,978-1524798659,2021-06-01,16.99,en,369,4,Four siblings throw epic party as past crashes in.,fiction historical family-drama,329
-436,The Dutch House,978-0062963673,2019-09-24,17.99,en,337,5,Siblings shaped by grand house and stepmother's betrayal.,fiction literary family-drama,330
-437,The Nightingale,978-1250080400,2015-02-03,16.99,en,440,6,Two French sisters resist Nazi occupation in different ways.,fiction historical wwii,331
-438,The Great Alone,978-0312577230,2018-02-06,17.99,en,440,7,Family seeks fresh start in 1970s Alaska wilderness.,fiction historical survival,331
-439,The Four Winds,978-1250178602,2021-02-02,17.99,en,454,8,Mother fights for family during Dust Bowl.,fiction historical great-depression,331
-440,Where the Crawdads Sing,978-0735219090,2018-08-14,15.99,en,370,9,Marsh girl suspected of murder in 1960s North Carolina.,fiction mystery coming-of-age,332
-441,Lessons in Chemistry,978-0385547345,2022-04-05,17.99,en,391,10,Female chemist becomes TV cooking show host in 1960s.,fiction historical feminist,333
-442,Tomorrow and Tomorrow and Tomorrow,978-0593321201,2022-07-05,18.99,en,416,11,Two friends build video game empire over decades.,fiction contemporary gaming,334
-443,The Invisible Man,978-0486270715,1897-01-01,10.99,en,151,22,Scientist discovers invisibility formula with terrible consequences.,science-fiction horror classic,213
-444,The Island of Doctor Moreau,978-0486290270,1896-01-01,9.99,en,104,22,Shipwreck survivor discovers doctor creating human-animal hybrids.,science-fiction horror classic,213
-445,Kindred,978-0807083697,1979-06-01,14.99,en,287,12,Black woman pulled back to antebellum South.,science-fiction time-travel historical classic,335
-446,Parable of the Sower,978-1538732182,1993-10-01,15.99,en,329,13,Teen prophet leads group through dystopian California.,science-fiction dystopian afrofuturism,335
-447,Parable of the Talents,978-1538732199,1998-10-01,15.99,en,365,13,Lauren Olamina's daughter recounts mother's religious movement.,science-fiction dystopian afrofuturism,335
-448,Dawn,978-0446603775,1987-05-01,14.99,en,248,14,Aliens resurrect humanity after nuclear war.,science-fiction alien-contact biological,335
-449,The Broken Earth Trilogy Box Set,978-0316527194,2018-11-13,24.99,en,1344,17,Three complete novels in beautiful box set.,fantasy apocalyptic literary,174
-450,Contact,978-0671004101,1985-09-01,16.99,en,432,15,Scientist makes first contact with extraterrestrial intelligence.,science-fiction hard-sf first-contact,100
-451,Thus Spoke Zarathustra,978-0140441185,1883-01-01,14.99,en,352,35,Zarathustra descends from mountain to teach the Übermensch.,philosophy fiction classic,
+id,title,original_title,isbn,publication_date,first_published,price,language,pages,publisher_id,tags,authors,cover_id
+1,Invisible cities,Le città invisibili,9780151452903,1974-01-01,1972,13.90,it,165,194,"italian literature, fiction",1,11712445
+2,Il barone rampante,,9788806031329,1971-01-01,1957,15.90,it,275,134,"italian literature, fiction",1,10765064
+3,The Name of the Rose,Il nome della rosa,9780151446476,1983-01-01,1980,24.90,it,533,194,"italian literature, fiction",2,8598263
+4,Il Pendolo Di Foucault,,9788845247491,2001-06-01,1988,23.50,it,656,422,"italian literature, fiction",2,1049164
+5,"Uno, nessuno e centomila",,9788809204676,1994-01-01,1926,15.90,it,199,175,"italian literature, fiction",3,5430366
+6,Sei personaggi in cerca d'autore,,9788806131135,1993-01-01,1900,14.90,it,96,134,"italian literature, fiction",3,5284221
+7,Se questo è un uomo,,9788806219352,2014-01-01,1947,13.90,it,206,134,"italian literature, fiction",4,12311586
+8,I sommersi e i salvati,,9788806593087,1986-01-01,1986,15.50,it,200,134,"italian literature, fiction",4,10233749
+9,Agostino,,9788845246326,2000-01-01,1944,15.90,it,143,58,"italian literature, fiction",5,12631426
+10,La romana,,9788845207068,1993-01-01,1947,17.50,it,433,58,"italian literature, fiction",5,13067219
+11,History,La storia,9780394498027,1977-01-01,1974,23.90,it,630,239,"italian literature, fiction",6,4615396
+12,L' isola di Arturo,L'isola di Arturo,9788806409074,1957-01-01,1957,17.90,it,385,134,"italian literature, fiction",6,12701600
+13,Il deserto dei Tartari,,9788804327035,1989-01-01,1941,13.50,it,249,276,"italian literature, fiction",7,1048984
+14,Restless nights,,9780856354885,1984-01-01,1983,10.50,it,122,70,"italian literature, fiction",7 8,
+15,Il Giorno Della Civetta,,9780719045509,1998-07-15,1961,13.50,it,125,269,"italian literature, fiction",9,457066
+16,Una Storia Semplice,Una Storia Semplice (Piccola Biblioteca Adelphi),9788845907296,2018-01-01,2018,9.90,it,66,3,"italian literature, fiction",9,10527690
+17,Tra donne sole,,9788806149895,1998-01-01,1949,11.50,it,198,134,"italian literature, fiction",10,
+18,La casa in collina,,9788806118297,1990-01-01,1990,11.50,it,173,174,"italian literature, fiction",10,14997669
+19,Dell’unità della lingua e dei mezzi di diffonderla,Title,9788890803307,2011-01-01,2011,13.50,it,153,223,"italian literature, fiction",11,7029455
+20,Le poesie,,9788884024985,2005-01-01,1948,27.90,it,604,376,"italian literature, fiction",11,5987602
+21,Le novelle,,9788885026339,1980-01-01,1980,17.90,it,,377,"italian literature, fiction",12,4328533
+22,Eros,,9788842520283,1997-01-01,1884,13.90,it,206,283,"italian literature, fiction",12,
+23,La coscienza di Zeno,Confession of Zeno,9788817165549,1985-01-01,1930,20.50,it,433,367,"italian literature, fiction",13,12998781
+24,La Coscienza Di Zeno,,9788806118266,1987-01-01,1987,22.90,it,584,134,"italian literature, fiction",13,12504222
+25,Il Gattopardo,,9788807883828,2013-01-01,2011,17.50,it,299,152,"italian literature, fiction",14,12833388
+26,Il gattopardo,,9788807810282,1963-01-01,1958,18.90,it,282,152,"italian literature, fiction",14,8015480
+27,L'amica geniale,,9788866320951,2011-10-01,2011,18.50,it,336,132,"italian literature, fiction",15,15251367
+28,Storia del nuovo cognome,,9788866321811,2012-01-01,2012,23.90,it,484,132,"italian literature, fiction",15,14820924
+29,Seta,,9788807880896,2014-02-01,1920,11.90,it,125,152,"italian literature, fiction",16,13441164
+30,Oceano Mare,,9788817106108,2003-04-01,1993,13.90,it,235,47,"italian literature, fiction",16,12993292
+31,La forma dell'acqua,,9788838910173,1994-01-01,1994,11.50,it,173,391,"italian literature, fiction",17,1049112
+32,Gli arancini di Montalbano,,9788804469728,1999-01-01,1999,17.90,it,275,276,"italian literature, fiction",17,10226390
+33,Pinocchio,,9788809785946,2013-01-01,2002,11.90,it,136,175,"italian literature, fiction",18,12791991
+34,Le avventure di Pinocchio,,9788804484448,2001-01-01,2001,14.90,it,214,276,"italian literature, fiction",18,12746907
+35,Canne al vento,,9788823902756,1993-01-01,1913,13.90,it,212,306,"italian literature, fiction",19 20,12890201
+36,The mother.,Madre,9780910220576,1974-01-01,1923,13.90,it,239,284,"italian literature, fiction",19,14375169
+37,La Malora,,9788806141134,1997-01-01,1974,12.50,it,85,134,"italian literature, fiction",21,
+38,La paga del sabato.,La paga del sabato,9788806142315,1996-01-01,1969,13.50,it,147,134,"italian literature, fiction",21,13064494
+39,Family sayings,Lessico famigliare,9780856355042,1984-01-01,1963,13.90,it,219,69,"italian literature, fiction",22,4205139
+40,Le piccole virtù,Die kleinen Tugenden. Erzählungen,9788806056971,1984-01-01,1962,14.90,it,139,134,"italian literature, fiction",22,11668638
+41,Sostiene Pereira,,9788807883040,2013-01-01,1994,16.90,it,192,152,"italian literature, fiction",23,12704965
+42,Requiem,,9788807812828,1994-01-01,1992,11.90,it,117,152,"italian literature, fiction",23,5443309
+43,Favole al telefono,,9788879262019,1995-01-01,1962,13.50,it,141,135,"italian literature, fiction",24,9447803
+44,Gip nel televisore e altre storie in orbita,,9788879265218,2005-01-01,1986,14.90,it,148,135,"italian literature, fiction",24,9258159
+45,Ipirati della Malesia,,9788879837415,1994-01-01,1994,16.50,it,251,294,"italian literature, fiction",25,10767083
+46,Il corsaro nero,,9788804407614,1995-01-01,1972,15.90,it,317,276,"italian literature, fiction",25,5487065
+47,A violent life,Una vita violenta,9780824028879,1978-01-01,1959,20.90,it,337,171,"italian literature, fiction",26,8509121
+48,Empirismo eretico,,9788811675440,2000-01-01,1972,18.90,it,300,172,"italian literature, fiction",26,5329287
+49,Woman at war,Donna in guerra,9780934977128,1988-01-01,1975,19.90,it,282,226,"italian literature, fiction",27,713591
+50,La lunga vita di Marianna Ucrìa,,9788817664400,1990-01-01,1990,15.90,it,272,367,"italian literature, fiction",27,15087929
+51,Il Grande Inverno,A Game of Thrones,9788804478027,2000-01-01,1996,28.90,it,801,276,"science fiction, fiction",28,15127373
+52,1984,Nineteen Eighty-Four,9791280035158,2021-01-01,1949,18.90,it,318,224,"science fiction, fiction",29,15255646
+53,Hunger Games,The Hunger Games,9788804632238,2014-01-01,2008,16.50,it,397,307,"science fiction, fiction",30,15168028
+54,Fahrenheit 451,,9788804320258,1989-01-01,1953,12.90,it,190,276,"science fiction, fiction",31,14402436
+55,Il Racconto dell'Ancella,The Handmaid's Tale,9788833312255,2019-01-01,1985,18.50,it,352,342,"science fiction, fiction",32,13320777
+56,The Giver,,9788804738794,1999-01-01,1993,13.90,it,200,104,"science fiction, fiction",33,15176861
+57,Frankenstein,"Frankenstein; or, The Modern Prometheus",9788817083669,2015-01-01,1818,16.50,it,240,64,"science fiction, fiction",34,12991957
+58,Guida galattica per gli autostoppisti,The Hitchhiker's Guide to the Galaxy,9788804464631,1999-01-01,1979,13.90,it,216,307,"science fiction, fiction",35,14405794
+59,Harry Potter e la Pietra Filosofale,Harry Potter and the Philosopher's Stone,9788884516107,2006-01-01,1997,18.90,it,302,375,"fantasy, fiction",36,8267048
+60,Boxi Jiekexun yu shen huo zhi dao,The Lightning Thief,9787544812467,2010-01-01,2005,17.90,it,384,232,"fantasy, fiction",37,14992991
+61,Harry Potter e la camera dei segreti,Harry Potter and the Chamber of Secrets,9788884516114,2009-01-01,1998,20.90,it,339,375,"fantasy, fiction",36,15157477
+62,Harry Potter e i doni della morte,Harry Potter and the Deathly Hallows,9788867156016,2014-01-01,2007,24.50,it,701,375,"fantasy, fiction",36,15157182
+63,Harry Potter e il prigioniero di Azkaban,Harry Potter and the Prisoner of Azkaban,9788862561709,2012-01-01,1999,21.90,it,416,164,"fantasy, fiction",36,13870944
+64,Lo Hobbit,The Hobbit,9788845906886,2008-01-01,1937,17.50,it,310,3,"fantasy, fiction",38,14625577
+65,Harry Potter e il calice di fuoco,Harry Potter and the Goblet of Fire,9788862561518,2009-01-01,2000,28.90,it,672,375,"fantasy, fiction",36,15157893
+66,Il Piccolo Principe,Le petit prince,9788845230455,2002-08-01,1943,14.90,it,96,106,"fantasy, fiction",39,5284200
+67,Come uccidono le brave ragazze,A Good Girl's Guide to Murder,9788817147842,2021-01-01,2019,20.50,it,431,367,"mystery, fiction",40,15101095
+68,L'uomo invisibile,The Invisible Man,9788807904592,2024-01-01,,14.50,it,170,152,"mystery, fiction",41,14821279
+69,Il miglio verde,The Green Mile,9788868360283,2013-01-01,1996,20.90,it,465,411,"mystery, fiction",42,14569158
+70,Lo strano caso del cane ucciso a mezzanotte,The Curious Incident of the Dog in the Night-Time,9788806176594,2005-01-01,2002,16.50,it,256,134,"mystery, fiction",43,12699806
+71,Strange Case of Dr Jekyll and Mr Hyde,The Strange Case of Dr. Jekyll and Mr. Hyde,9788804508465,2011-01-01,1875,15.90,it,131,276,"mystery, fiction",44,14391725
+72,La Serie Infernale,The A.B.C. Murders,9788852014994,1936-01-01,1936,16.90,it,227,276,"mystery, fiction",45,14550767
+73,Tutto Sherlock Holmes,"The Complete Sherlock Holmes [4 novels, 56 stories]",9788854113671,2010-09-02,1900,37.90,it,1122,294,"mystery, fiction",46,10829269
+74,Il mastino dei Baskerville,The Hound of the Baskervilles,9788879839006,1995-01-01,1900,15.50,it,207,295,"mystery, fiction",46,11650938
+75,It,,9788873398639,2013-06-04,1986,39.50,it,1168,411,"horror, fiction",42,14420464
+76,Shining,The Shining,9788845275746,2015-01-01,1977,22.50,it,506,58,"horror, fiction",42,14656609
+77,Misery,,9788868361556,2023-01-01,1978,21.90,it,382,332,"horror, fiction",42,14633311
+78,Coraline,,9788804530237,2009-01-01,2001,14.50,it,176,276,"horror, fiction",47,14570975
+79,Pet Sematary,,9788868361259,2013-01-01,1983,20.50,it,423,411,"horror, fiction",42,15113466
+80,American Psyco,American Psycho,9788806219253,2014-01-01,1991,20.90,it,477,134,"horror, fiction",48 49,12970895
+81,Le notti di Salem,'Salem’s Lot,9788845202292,1988-01-01,1959,20.90,it,509,58,"horror, fiction",42,14420702
+82,L'ombra dello scorpione,The Stand,9788845212178,1994-01-01,1978,36.90,it,1153,58,"horror, fiction",42,15200584
+83,Orgoglio e pregiudizio,Pride and Prejudice,9788806220587,2014-01-01,1813,18.50,it,351,134,"historical fiction, fiction",50,12884289
+84,Cime tempestose,Wuthering Heights,9788806181420,2006-01-01,1846,15.90,it,318,134,"historical fiction, fiction",51,11469269
+85,Piccole donne,Little Women,9788879838214,1995-01-01,1848,19.90,it,422,295,"historical fiction, fiction",52,12741207
+86,Il cacciatore di aquiloni,The Kite Runner,9788838481727,2004-01-01,2003,21.90,it,371,333,"historical fiction, fiction",53,15248800
+87,Storia di una ladra di libri,The Book Thief,9788820055905,2007-01-01,1998,24.90,it,556,161,"historical fiction, fiction",54 55,15268481
+88,El Color Purpura/the Color Purple,The Color Purple,9788878243385,1984-01-01,1976,14.90,it,262,161,"historical fiction, fiction",56,7082981
+89,Amatissima,Beloved,9788876843952,1996-01-01,1987,20.90,it,321,161,"historical fiction, fiction",57,
+90,Il conte di Montecristo,Le Comte de Monte-Cristo,9788806225186,2015-01-01,1830,21.50,it,599,134,"historical fiction, fiction",58,10705874
+91,The Love Hypothesis,,9788820074050,2022-01-01,2021,18.90,it,398,411,"romance, fiction",59,12915291
+92,Cinquanta sfumature di grigio,Fifty Shades of Grey,9788804632535,2013-01-01,2000,24.90,it,544,276,"romance, fiction",60,12631665
+93,Il grande Gatsby,The Great Gatsby,9788809835245,2016-01-01,1920,14.50,it,185,175,"romance, fiction",61,8248481
+94,Noi siamo infinito,The Perks of Being a Wallflower,9788820053222,2012-01-01,1999,12.50,it,231,411,"romance, fiction",62,15172963
+95,Finché il caffè è caldo,コーヒーが冷めないうちに,9788811608769,2020-01-01,2015,15.90,it,240,172,"romance, fiction",63,13119621
+96,Persone Normali,Normal People,9788806245740,2019-01-01,2018,16.90,it,304,134,"romance, fiction",64 65,12604604
+97,Il dio delle piccole cose,The God of Small Things,9788877469588,1997-01-01,1997,19.90,it,357,440,"romance, fiction",66,
+98,Anna Karenina,Анна Каренина,9788806219437,2014-01-01,1876,28.90,it,660,134,"romance, fiction",67,12164250
+99,Lo straniero,L’étranger,9788845247460,2010-03-01,1942,14.90,it,142,58,"adventure, fiction",68,14830344
+100,La Compagnia dell'Anello,The Fellowship of the Ring,9788845232251,2006-01-01,1954,20.90,it,492,58,"adventure, fiction",38,14627462
+101,"Buchi Nel Deserto (Il Battello a Vapore. Serie Arancio, 51)",Holes,9788838436512,2002-04-01,1988,16.50,it,240,333,"adventure, fiction",69,
+102,Angeli e demoni,Angels & Demons,9788804555575,2006-06-01,2000,21.50,it,575,307,"adventure, fiction",70,11551280
+103,Le avventure di Huckleberry Finn,Adventures of Huckleberry Finn,9788807900518,2005-01-01,1876,18.50,it,346,152,"adventure, fiction",71,8230903
+104,L'ultimo cavaliere,The Gunslinger,9788878244573,1994-01-01,1976,14.90,it,256,412,"adventure, fiction",42,14654511
+105,Le avventure di Tom Sawyer,The Adventures of Tom Sawyer,9788858409770,2023-06-18,1817,17.90,it,253,134,"adventure, fiction",71,14561641
+106,Treasure Island,,9788804527954,2010-01-01,1880,16.50,it,248,276,"adventure, fiction",44,14391728
+107,"Diario di una schiappa. Si salvi chi puo! ; Italian edition of 'Diary of a Wimpy Kid, Book 6 - Cabin Fever",Cabin Fever,9788880336655,2013-06-02,2007,16.90,it,218,163,"humor, fiction",72,14586581
+108,Il GGG,The BFG,9788877820044,2006-04-06,1980,14.90,it,208,375,"humor, fiction",73,12895008
+109,Breve storia di (quasi)  tutto,A short history of nearly everything,9788850215492,2008-09-07,2003,22.90,it,592,426,"humor, fiction",74,10426017
+110,Buona Apocalisse a tutti,Good Omens,9788804686330,2017-01-01,1990,18.90,it,400,276,"humor, fiction",75 47,14548438
+111,Una brava ragazza è una ragazza morta,As Good As Dead,9788831811088,2023-01-01,2021,21.90,it,504,367,"humor, fiction",40,15178602
+112,Le avventure di Alice nel Paese delle Meraviglie / Attraverso lo specchio,Alice's Adventures in Wonderland / Through the Looking Glass,9788804160427,1987-04-01,1889,13.50,it,277,276,"humor, fiction",76,12743736
+113,Il Maestro e Margherita,Мастер и Маргарита,9788804342816,2015-01-01,1966,17.50,it,439,307,"humor, fiction",77,15178253
+114,"Candido, ovvero, L'ottimismo",Candide,9788817151016,1990-01-01,1746,10.50,it,152,367,"humor, fiction",78,10737279
+115,La Fabbrica Di Cioccolato,Charlie and the Chocolate Factory,9788884515803,2005-01-30,1964,12.90,it,174,310,"short stories, fiction",73,15166216
+116,La macchina del tempo,The Time Machine,9788807903748,2020-01-01,1895,13.50,it,120,152,"short stories, fiction",41,14821273
+117,"Io, Robot","I, Robot",9788804519522,2014-01-01,1950,17.90,it,245,307,"short stories, fiction",79,14620616
+118,"Il leone, la strega e l'armadio","The Lion, the Witch and the Wardrobe",9788804523154,2003-06-01,1950,12.90,it,186,276,"short stories, fiction",80,11408073
+119,Il Silmarillion,The Silmarillion,9788845256547,2005-01-01,1977,20.50,it,423,58,"short stories, fiction",38 81,9293466
+120,Canto di Natale,A Christmas Carol,9788856626438,2012-01-01,1843,13.90,it,114,333,"short stories, fiction",82,13133963
+121,Il richiamo della foresta,The Call of the Wild,9788871006208,1995-01-01,1903,12.90,it,128,246,"short stories, fiction",83,15231005
+122,Scheletri,Skeleton crew,9788878245730,2000-01-01,1985,26.90,it,573,412,"short stories, fiction",42,
+123,L'arte della guerra,The Art of War,9788834009918,1990-01-01,1900,14.90,it,90,438,"classics, fiction",84,14601390
+124,La Metamorfosi,Metamorphosis,9788807820229,2000-08-01,1915,10.90,it,88,152,"classics, fiction",85,5283981
+125,Umiliati e offesi.,Преступление и наказание,9788804307167,1987-01-01,1866,23.50,it,520,307,"classics, fiction",86,
+126,Una storia tra due città,A Tale of Two Cities,9788876846335,2000-01-01,1800,16.50,it,388,161,"classics, fiction",82,13130652
+127,Mattatoio N.5,Slaughterhouse-Five,9788807885051,2024-01-01,1956,16.90,it,203,152,"classics, fiction",87,14834206
+128,La Guerra dei Mondi,The War of the Worlds,9788807904301,2023-01-01,,13.90,it,206,152,"classics, fiction",41,14821280
+129,La valle dell'Eden,East of Eden,9788804495871,1994-01-01,1952,26.90,it,611,307,"classics, fiction",88,
+130,Emma,,9788804510222,2011-01-01,1815,23.90,it,457,307,"classics, fiction",50,12706531
+131,Wonder,,9788809058347,2013-05-08,2001,19.50,it,368,176,"young adult, fiction",89,14567072
+132,The Hate U Give,,9788809861664,2017-01-01,2017,19.90,it,448,175,"young adult, fiction",90,8249184
+133,Hunger games,Catching Fire,9788804716723,2020-01-01,2009,21.90,it,400,307,"young adult, fiction",30,15168533
+134,"Brave ragazze, cattivo sangue","Good Girl, Bad Blood",9788831809450,2021-01-01,2020,20.50,it,416,357,"young adult, fiction",40,15178604
+135,Cercando Alaska,Looking for Alaska,9788845118760,2006-01-01,2005,15.90,it,288,145,"young adult, fiction",91,11398445
+136,Il bambino con il pigiama a righe,The Boy in the Striped Pyjamas,9788817022538,2009-07-01,2006,14.90,it,216,65,"young adult, fiction",92,14411188
+137,Eragon,,9788848603195,,2000,26.90,it,576,145,"young adult, fiction",93,14852714
+138,Lo scontro finale,The Last Olympian,9788804644675,2014-01-01,2008,20.90,it,381,276,"young adult, fiction",37,15088169
+139,Diario di una schiappa,Diary of a Wimpy Kid,9788880334392,2008-01-01,2007,13.90,it,224,222,"children, fiction",72,14625153
+140,Harry Potter e l’Ordine della Fenice,Harry Potter and the Order of the Phoenix,9788862561525,2009-01-01,2003,33.90,it,870,375,"children, fiction",36,12504196
+141,La tela di Carlotta,Charlotte's Web,9788804462415,1976-01-01,1952,11.50,it,184,277,"children, fiction",94,13012901
+142,Harry Potter 06 e il principe mezzosangue,Harry Potter and the Half-Blood Prince,9788831003438,2020-01-23,2005,26.50,it,640,375,"children, fiction",36,13193683
+143,Il Giovane Holden,The Catcher in the Rye,9788806163693,2003-01-01,1945,14.90,it,240,134,"children, fiction",95 96,
+144,Diario di una schiappa,Dog Days,9788880335719,2011-01-01,2007,12.50,it,220,222,"children, fiction",72,
+145,La campana di vetro,The Bell Jar,9788804545040,2006-01-01,1948,16.50,it,262,307,"poetry, fiction",97,8181206
+146,Il Gatto Col Cappello / The Cat in the Hat,The Cat in the Hat,9788809208704,1999-12-01,1957,13.90,it,63,175,"poetry, fiction",98 99,
+147,Il profeta,The Prophet,9788871223414,1993-01-01,1923,9.50,it,112,99,"poetry, fiction",100,11962023
+148,Faust,,9788804670827,2016-01-01,1800,15.90,it,306,278,"poetry, fiction",101,14432533
+149,Le storie.,Ἱστορίαι,9788804549185,2006-01-01,1494,22.90,it,563,158,"poetry, fiction",102,5332455
+150,Il libro dell'inquietudine di Bernardo Soares,Livro do Desassossego,9788807050404,1986-01-01,1982,18.50,it,472,152,"poetry, fiction",103,
+151,Poetica,Poetics,9788845290688,2000-01-01,1536,10.50,it,129,58,"poetry, fiction",104,13859224
+152,Essere e tempo,Sein und Zeit,9788830406773,1990-01-01,1927,20.50,it,437,264,"poetry, fiction",105,8646602
+153,Uno psicologo nei lager,... Trotzdem Ja zum Leben sagen,9788881555581,2013-01-01,1946,16.90,it,165,25,"drama, fiction",106,7430176
+154,Grandi speranze,Great Expectations,9788806148607,1998-01-01,1861,22.50,it,482,134,"drama, fiction",82,12691999
+155,Le Streghe,The Witches,9788846201423,2000-06-01,1983,12.50,it,208,419,"drama, fiction",73,15197694
+156,Il padrino,The Godfather,9788804302797,1987-01-01,1969,20.90,it,450,276,"drama, fiction",107,5515193
+157,Diario [Italian text],Het Achterhuis,9788806275570,1986-01-01,1944,15.90,it,285,174,"biography, non-fiction",108,13169486
+158,Maus I,,9788806202347,2021-11-09,1986,18.90,it,295,134,"biography, non-fiction",109,14599773
+159,Leonardo,,9788878139626,1998-01-01,1946,11.90,it,140,253,"biography, non-fiction",110,
+160,On Writing,,9788820031015,2001-01-01,1999,16.90,it,288,411,"biography, non-fiction",42,9255936
+161,Il Manifesto del Partito comunista,Manifest der Kommunistischen Partei,9788872852361,2000-01-01,1848,14.90,it,89,270,"biography, non-fiction",111 112,
+162,Picasso,,9788843520268,1986-01-01,1926,13.90,it,107,137,"biography, non-fiction",113 114 115,
+163,Walden o Vita nei Boschi,Walden,9788881111022,1995-01-01,1854,15.90,it,270,48,"biography, non-fiction",116,7090155
+164,Gente di Dublino,Dubliners,9788879835886,1994-07-21,1914,14.90,it,240,295,"biography, non-fiction",117,10515721
+165,Sapiens. Da animali a dèi,Sapiens,9788845296499,2017-10-18,2011,21.50,it,456,58,"history, non-fiction",118,10492831
+166,La canzone di Achille,The Song of Achilles,9788831780988,2019-01-10,2011,20.90,it,386,272,"history, non-fiction",119,11192315
+167,Il problema dei tre corpi,三体,9788804680604,2017-01-01,2008,21.90,it,416,276,"history, non-fiction",120 121 122,15232734
+168,Siddhartha,,9788845901843,1973-01-01,1922,10.50,it,139,3,"history, non-fiction",123,12765551
+169,I fratelli Karamazov,Братья Карамазовы,9788804376316,1994-01-01,1880,28.90,it,821,276,"history, non-fiction",86,
+170,Come trattare gli altri e farseli amici,How to Win Friends and Influence People,9788845275302,2013-11-13,1936,17.50,it,283,58,"philosophy, non-fiction",124,15247045
+171,L'illusione di Dio,The God Delusion,9788804570820,2007-01-01,2001,18.50,it,450,276,"philosophy, non-fiction",125,7089927
+172,L'arte di amare,The Art of Loving,9788804779865,2023-01-01,1956,10.50,it,133,276,"philosophy, non-fiction",126,15131869
+173,Al di là del bene e del male,Jenseits von Gut und Böse,9788817168663,2000-01-01,1885,13.90,it,178,367,"philosophy, non-fiction",127,
+174,Una stanza tutta per sé,A Room of One's Own,9788880490487,1995-01-01,1929,12.90,it,143,188,"philosophy, non-fiction",128,9728236
+175,La caduta,La chute,9788845246548,2008-01-01,1917,14.90,it,147,58,"philosophy, non-fiction",68,
+176,Il mito di Sisifo,Le mythe de Sisyphe,9788845246425,2011-01-01,1941,15.90,it,169,58,"philosophy, non-fiction",68,
+177,"Gödel, Escher, Bach","Gödel, Escher, Bach",9788845907555,1990-01-01,1979,29.50,it,777,3,"philosophy, non-fiction",129,10543240
+178,Dal Big Bang ai buchi neri,A Brief History of Time,9788817115216,1990-01-01,1988,18.90,it,241,367,"science, non-fiction",130,12174068
+179,La bussola d'oro,Northern Lights,9788831002929,2019-01-01,1995,21.90,it,405,375,"science, non-fiction",131,15172971
+180,L'uomo che scambiò sua moglie per un cappello,The Man Who Mistook His Wife for a Hat,9788845916250,2001-01-01,1980,18.90,it,308,3,"science, non-fiction",132,14359795
+181,Il giro del mondo in ottanta giorni,Le Tour du Monde en Quatre-Vingts Jours,9788861753020,2008-01-01,1872,12.50,it,225,235,"science, non-fiction",133,12499127
+182,Cosa accadrebbe se?,What If?,9788845279713,2015-01-01,1980,19.90,it,306,58,"science, non-fiction",134,12864603
+183,Fisica,Physics,9788818700848,1995-01-01,1472,19.50,it,386,374,"science, non-fiction",104,
+184,Homo Deus,ההיסטוריה של המחר,9788845292798,2017-05-11,2015,22.90,it,464,58,"science, non-fiction",118,11412468
+185,L'isola del Dottor Moreau,The Island of Dr. Moreau,9788807903274,2019-01-01,1896,14.50,it,168,152,"science, non-fiction",41,14821275
+186,Il Vecchio e il mare,The Old Man and the Sea,9788481304497,1954-01-01,1952,15.90,it,131,276,"psychology, non-fiction",135,15174995
+187,Chi ha spostato il mio formaggio?,Who Moved My Cheese?,9788820030971,2002-02-01,1998,14.90,it,96,411,"psychology, non-fiction",136,14181377
+188,Pensa come un monaco,Think Like a Monk,9788804719748,2020-09-08,2020,20.90,it,352,453,"psychology, non-fiction",137,15127571
+189,Ulisse,Ulysses,9788881310135,1995-01-01,1914,25.50,it,736,394,"psychology, non-fiction",117,
+190,Il risveglio,The Awakening,9788895227009,2017-01-01,1899,12.50,it,214,167,"psychology, non-fiction",138,15214541
+191,Spegni sto c***o di cervello,Unfuck your brain,9791280229892,2023-10-01,2017,13.50,it,157,256,"psychology, non-fiction",139,15159454
+192,Paul Klee,,9788820214302,2000-01-01,1930,13.50,it,134,273,"psychology, non-fiction",140,13262943
+193,La custode di mia sorella,My Sister's Keeper,9788850213320,2007-01-01,2004,21.50,it,447,425,"psychology, non-fiction",141,15171616
+194,Il cardellino,The Goldfinch,9788817072380,2014-01-01,2013,30.90,it,862,367,"art, non-fiction",142 65,
+195,Henry Moore,,9788843556021,1996-01-01,1934,13.90,it,119,138,"art, non-fiction",143 144 145,
+196,Andy Warhol,,9788876249280,2006-01-01,1967,11.50,it,168,406,"art, non-fiction",146,13998827
+197,Van Gogh,,9788878138285,1998-01-01,1937,12.90,it,66,253,"art, non-fiction",147,
+198,Le Corbusier,,9788820207250,1986-01-01,1938,13.50,it,148,273,"art, non-fiction",148,4135124
+199,Max Ernst,,9788881580705,1996-01-01,1956,15.90,it,163,77,"art, non-fiction",149 150 151,3770468
+200,Rembrandt,,9788878139824,1998-01-01,1900,14.90,it,143,253,"art, non-fiction",152 153,
+201,Edvard Munch,,9788883470073,1999-01-01,1927,11.90,it,95,396,"art, non-fiction",154 155 156,13886333
+202,Assassinio sull'Orient Express,Murder on the Orient Express,9788804679387,2020-01-01,1933,17.90,it,240,276,"travel, non-fiction",45,14586276
+203,La strada,The Road,9788806185824,2007-01-01,2006,17.90,it,256,134,"travel, non-fiction",157,9249844
+204,Poirot sul Nilo,Death on the Nile,9788804397397,1997-01-01,1937,16.50,it,276,276,"travel, non-fiction",45,12290899
+205,I versi satanici,The Satanic Verses,9788804321071,1989-01-01,1988,21.50,it,560,276,"travel, non-fiction",158,8170814
+206,Boy,,9788877826466,1997-01-01,1984,15.90,it,182,375,"travel, non-fiction",73,
+207,Tre uomini in barca (per tacer del cane),Three Men in a Boat (to say nothing of the dog),9788817151214,1992-01-01,1889,11.50,it,184,47,"travel, non-fiction",159,14546105
+208,Omaggio alla Catalogna,Homage to Catalonia,9788804509844,1993-01-01,1938,17.90,it,246,276,"travel, non-fiction",29,10546334
+209,Miss Marple nei Caraibi,A Caribbean Mystery,9788804510079,2006-01-01,1964,12.50,it,224,307,"travel, non-fiction",45,14572094
+210,La Gara Dei Supercuochi,,9788856623406,2012-01-01,2012,10.50,it,128,333,"cooking, non-fiction",160,14423426
+211,L'opera struggente di un formidabile genio,A heartbreaking work of staggering genius,9788804501350,2002-01-01,2000,18.90,it,437,276,"cooking, non-fiction",161 162,15118374
+212,Modernist Bread at Home,,9798988713111,2024-01-01,2024,16.50,it,,85,"cooking, non-fiction",163 164,
+213,Modernist Pizza Italian Edition,,9781734386158,2022-01-01,2022,48.90,it,1708,85,"cooking, non-fiction",163 164,13806058
+214,Il Liber de ferculis di Giambonino da Cremona,,9788882292720,2001-01-01,2001,18.90,it,420,379,"cooking, non-fiction",165,
+215,The complete book of fruits and vegetables,,9780517520338,1976-01-01,1976,17.50,it,303,91,"cooking, non-fiction",166 167,12628038
+216,Slow food revolution,,9788817006637,2005-01-01,2005,16.90,it,307,367,"cooking, non-fiction",168 169,11393910
+217,A tavola con i Romani antichi,,9788885020580,1984-01-01,1984,18.50,it,349,350,"cooking, non-fiction",170,
+218,Dune - Collector,Dune,9782266307307,2020-10-01,1965,24.90,fr,608,340,"science fiction, fiction",171,14841443
+219,"La roue du temps, l'invasion des tenebres 1",The Eye of the World,9782266073998,1997-07-18,1990,28.90,fr,782,340,"science fiction, fiction",172,14857524
+220,Le meilleur des mondes,Brave New World,9782266002615,1977-01-01,1932,13.50,fr,241,337,"science fiction, fiction",173,12643494
+221,Dracula,,9782211074384,2005-01-01,1897,18.90,fr,384,122,"science fiction, fiction",174,10749906
+222,Un Palais de colère et de brume,A Court of Mist and Fury,9782732485218,2018-02-08,2014,22.50,fr,626,245,"fantasy, fiction",175,13802383
+223,Un palais d'épines et de roses,A Court of Thorns and Roses,9782732487595,2021-11-11,2013,23.90,fr,454,245,"fantasy, fiction",175,14346854
+224,Six of Crows - Tome 1,Six of Crows,9782016265376,2017-10-11,2015,22.50,fr,512,251,"fantasy, fiction",176,13284653
+225,Le Héros Perdu,The Lost Hero,9782226220028,2011-05-04,2010,23.50,fr,556,6,"fantasy, fiction",37,15088289
+226,Le Jardin secret,The Secret Garden,9782070335596,1992-01-01,1911,18.90,fr,256,168,"mystery, fiction",177,15143374
+227,Révélation,Breaking Dawn,9782298022919,2009-01-01,2000,27.90,fr,756,160,"mystery, fiction",178,12643413
+228,La face cachée de Margo,Paper Towns,9782070662562,2014-01-01,2008,21.90,fr,367,168,"mystery, fiction",91,14576945
+229,Dragon Rouge,Red Dragon,9782744155536,2002-07-01,1981,18.90,fr,373,144,"mystery, fiction",179,14614937
+230,Fleurs captives,Flowers in the Attic,9782724230383,1987-06-01,1979,22.90,fr,411,160,"horror, fiction",180,10210915
+231,Tentation,New Moon,9782013223409,2012-01-01,2006,23.90,fr,563,250,"horror, fiction",178,15171428
+232,La coupe mortelle,City of Bones,9782266244480,2013-01-01,2007,22.50,fr,512,341,"horror, fiction",181,13151196
+233,La Maison des Feuilles,House of Leaves,9782381960647,2022-01-01,1998,28.50,fr,736,279,"horror, fiction",182,14636088
+234,Des souris et des hommes,Of Mice and Men,9782701162881,2013-01-01,1937,13.90,fr,119,43,"historical fiction, fiction",88,15154076
+235,Le monde s'effondre,Things Fall Apart,9782708701915,2001-02-01,1958,11.50,fr,192,346,"historical fiction, fiction",183,14305415
+236,Toute la lumière que nous ne pouvons voir,All the Light We Cannot See,9782253045281,2016-01-01,2014,23.50,fr,544,6,"historical fiction, fiction",184,14559678
+237,Le chardon et le tartan,Outlander,9782894303665,1999-01-01,1991,24.90,fr,672,475,"historical fiction, fiction",185,12678189
+238,À tout jamais,It Starts with Us,9782755663457,2023-01-11,2022,16.90,fr,352,219,"romance, fiction",186,13157687
+239,Fascination,Twilight,9782012010673,2008-12-01,2005,21.90,fr,498,191,"romance, fiction",178,14351157
+240,Nos étoiles contraires,The Fault in Our Stars,9782092563960,2013-01-01,2010,19.90,fr,315,288,"romance, fiction",91 187,10560964
+241,À contre-sens,Culpa mía,9782017052470,2020-01-01,2014,22.90,fr,416,254,"romance, fiction",188,15108112
+242,Sa majesté des mouches,Lord of the Flies,9782070374809,1956-01-01,1954,15.90,fr,243,168,"adventure, fiction",189,15213857
+243,Le Magicien Doz,The Wonderful Wizard of Oz,9782277216520,2002-01-01,1899,15.90,fr,159,230,"adventure, fiction",190,981246
+244,L'orange mécanique,A Clockwork Orange,9782221108499,2010-05-01,1962,16.90,fr,192,313,"adventure, fiction",191,12684723
+245,L' histoire de Pi,Life of Pi,9782892614329,2006-01-01,2000,18.50,fr,349,471,"adventure, fiction",192,8256037
+246,James et la grosse Pêche.,James and the Giant Peach,9782070335176,1992-01-01,1961,11.90,fr,144,168,"humor, fiction",73,10565804
+247,Journal d'un dégonflé - Tome 5 - La Vérité toute moche,The Ugly Truth,9782021060119,2010-01-01,2010,16.90,fr,218,393,"humor, fiction",72,15126923
+248,"Vieux, râleur et suicidaire",En man som heter Ove,9782298090994,2014-01-01,2012,17.90,fr,346,160,"humor, fiction",193,10370854
+249,Mortimer,Mort,9782841726912,2014-01-01,1987,18.90,fr,297,242,"humor, fiction",75,15161269
+250,Au cœur des ténèbres,Heart of Darkness,9782080705303,1993-01-07,1899,13.50,fr,136,156,"short stories, fiction",194,971353
+251,Bonsoir Lune (French edition of Goodnight Moon),Goodnight Moon,9780828845854,1981-10-01,1947,10.50,fr,32,162,"short stories, fiction",195,13642355
+252,Mechant Petit Lapin,The Tale of Peter Rabbit,9780723220497,1977-01-01,1920,11.90,fr,32,459,"short stories, fiction",196,14589623
+253,Danse macabre,Night Shift,9782290308417,2002-04-04,1960,17.90,fr,384,227,"short stories, fiction",42,14653011
+254,Moby Dick,,9782266010184,1981-01-01,1851,18.50,fr,453,344,"classics, fiction",197,11023042
+255,Raison et sentiments,Sense and Sensibility,9782909240251,1996-01-01,1811,16.90,fr,352,243,"classics, fiction",50,12648529
+256,Notes From Underground,Записки изъ подполья,9780497256104,2005-01-01,1864,11.90,fr,132,221,"classics, fiction",86,9415542
+257,L'enfant qui chassait la nuit,Where the Red Fern Grows,9782013216029,1998-09-30,1961,15.90,fr,249,191,"classics, fiction",198,3068460
+258,La mer des monstres,The Sea of Monsters,9782013971041,2014-07-16,2005,15.90,fr,282,190,"young adult, fiction",37,15088143
+259,Keleana. L'Assassineuse,Throne of Glass,9782732456034,2013-09-01,2012,20.50,fr,432,244,"young adult, fiction",175,14836711
+260,Divergence,Divergent,9782896674275,2011-01-01,2010,20.90,fr,487,2,"young adult, fiction",199,13276665
+261,Percy Jackson - Tome 3,The Titan's Curse,9782019109974,2016-03-18,2007,17.90,fr,320,339,"young adult, fiction",37,10716117
+262,Girl in Pieces,,9782380821314,2023-09-22,2000,17.50,fr,416,23,"children, fiction",200,15074759
+263,Ne tirez pas sur l'oiseau moqueur,To Kill a Mockingbird,9782877065504,2005-01-01,1960,18.50,fr,320,148,"children, fiction",201,15153502
+264,Matilda,,9782070576968,2007-03-01,1988,14.90,fr,240,106,"children, fiction",73,3078221
+265,Super Chien,Dog Man,9781443155014,2016-01-01,2015,14.90,fr,240,381,"children, fiction",202,12818414
+266,Just Kids,,9782070453603,2013-10-17,2006,20.90,fr,320,157,"poetry, fiction",203,15225423
+267,La nuit de Noël,The Night Before Christmas,9782013920025,1994-01-01,1857,10.50,fr,30,103,"poetry, fiction",204,10640247
+268,Vente à la criée du lot 49,The Crying of Lot 49,9782020094368,1987-01-01,1965,15.90,fr,174,392,"poetry, fiction",205 206,13085412
+269,Un conte peut en cacher un autre,Revolting rhymes,9782070520213,1998-01-01,1982,12.90,fr,48,168,"poetry, fiction",73,10565976
+270,Lolita,,9782070368990,1995-12-31,1777,20.90,fr,336,157,"drama, fiction",207,967422
+271,"Harry Potter et l'Enfant Maudit, Parties un et deux",Harry Potter and the Cursed Child,9782075074209,2016-01-01,2001,17.90,fr,343,169,"drama, fiction",208 209 36,7876652
+272,Guess How Much I Love You = Devine Combien Je T'Aime,Guess How Much I Love You,9781854303844,1996-03-01,1994,7.50,fr,32,268,"drama, fiction",210 211,5166955
+273,Catch-22,,9782253113362,2006-01-01,1961,19.90,fr,463,182,"drama, fiction",212,
+274,Steve Jobs,,9782253168522,2012-01-01,2011,25.90,fr,664,255,"biography, non-fiction",213,10406939
+275,La Derniere Lecon,Tuesdays with Morrie,9782266145176,2008-05-01,1994,13.90,fr,199,368,"biography, non-fiction",214,12560471
+276,Mon Combat - Mein Kampf,Mein Kampf,9781913890483,2016-01-01,1922,27.90,fr,615,302,"biography, non-fiction",215,14432618
+277,Autobiographie d'un Yogi,Autobiography of a Yogi,9780876121979,2012-01-01,1946,23.90,fr,514,390,"biography, non-fiction",216,7809286
+278,L' investisseur intelligent,The Intelligent Investor,9782909356006,1991-01-01,1949,19.50,fr,360,446,"history, non-fiction",217,13161822
+279,L'homme le plus riche de Babylone,The Richest Man in Babylon,9782892252620,1995-06-01,1926,12.90,fr,124,443,"history, non-fiction",218,3158201
+280,La maison aux pignons verts,Anne of Green Gables,9782890377448,1994-01-01,1908,16.90,fr,309,351,"history, non-fiction",219,14639031
+281,Le Monde des hommes,Bumi Manusia,9782743608637,2001-11-07,1972,17.90,fr,360,365,"history, non-fiction",220,3129893
+282,Le livre des cinq anneaux,Gorin no sho,9782714415288,1982-01-01,1963,10.50,fr,124,42,"philosophy, non-fiction",221,10560932
+283,Le monde de Sophie,Sofies verden,9782020219495,1995-01-01,1991,24.90,fr,523,477,"philosophy, non-fiction",222 223 224,11668253
+284,Quand le souffle rejoint le ciel,When Breath Becomes Air,9782709658041,2017-01-01,2016,14.90,fr,232,231,"philosophy, non-fiction",225,8145882
+285,Tao Te King,Tao te Ching,9782220035529,1991-10-16,1842,15.90,fr,120,100,"philosophy, non-fiction",226 227 228,2146521
+286,Introduction à la microbiologie,Microbiology,9782761313452,2003-01-01,1982,30.50,fr,945,476,"science, non-fiction",229 230 231,
+287,Biologie,Biology,9782761306539,1993-01-01,1987,41.50,fr,1267,476,"science, non-fiction",232,9483070
+288,L'univers expliqué aux gens pressés,Astrophysics for People in a Hurry,9782081481367,2019-01-01,2017,17.90,fr,209,75,"science, non-fiction",233 234 235,15229641
+289,Cosmos,,9782891325752,1981-01-01,1980,18.50,fr,354,478,"science, non-fiction",236,10744063
+290,Power: Les 48 lois du pouvoir,The 48 Laws of Power,9782848992549,2009-01-01,1998,22.90,fr,452,10,"psychology, non-fiction",237,15067531
+291,La psychologie de l'argent,The Psychology of Money,9782361170561,2022-01-01,2020,15.90,fr,288,446,"psychology, non-fiction",238,15074663
+292,Système 1 / Système 2,"Thinking, Fast and Slow",9782081307827,2016-02-24,2011,23.50,fr,528,156,"psychology, non-fiction",239,11351784
+293,Le pouvoir des habitudes,The Power of Habit,9782081342620,2016-02-24,2012,18.90,fr,407,156,"psychology, non-fiction",240,15229636
+294,Vincent van Gogh,,9782700019780,2002-03-15,1914,9.50,fr,116,187,"art, non-fiction",241 242 243,3113562
+295,Rose Madder,,9782744115608,1998-09-01,1995,20.90,fr,487,160,"art, non-fiction",42,14652587
+296,Persepolis,Persepolis 1-4,9782844146762,2017-07-01,2000,19.90,fr,352,241,"art, non-fiction",244,12909206
+297,L’art invisible,Understanding Comics,9782908981414,1999-01-01,1993,14.90,fr,215,447,"art, non-fiction",245,14614953
+298,La Fille du train,The Girl on the Train,9782266254489,2016-10-07,2014,18.90,fr,360,340,"travel, non-fiction",246,10249035
+299,Traite Du Zen TE De L'Entretien DES...,Zen and the Art of Motorcycle Maintenance,9782020333917,1998-01-20,1974,22.90,fr,421,477,"travel, non-fiction",247,964131
+300,"Mange, prie, aime","Eat, Pray, Love",9782298018349,2001-01-01,2001,16.50,fr,364,160,"travel, non-fiction",248,10309704
+301,La Conjuration des imbéciles,A Confederacy of Dunces,9782264017598,1998-07-01,1980,19.50,fr,391,124,"travel, non-fiction",249,9273536
+302,Les empereurs du fast-food,Fast Food Nation,9782746703056,2003-01-01,2001,21.90,fr,385,32,"cooking, non-fiction",250,2169894
+303,Sur le vif,With the Fire on High,9782092593981,2021-01-01,2019,17.50,fr,400,288,"cooking, non-fiction",251,13108664
+304,Les irresistibles recettes,Roald Dahl's Revolting Recipes,9782070590308,1995-01-01,1994,9.90,fr,64,168,"cooking, non-fiction",73,13766909
+305,"Les fées de la fête - tome 1 Margaux, la fée des gateaux",Cherry the Cake Fairy,9782266167765,2007-03-19,2005,10.90,fr,73,341,"cooking, non-fiction",252,10401820
+306,Die Mitternachtsbibliothek,The Midnight Library,9783426282564,2021-01-01,2020,15.90,de,304,113,"science fiction, fiction",253,11182315
+307,Die rote Königin,Red Queen,9783551583260,2015-01-01,2015,20.50,de,428,71,"science fiction, fiction",254,12670730
+308,Enders Spiel,Ender's Game,9783453314207,2014-01-01,1985,19.90,de,330,212,"science fiction, fiction",255,11398727
+309,Fourth Wing,,9783423284127,2025-01-01,2023,20.90,de,518,115,"fantasy, fiction",256,15173590
+310,Hundert Jahre Einsamkeit,Cien años de soledad,9783596162505,2004-02-01,1967,17.50,de,432,163,"fantasy, fiction",257,10090936
+311,One Of Us Is Lying,,9783570311653,2020-01-13,2014,19.50,de,360,73,"mystery, fiction",258 259 260,14642964
+312,The Return of Sherlock Holmes.,The Return of Sherlock Holmes,9783526426974,2000-12-01,1903,16.90,de,351,247,"mystery, fiction",46,5208449
+313,Stormbreaker,,9783473582891,2009-01-01,2000,13.90,de,234,360,"mystery, fiction",261,12722873
+314,Schlaflos,Insomnia,9783453210431,2002-10-01,1994,26.90,de,719,212,"horror, fiction",42,2206119
+315,Das Erwachen.,The Awakening,9783899410280,2002-09-30,1991,17.90,de,264,87,"horror, fiction",262,15140973
+316,Spuk in Hill House,The Haunting of Hill House,9783865527073,2019-05-21,1959,17.90,de,246,153,"horror, fiction",263,8774934
+317,Der scharlachrote Buchstabe,The Scarlet Letter,9783442076833,1997-01-01,1800,16.50,de,272,178,"historical fiction, fiction",264,11931451
+318,Wer zählt die Sterne,Number the Stars,9783596850020,1996-01-01,1901,12.90,de,147,154,"historical fiction, fiction",33,
+319,Les Misérables: Die Elenden,Les Misérables,9783746617008,2002-01-01,1862,24.90,de,520,30,"historical fiction, fiction",265,10720183
+320,Verity,,9783423230124,2020-03-13,2018,16.90,de,340,116,"romance, fiction",186,12924621
+321,Die sieben Männer der Evelyn Hugo,The Seven Husbands of Evelyn Hugo,9783548066738,2022-01-01,2017,21.90,de,400,442,"romance, fiction",266,12671416
+322,Royal Blue,"Red, White & Royal Blue",9783426530597,2023-01-01,2019,22.90,de,440,238,"romance, fiction",267,14586877
+323,Allein in der Wildnis.,Hatchet,9783551352248,2003-03-01,1986,13.90,de,192,71,"adventure, fiction",268,1020311
+324,Das Wunder von Narnia,The Magician's Nephew,9783800052646,2006-09-01,1955,12.90,de,186,439,"adventure, fiction",80,14602566
+325,A voyage to Lilliput =,Gulliver's Travels,9783423091978,1983-01-01,1726,14.90,de,278,102,"adventure, fiction",269,12193007
+326,Gregs Tagebuch,Diary of a Wimpy Kid,9783833906367,2020-01-01,2009,14.90,de,224,41,"humor, fiction",72,10828275
+327,Farbenblind,Born a Crime,9783896675903,2017-01-01,2016,14.50,de,304,51,"humor, fiction",270,8117697
+328,Operation Zombie,World War Z,9783442474240,2010-11-01,2006,21.90,de,422,178,"humor, fiction",271,14811678
+329,Zwischen Nacht und Dunkel,"Full Dark, No Stars",9783453266995,2010-01-01,2010,18.50,de,464,212,"short stories, fiction",42,15254163
+330,Das Dschungelbuch,The Jungle Book,9783423790017,1988-01-01,1893,15.90,de,192,102,"short stories, fiction",272,14658528
+331,Die Verurteilten,Different Seasons,9783453090576,1995-01-01,1982,21.90,de,529,466,"short stories, fiction",42,14655149
+332,Das Kamasutram. Orientalische Liebeslehre.,कामसूत्र,9783442067527,1984-01-01,1883,13.90,de,189,178,"classics, fiction",273,10647726
+333,Jane Eyre,,9783548301235,1990-01-01,1847,22.50,de,480,441,"classics, fiction",274,10770818
+334,Die Outsider,The Outsiders,9783423078412,1998-01-01,1967,11.50,de,192,102,"young adult, fiction",275 141 276,13440278
+335,Percy Jackson,The Battle of the Labyrinth,9783551311566,2012-01-01,2005,20.90,de,367,71,"young adult, fiction",37,13012013
+336,Metamorphosen.,Metamorphoses,9783150013601,1994-12-01,1479,16.50,de,394,363,"poetry, fiction",277,996557
+337,The Canterbury Tales,,9783526421146,2000-12-01,1478,21.90,de,427,247,"poetry, fiction",278 279 280,5208411
+338,Les fleurs du mal,,9783150299739,1980-01-01,1855,15.90,de,282,362,"poetry, fiction",281,12949700
+339,Thirteen Reasons Why,,9783125780446,2016-01-01,2007,16.90,de,312,141,"drama, fiction",282,15162161
+340,I'm Glad My Mom Died,,9783596708888,2023-06-01,2022,17.90,de,320,154,"biography, non-fiction",283 284,15137833
+341,Sie Nannten Mich Es,"A child called ""it""",9783442150557,2000-01-01,1987,13.90,de,168,178,"biography, non-fiction",285,14559617
+342,Hexenjagd,The Crucible,9783596271085,1998-06-01,1953,10.50,de,151,155,"biography, non-fiction",286,9320921
+343,"101 Essays, die dein Leben verändern werden",101 Essays That Will Change The Way You Think,9783492071598,2022-03-31,2018,21.50,de,440,334,"philosophy, non-fiction",287 288,14646825
+344,Selbstbetrachtungen.,Meditations,9783520004123,2001-01-01,1626,16.90,de,203,240,"philosophy, non-fiction",289,1017459
+345,Die Nacht. Erinnerung und Zeugnis.,La Nuit,9783451048739,2002-07-01,1955,11.90,de,135,211,"philosophy, non-fiction",290,1008201
+346,Gewalt und Mitgefühl: Die Biologie des menschlichen Verhaltens | Über die Ursachen und die Entstehung von Aggression,Behave,9783492318365,2021-09-30,2017,26.50,de,795,334,"science, non-fiction",291,15127498
+347,"""Sie belieben wohl zu scherzen, Mr. Feynman!""","""Surely You're Joking, Mr. Feynman""",9783492030182,1987-01-01,1984,19.90,de,352,334,"science, non-fiction",292 293,10356120
+348,Der Drache in meiner Garage,The Demon-Haunted World,9783426774748,2000-01-01,1995,22.90,de,472,114,"science, non-fiction",236,1005046
+349,Die 1%-Methode,Atomic Habits,9783442178582,2020-04-27,2016,15.50,de,322,178,"psychology, non-fiction",294,11646973
+350,"Good Vibes, Good Life",,9783499005251,2020-11-17,2015,18.90,de,304,372,"psychology, non-fiction",295,15105203
+351,Die Wolfsfrau,Women Who Run with the Wolves,9783453129344,1997-01-01,1982,22.90,de,561,212,"psychology, non-fiction",296,6963906
+352,Chamäleon Kunterbunt,The Mixed-Up Chameleon,9783806742503,1998-09-01,1975,8.90,de,32,173,"art, non-fiction",297,1028402
+353,Naturkunde,Naturalis historia,9783760815831,1973-01-01,1469,17.50,de,280,209,"art, non-fiction",298,2234857
+354,Der Sammler,The Collector,9783499159961,1988-01-01,1963,19.90,de,288,373,"art, non-fiction",299,12853632
+355,In die Wildnis. Allein nach Alaska.,Into the Wild,9783492227087,2002-02-01,1996,15.90,de,284,334,"travel, non-fiction",300,1012857
+356,Picknick mit Bären,A Walk in the Woods,9783442443956,1999-09-01,1997,17.90,de,328,178,"travel, non-fiction",74,13908852
+357,Der große Trip,Wild,9783442158591,2015-01-01,1767,16.50,de,363,178,"travel, non-fiction",301 302 303,15125139
+358,Bittersüße Schokolade,Como agua para chocolate,9783518388914,1994-12-01,1989,18.90,de,246,418,"cooking, non-fiction",304,1016812
+359,Fit fürs Leben,Fit for Life,9783442163632,2001-04-01,1985,20.90,de,335,178,"cooking, non-fiction",305 306 307,3196828
+360,In der Küche wohnt das Glück,Through the kitchen window,9783806720297,1985-01-01,1984,8.50,de,76,173,"cooking, non-fiction",308 309,12863242
+361,Fundación,Foundation,9788401929212,1986-01-01,1951,17.90,es,240,336,"science fiction, fiction",79,14560069
+362,Jurassic Park,,9780307348135,2006-01-01,1990,20.90,es,455,93,"science fiction, fiction",310,15240570
+363,Jogador Numero Um,Ready Player One,9786555601589,2019-11-13,2008,19.90,es,462,225,"science fiction, fiction",311,12369565
+364,Meow,Haunting Adeline,9788419421890,2023-02-23,2021,26.90,es,624,280,"fantasy, fiction",312,15089260
+365,El príncipe,The Prince,9789806423367,2004-01-01,1515,13.50,es,156,136,"fantasy, fiction",313,14587465
+366,Miss Peregrine y los niños peculiares,Miss Peregrine's Home for Peculiar Children,9786070734915,2016-07-26,2011,18.90,es,388,335,"mystery, fiction",314,12393442
+367,Goosebumps,Welcome to Dead House,9780439626279,2004-04-01,1992,12.90,es,144,382,"mystery, fiction",315,14855397
+368,Las memorias de Sherlock Holmes,Memoirs of Sherlock Holmes [11 stories],9786074154115,2013-02-01,1893,18.90,es,259,131,"mystery, fiction",46,11169760
+369,La Larga Marcha,The Long Walk,9789500731720,2010-01-01,1979,16.90,es,352,417,"horror, fiction",42,15265598
+370,Cell,,9789500731614,2010-01-01,2006,22.90,es,460,417,"horror, fiction",42,15264930
+371,Carmilla (Biblioteca De Fantasia Y Terror / Fantasy and Horror Library),Carmilla,9788420660356,2006-03-30,1871,11.90,es,90,9,"horror, fiction",316,4903142
+372,Las uvas de la ira,The Grapes of Wrath,9780142002537,2002-01-01,1939,25.90,es,544,318,"historical fiction, fiction",88,15241099
+373,Criadas y senoras,The Help,9788415140047,2010-01-01,2009,18.50,es,479,140,"historical fiction, fiction",317 318 319,8373355
+374,El Asesinato de Roger Ackroyd,The Murder of Roger Ackroyd,9788427285071,1995-01-01,1926,13.50,es,256,128,"historical fiction, fiction",45,14586509
+375,Twisted 1. Twisted Love,Twisted Love,9786070793677,2022-01-01,2021,20.90,es,358,130,"romance, fiction",320,13180424
+376,Romper el Hielo,Icebreaker,9781644739549,2023-01-01,2020,21.50,es,448,123,"romance, fiction",321,15100725
+377,Twisted Lies,,9786073913133,2024-01-01,2022,25.50,es,616,129,"romance, fiction",320,15074914
+378,El símbol perdut,The Lost Symbol,9788497874526,2009-10-01,2009,26.90,es,604,125,"adventure, fiction",70,14425780
+379,La cabina mágica,The Phantom Tollbooth,9788420790039,1999-01-01,1961,16.50,es,255,17,"adventure, fiction",322,8578253
+380,La Rebelion de Atlas,Atlas Shrugged (Centennial Ed. HC),9789872095109,2003-10-01,1936,35.90,es,1096,184,"adventure, fiction",323 324 325,4990278
+381,Freakonomics,,9788466625128,2006-04-01,2005,16.90,es,320,123,"humor, fiction",326 327,15232974
+382,No dejes que la paloma conduzca el autobús,Don't Let the Pigeon Drive the Bus!,9788418762598,2023-02-15,2003,13.90,es,40,19,"humor, fiction",328,14283720
+383,Famosa con Poco Estilo / Dork Diaries,Dork Diaries 7,9781644735282,2022-01-01,2014,16.90,es,344,325,"humor, fiction",329,
+384,Los ojos de plata,The Silver Eyes (Five Nights At Freddy's #1),9788416867691,2017-11-03,2001,17.90,es,396,370,"short stories, fiction",330 331,12339176
+385,Stelaluna,Stellaluna,9788426128492,1997-01-01,1990,11.50,es,47,126,"short stories, fiction",332,10500716
+386,LA Casa En Mango Street/the House on Mango Street,The House on Mango Street,9780613046886,1999-10-01,1983,10.50,es,132,421,"short stories, fiction",333,4636775
+387,A todos los chicos de los que me enamoré,To All the Boys I've Loved Before,9786070725586,2015-01-01,2014,17.90,es,373,335,"young adult, fiction",334,14910490
+388,Verano en Que Me Enamoré,The Summer I Turned Pretty,9786070792281,2022-01-01,2000,16.50,es,272,335,"children, fiction",334,13943314
+389,El sol y sus flores,the sun and her flowers,9788432234057,2018-01-01,2017,18.90,es,256,389,"poetry, fiction",335,8243063
+390,El paraíso perdido,Paradise Lost,9788489715424,1997-01-01,1667,15.50,es,333,5,"poetry, fiction",336,15163522
+391,Robinsón Crusoe,Robinson Crusoe,9788447303199,1994-01-01,1686,18.90,es,274,361,"poetry, fiction",337,11469043
+392,Diario de Greg 11. ¡A toda marcha!,Double Down,9781632456472,2016-12-20,2007,15.50,es,224,252,"drama, fiction",72,8435444
+393,"Elon Musk : el Empresario Que Anticipa el Futuro / Elon Musk : Tesla, SpaceX, and the Quest for a Fantastic Future",Elon Musk,9786075693798,2023-01-01,2013,20.90,es,396,130,"biography, non-fiction",338,
+394,Rompe la barrera del NO,Never Split the Difference,9788416029747,2022-07-19,2016,17.50,es,288,84,"biography, non-fiction",339 340,15051981
+395,Yo Se Por Que Canta el Pajaro Enjaulado,I Know Why the Caged Bird Sings,9788426449115,1993-01-01,1969,19.90,es,281,127,"biography, non-fiction",341,14318967
+396,El arte de la seduccion,The Art of Seduction,9786074004465,2011-01-01,2001,20.90,es,467,186,"history, non-fiction",237,15218363
+397,El Retrato de Dorian Gray,The Picture of Dorian Gray,9786073117364,2013-01-01,1890,13.50,es,246,93,"history, non-fiction",342,14314719
+398,Atrévete a no gustar,嫌われる勇気,9788408184164,2018-04-10,2013,19.90,es,280,474,"philosophy, non-fiction",343 344,13563797
+399,Los cuatro acuerdos,The Four Agreements,9781878424365,1999-01-01,1997,14.90,es,152,13,"philosophy, non-fiction",345,2076539
+400,Segundo sexo,Le Deuxième Sexe,9781400000609,2002-02-19,1949,27.90,es,728,417,"philosophy, non-fiction",346,743781
+401,Por qué dormimos,Why We Sleep,9781713584834,2020-12-29,2017,17.90,es,368,29,"science, non-fiction",347,10500928
+402,Biologi a molecular de la ce lula,Molecular Biology of the Cell,9788428215077,2008-01-01,1983,48.90,es,1463,301,"science, non-fiction",348 349 350,10367109
+403,Fisica 1 - Para La Ciencia y La Tecnologia,Physics for scientists and engineers,9788429143812,2000-03-01,1990,32.90,es,830,364,"science, non-fiction",351 352,15091384
+404,El Poder de la Mente Subconsciente,The Power of Your Subconscious Mind,9789562914338,2007-05-10,1963,17.90,es,222,57,"psychology, non-fiction",353,12363898
+405,Los 7 hábitos de la gente altemente efectiva,The 7 Habits of Highly Effective People,9788475098357,1996-01-01,1989,16.50,es,374,311,"psychology, non-fiction",354,6193158
+406,La Magia de Pensar en Grande,The Magic of Thinking Big,9781931059664,2006-04-11,1900,15.90,es,270,420,"psychology, non-fiction",355,13891465
+407,El Camino Del Artista En Accion,The Artist's Way,9789501603651,2001-08-01,1992,18.90,es,240,436,"art, non-fiction",356,3346446
+408,The Book,,9791387574079,2025-10-01,2022,22.90,es,411,117,"art, non-fiction",357,15205968
+409,La Nausea/nausea (Narrativa Losada),La nausée,9789500392624,2003-06-30,1938,18.90,es,240,265,"art, non-fiction",358,8684362
+410,Una habitacion con vistas/A Room With  a View,A Room with a View,9788420659329,2005-05-30,1905,15.50,es,204,8,"travel, non-fiction",359,5257806
+411,Las minas del rey Salomón,King Solomon's Mines,9788420734170,1995-01-01,1876,16.90,es,222,17,"travel, non-fiction",360,10572779
+412,Almacén de cuentos,The Travels of Marco Polo,9788485354542,1981-01-01,1818,18.90,es,376,228,"travel, non-fiction",361,4214521
+413,Dilema del Omnívoro,Omnivore's Dilemma. A Natural History of Four Meals,9788499927039,2017-01-01,2006,20.90,es,450,358,"cooking, non-fiction",362 363 364,14604609
+414,"Sal, grasa, ácido, calor","Salt, Fat, Acid, Heat",9788415887270,2018-01-01,2017,21.50,es,475,291,"cooking, non-fiction",365,14852207
+415,"Panqueques, Panqueques! (Pancakes, Pancakes!)","Pancakes, pancakes!",9781536424010,2017-01-01,1970,12.90,es,32,257,"cooking, non-fiction",297,
+416,Shatter Me,,9780062741738,2018-01-09,2011,16.90,en,357,201,"science fiction, fiction",366,8814369
+417,The Maze Runner,,9781906427504,2010-01-01,2009,21.90,en,375,80,"science fiction, fiction",367,7783000
+418,Shatter Me Complete Collection,,9780062372703,2014-01-01,2011,48.90,en,1968,203,"science fiction, fiction",366,12986820
+419,Unravel Me,,9780062250933,2013-02-05,2013,20.90,en,443,201,"science fiction, fiction",366,14858492
+420,Mockingjay,,9781410428417,2010-01-01,2010,17.50,en,424,430,"science fiction, fiction",30,15267427
+421,The Ballad of Songbirds and Snakes,,9780702300172,2020-01-01,2020,24.90,en,528,380,"science fiction, fiction",30,15256837
+422,Tender Is the Flesh,Cadáver exquisito,9781982150921,2020-08-04,2015,17.90,en,228,388,"science fiction, fiction",368,10409671
+423,Ignite Me,,9780062085580,2014-01-01,2014,21.90,en,416,201,"science fiction, fiction",366,15189905
+424,The Martian,,9780804139021,2014-01-01,2011,21.90,en,407,91,"science fiction, fiction",369,14641755
+425,Flowers for Algernon,,9780553274509,1975-07-01,1966,17.90,en,274,37,"science fiction, fiction",370,12947669
+426,The Bachman Books,The Bachman Books (Long Walk / Rage / Roadwork / Running Man),9780451147363,1986-11-01,1985,34.90,en,902,292,"science fiction, fiction",42,14650826
+427,A Wizard of Earthsea,,9780553116090,1975-01-01,1968,17.90,en,205,37,"science fiction, fiction",371,15255407
+428,Destroy Me,,9780008527136,2022-01-01,2012,11.90,en,106,151,"science fiction, fiction",366,14369593
+429,Blade runner,Do Androids Dream of Electric Sheep?,9780345350473,1982-01-01,1968,14.90,en,224,36,"science fiction, fiction",372,10734433
+430,Neuromancer,,9780143111603,2016-10-25,1984,17.50,en,317,321,"science fiction, fiction",373,8904053
+431,Never Let Me Go,,9781400078776,2006-01-01,2005,14.50,en,319,451,"science fiction, fiction",374,13160732
+432,Contact,,9780671701802,1989-09-15,1985,19.90,en,432,340,"science fiction, fiction",236,8260584
+433,Watchmen,,9781401284718,2019-01-01,1986,21.90,en,421,92,"science fiction, fiction",375 376 377,11571982
+434,Parable of the sower,,9780941423991,1993-01-01,1993,15.50,en,320,159,"science fiction, fiction",378,8281190
+435,Cinder,,9780545567473,2012-04-30,2011,17.50,en,416,380,"science fiction, fiction",379,15099430
+436,Sunrise on the Reaping,,9781546171461,2025-01-01,2025,22.90,en,400,380,"science fiction, fiction",30,14847912
+437,Dune Messiah,,9780425074985,1975-01-01,1969,16.50,en,279,45,"science fiction, fiction",171,6781122
+438,The Cruel Prince,,9780316461252,2023-01-01,2018,21.90,en,378,262,"fantasy, fiction",380,15204736
+439,The Name of the Wind,,9781407234724,2011-01-01,2007,25.50,en,736,179,"fantasy, fiction",381 382,12391248
+440,Heroes of Olympus,The Son of Neptune,9780141335735,2012-01-01,2011,21.90,en,512,348,"fantasy, fiction",37,13012024
+441,Howl's Moving Castle,,9780688062330,1986-01-01,1986,16.90,en,304,183,"fantasy, fiction",383,14818196
+442,Once Upon a Broken Heart,,9781399633871,2025-01-01,2021,17.50,en,416,305,"fantasy, fiction",384,15174244
+443,The Mark of Athena,,9780545782814,2012-01-01,2011,21.50,en,582,380,"fantasy, fiction",37,12460015
+444,A Court of Wings and Ruin,,9781619634480,2017-05-02,2017,30.90,en,720,53,"fantasy, fiction",175,13315544
+445,The Way of Kings,,9780765326355,2010-01-01,2010,35.50,en,1008,434,"fantasy, fiction",385,8890435
+446,Into the Wild,,9780060000028,2003-01-01,2003,17.50,en,295,201,"fantasy, fiction",386,12720669
+447,Circe,,9781526612519,2019-04-04,2018,19.90,en,404,53,"fantasy, fiction",119,15176841
+448,Red Rising,,9780345539793,2014-01-28,2014,22.90,en,416,94,"fantasy, fiction",387,8407136
+449,The Return of the King,,9780345253453,1976-03-01,1950,21.90,en,499,36,"fantasy, fiction",38,14624452
+450,Shadow and Bone,,9781510109063,2021-01-01,2012,17.90,en,352,304,"fantasy, fiction",176,12817071
+451,The School for Good and Evil,,9780007492930,2013-06-06,2007,24.90,en,496,202,"fantasy, fiction",388,15130842
+452,The Wicked King,,9781471408038,2019-08-28,2019,18.50,en,332,217,"fantasy, fiction",380,15158186
+453,The Chronicles of Narnia Boxed Set,The Chronicles of Narnia,9780064471190,1994-07-08,1970,28.90,en,768,205,"fantasy, fiction",80,52102
+454,The Last Wish,Ostatnie Życzenie,9780316029186,1993-01-01,1993,16.90,en,342,303,"fantasy, fiction",389,12848705
+455,Keeper of the Lost Cities,,9781442445932,2012-10-02,2012,22.50,en,512,397,"fantasy, fiction",390,15211932
+456,Brutal Prince,,9781728295350,2023-01-01,2020,18.50,en,331,410,"fantasy, fiction",391,15127238
+457,American Gods,,9780062472106,2016-09-01,2001,22.90,en,576,467,"fantasy, fiction",47,14420908
+458,A Study in Scarlet,,9798798434640,2018-01-01,1887,15.90,en,162,416,"mystery, fiction",46,15264254
+459,The Screaming Staircase,,9780857532015,2013-01-01,2013,18.90,en,418,109,"mystery, fiction",392,14369277
+460,Five on Treasure Island,Five on a Treasure Island,9780750051422,2009-01-01,1942,14.50,en,186,215,"mystery, fiction",393,14596225
+461,Pretty Little Liars,,9780062009548,2010-01-01,2006,15.90,en,297,200,"mystery, fiction",394,13148520
+462,Say Cheese & Die,Say Cheese and Die!,9780545035255,2009-01-01,1992,14.90,en,141,380,"mystery, fiction",315,7235623
+463,Monday's Not Coming,,9780062422675,2018-01-01,2018,18.90,en,435,237,"mystery, fiction",395,12366742
+464,The Case of the Missing Marquess (An Enola Holmes Mystery),"The Case of the Missing Marquess (Enola Holmes, #1)",9780545017459,2006-01-01,2006,14.90,en,233,380,"mystery, fiction",396,15162971
+465,Bunnicula,,9780380510948,1990-01-01,1979,13.90,en,98,33,"mystery, fiction",397 398,8536510
+466,The Big Sleep,,9780241956281,2018-01-01,1939,14.90,en,229,319,"mystery, fiction",399,11518032
+467,Murder in Three Acts,,9780425067932,1984-01-01,1934,16.90,en,233,45,"mystery, fiction",45,15110175
+468,One for the Money,,9780141001593,2000-10-26,1994,15.50,en,320,318,"mystery, fiction",400,15207831
+469,Hallowe'en Party,,9780671830731,1970-01-01,1969,18.90,en,244,340,"mystery, fiction",45,14561074
+470,The Westing game,,9780525423201,1978-01-01,1978,16.90,en,192,118,"mystery, fiction",401,360798
+471,Point Blanc,,9781406358803,2014-01-01,2001,13.50,en,274,457,"mystery, fiction",261,15061279
+472,The Sleepwalker,,9780671746520,1990-01-01,1990,13.90,en,164,340,"mystery, fiction",315,6982194
+473,Thea Stilton and the Lost Letters,Amore alla corte degli zar,9780545656023,2015-01-01,1900,12.90,en,176,380,"mystery, fiction",160,7891673
+474,The Overnight,Fear Street - The Overnight,9780671746506,1989-01-01,1989,12.90,en,151,340,"mystery, fiction",315,6549016
+475,Fear Street - Superchillers,Lights Out,9780671851323,1994-08-01,1991,15.90,en,163,398,"mystery, fiction",315,15171112
+476,The Stepsister,,9780671702441,1990-11-01,1990,11.50,en,176,404,"mystery, fiction",315,407518
+477,The Prom Queen,,9780671724856,1992-03-01,1992,13.90,en,167,24,"mystery, fiction",315,8789386
+478,Two Can Keep a Secret,,9781524714727,2019-01-01,2019,15.50,en,332,95,"mystery, fiction",258,8588098
+479,"In a dark, dark room, and other scary stories","In a Dark, Dark Room and Other Scary Stories",9780590450287,1991-01-01,1984,12.90,en,64,380,"mystery, fiction",402 403 404,8013170
+480,The Dead Zone,,9781501143816,1979-01-01,1979,18.90,en,426,449,"horror, fiction",42,15113711
+481,Ocean at the End of the Lane,The Ocean at the End of the Lane,9781471247088,,2013,15.50,en,224,455,"horror, fiction",47,15098920
+482,The New Girl,,9780671707378,1989-01-01,1989,13.90,en,168,340,"horror, fiction",315,8839719
+483,Firestarter,,9780451150318,1986-01-01,1980,20.50,en,428,292,"horror, fiction",42,14651724
+484,Gerald's Game,,9780451176462,1993-01-01,1992,17.50,en,400,395,"horror, fiction",42,14651993
+485,We Have Always Lived in the Castle,,9780140071078,1984-01-01,1962,13.90,en,187,318,"horror, fiction",263 405,14812400
+486,The Vampire Lestat,,9780394534435,1992-03-01,1986,27.90,en,606,7,"horror, fiction",406,12452506
+487,Thinner,,9781444753448,2012-01-01,1984,15.90,en,318,213,"horror, fiction",42,14654165
+488,Stephen King's Danse Macabre,Danse Macabre,9780708821817,1985-01-01,1980,22.90,en,479,165,"horror, fiction",42,14652710
+489,The Eyes of the Dragon,,9780708835746,1991-01-01,1959,20.90,en,382,165,"horror, fiction",42,14651668
+490,Four Past Midnight,,9780451170385,1998-01-01,1990,31.90,en,768,395,"horror, fiction",42,14651610
+491,The Stepford Wives,,9788723901682,1985-01-01,1972,11.90,en,159,26,"horror, fiction",407,11387384
+492,Wizard and Glass,,9780451194862,2001-01-01,1997,24.50,en,718,395,"horror, fiction",42,14651792
+493,Just after Sunset,,9781668018101,2023-01-01,2008,18.50,en,448,340,"horror, fiction",42,14656503
+494,The Dark Tower VII,The Dark Tower,9780340827215,2004-01-01,1990,27.90,en,790,214,"horror, fiction",42,14652608
+495,The Tell-Tale Heart,,9781583419250,2011-01-01,1958,9.90,en,30,89,"horror, fiction",408,14839715
+496,Deep trouble,Goosebumps - Deep Trouble,9781407106977,2008-01-01,1994,15.90,en,128,380,"horror, fiction",315,11616578
+497,The Queen of the Damned,,9780345351524,1993-10-01,1988,26.90,en,573,36,"horror, fiction",406,8564469
+498,Marked,,9780349001128,2012-01-01,2007,16.90,en,320,261,"horror, fiction",409 410,12286010
+499,Heaven,,9781444828825,2016-01-01,1985,19.90,en,440,76,"horror, fiction",180,11420416
+500,The Tommyknockers,,9780451156600,1988-11-01,1985,25.50,en,725,395,"horror, fiction",42,14650876
+501,Coraline,,9780060825430,2008-01-01,2008,15.90,en,192,192,"horror, fiction",411 47,10481636
+502,The Hired Girl,,9781406365931,2016-01-01,2015,19.90,en,400,457,"historical fiction, fiction",412,12391518
+503,Perfume,Das Parfum,9780375725845,2001-01-01,1985,18.90,en,263,451,"historical fiction, fiction",413,6856376
+504,A Gentleman in Moscow,,9780143110439,2019-01-01,2016,19.50,en,511,318,"historical fiction, fiction",414,12064129
+505,Esperanza rising,,9780439120425,2001-01-01,2000,17.90,en,262,384,"historical fiction, fiction",415,15089470
+506,Love In the Time of Cholera,El amor en los tiempos del cólera,9780141189208,2007-01-01,1985,20.90,en,451,318,"historical fiction, fiction",257,15122991
+507,The Nightingale,,9781250131768,2015-01-01,2000,26.90,en,560,415,"historical fiction, fiction",416,15090833
+508,The Bluest Eye,,9780452273054,1994-01-01,1970,13.90,en,181,338,"historical fiction, fiction",57,15152657
+509,The Pillars of the Earth,,9780688046590,1989-01-01,1989,35.90,en,1040,468,"historical fiction, fiction",417,12497169
+510,Sula,,9780452283862,2002-01-01,1973,13.90,en,174,338,"historical fiction, fiction",57,10653439
+511,Inside Out & Back Again,,9780545447850,2012-01-01,2011,15.90,en,276,380,"historical fiction, fiction",418,11593870
+512,Redeeming Love,,9781590525135,2007-01-01,1991,18.50,en,474,282,"historical fiction, fiction",419,9249644
+513,Atonement,,9780385503952,2002-04-01,2001,17.90,en,384,286,"historical fiction, fiction",420,12059765
+514,The One and Only Ivan,,9780605527799,2012-01-01,2011,17.90,en,322,328,"historical fiction, fiction",421,14551614
+515,Half of a Yellow Sun,,9780007200283,2007-01-01,2006,21.90,en,500,199,"historical fiction, fiction",422,14597881
+516,Wide Sargasso Sea,,9780241951552,2011-01-01,1966,15.90,en,189,319,"historical fiction, fiction",423,14552701
+517,Lonesome Dove,,9781439195260,2010-06-01,1985,34.90,en,945,402,"historical fiction, fiction",424,14819521
+518,Their Eyes Were Watching God,,9780972976503,2004-01-01,1937,12.50,en,231,142,"historical fiction, fiction",425,13239873
+519,Refugee,,9781338229592,2017-01-01,2017,19.90,en,352,380,"historical fiction, fiction",426,8100631
+520,The pearl,,9780142000694,2002-01-01,1945,12.50,en,118,318,"historical fiction, fiction",88,9157799
+521,Maurice,,9780393086577,1971-01-01,1971,13.50,en,256,297,"historical fiction, fiction",359,15160180
+522,Secret Life of Bees,The secret life of bees,9780747270775,2002-01-01,2000,16.90,en,303,208,"historical fiction, fiction",427 428,14892929
+523,The Things We Leave Unfinished,,9781804992326,2022-01-01,2021,17.50,en,424,319,"historical fiction, fiction",256,15103257
+524,Twisted Games,,9781957464060,2021-01-01,2021,20.90,en,454,16,"romance, fiction",320,13311978
+525,Twisted Hate,,9781728274881,2022-01-01,2022,22.90,en,528,410,"romance, fiction",320,13870257
+526,Hunting Adeline,,9781638932925,2025-01-01,2021,27.50,en,685,472,"romance, fiction",312,15170465
+527,If He Had Been With Me,,9781402277825,2013-04-01,2013,17.90,en,368,409,"romance, fiction",429,15172586
+528,Milk and Honey,,9781449474256,2015-10-06,2014,17.90,en,226,21,"romance, fiction",335,15162565
+529,The Housemaid,,9780349132853,2025-01-01,2022,15.50,en,336,59,"romance, fiction",430,15125026
+530,The Spanish Love Deception,,9781668003275,2021-11-23,2021,20.90,en,480,27,"romance, fiction",431,12649413
+531,Me before you,,9780670026609,2012-01-01,2012,24.90,en,492,312,"romance, fiction",432,15222783
+532,You've Reached Sam,,9781250762054,2024-06-25,2021,15.50,en,320,461,"romance, fiction",433,14657428
+533,I Fell in Love with Hope,,9781668034538,2023-01-01,2022,21.90,en,416,28,"romance, fiction",434,14593056
+534,Lights Out Collector's Edition,Lights Out,9781638933700,2025-01-01,2024,22.90,en,416,472,"romance, fiction",435,15157422
+535,Credence,,9780593641972,2024-01-01,2020,22.90,en,523,45,"romance, fiction",436,14614764
+536,Call me by your name,,9780374299217,2007-01-01,2007,18.90,en,256,149,"romance, fiction",437,14610463
+537,All the Bright Places,,9780593118924,2020-01-01,2014,18.90,en,402,139,"romance, fiction",438,14559667
+538,The Fine Print,,9781464230585,2025-03-25,2021,18.50,en,448,52,"romance, fiction",439,15258057
+539,The Hating Game,,9780062439598,2016-01-01,2016,20.90,en,379,469,"romance, fiction",440,15206889
+540,King of Pride,,9781957464121,2023-01-01,2023,22.90,en,464,16,"romance, fiction",320,15132867
+541,Heated Rivalry,,9780369748898,2023-01-01,2019,18.90,en,375,352,"romance, fiction",441,15269504
+542,Archer's Voice,,9781495390906,2014-01-25,2014,19.50,en,384,258,"romance, fiction",442,15099842
+543,Eclipse,,9780316160209,2007-01-01,2006,22.50,en,629,260,"romance, fiction",178,15174663
+544,P.S. I Still Love You,,9781407157986,2015-01-01,2000,17.90,en,352,380,"romance, fiction",334,13298006
+545,Fifty Shades Darker,,9780606264488,2012-01-01,2011,25.90,en,590,437,"romance, fiction",60,15098111
+546,Inferno,,9781101974117,2016-01-01,2013,24.50,en,576,18,"adventure, fiction",70,14540877
+547,Wolves of the Calla,,9781880418567,2003-01-01,1997,28.90,en,714,108,"adventure, fiction",42,15267518
+548,Wings of Fire,The Dragonet Prophecy,9781338883190,2023-01-01,2012,19.90,en,320,380,"adventure, fiction",443,15122212
+549,Treasure A Dirk Pitt Adventure,Treasure,9781451621013,2011-01-01,1988,27.90,en,608,340,"adventure, fiction",444,7726251
+550,The Girl Who Loved Tom Gordon,,9780613237178,2000-01-01,1999,17.90,en,256,340,"adventure, fiction",42,14656020
+551,Charlie and the Great Glass Elevator,,9780394824727,1972-01-01,1972,12.90,en,176,7,"adventure, fiction",73,12894997
+552,Artemis Fowl,,9780141312125,2002-01-01,1999,19.90,en,288,348,"adventure, fiction",445,15099835
+553,The Great Hunt,The Great Hunt (The Wheel of Time Book 2),9780312851408,1990-01-01,1990,27.90,en,656,433,"adventure, fiction",172,182352
+554,Pippi Longstocking,Pippi Långstrump,9780192782410,2010-01-01,1945,12.90,en,158,308,"adventure, fiction",446,11452363
+555,Danny The Champion of the World,"Danny, The Champion of the World",9780224037495,1994-01-01,1975,14.90,en,210,234,"adventure, fiction",73,12619353
+556,Rainbow six,,9780140274059,1999-01-01,1998,33.90,en,897,318,"adventure, fiction",447,8329290
+557,The Magic Faraway Tree,,9781405228558,2011-01-01,1943,13.90,en,185,133,"adventure, fiction",393,15105935
+558,Red storm rising,,9780896218857,1989-01-01,1983,28.90,en,830,430,"adventure, fiction",447 448,695538
+559,Wings of Fire,Darkstalker,9789390590261,2024-01-01,2016,17.90,en,366,380,"adventure, fiction",443,15122219
+560,Le royaume de Kensuké,Kensuke's kingdom,9782070544974,2007-01-01,1999,14.50,en,164,169,"adventure, fiction",449,12718085
+561,The lies of Locke Lamora,,9780553804676,2006-01-01,2001,21.90,en,544,37,"adventure, fiction",450,12901690
+562,Wings of Fire,Escaping Peril,9781338256352,2017-01-01,2015,19.90,en,312,380,"adventure, fiction",443,15122248
+563,The Running Man,,9780451151223,1987-01-01,1982,18.90,en,256,292,"adventure, fiction",42,14651762
+564,Artemis Fowl: The Eternity Code,Artemis Fowl and the Eternity Code,9780439576529,2003-10-01,2003,18.50,en,344,380,"adventure, fiction",445,12636231
+565,Neverseen,,9781481432306,2016-11-01,2015,25.90,en,680,4,"adventure, fiction",390,7990188
+566,Wings of Fire,The Hidden Kingdom,9780606354233,2014-01-01,2012,19.90,en,336,437,"adventure, fiction",443,15121778
+567,Wings of Fire,Talons of Power,9789352752959,2021-01-01,2016,19.90,en,336,384,"adventure, fiction",443,15122242
+568,Smile,,9780545132053,2010-01-01,2010,17.90,en,214,181,"humor, fiction",451,15247020
+569,Dork Diaries 15,,9781534480483,2020-10-13,2010,16.90,en,304,353,"humor, fiction",329,10207307
+570,Thursday Murder Club,The Thursday Murder Club,9780593513033,2025-01-01,2020,23.90,en,449,318,"humor, fiction",452,15261057
+571,Pete the Cat,,9780061906220,2010-01-01,2008,12.90,en,32,201,"humor, fiction",453 454,15125174
+572,Big Nate in the Zone,,9780007562091,2014-01-01,2007,12.50,en,216,201,"humor, fiction",455,7769747
+573,Cheat Sheet,The Cheat Sheet,9780593500767,2022-01-01,2021,20.90,en,336,359,"humor, fiction",456 457,12746771
+574,Poor Charlie's Almanack,,9781578643387,2005-01-01,2005,20.90,en,512,458,"humor, fiction",458,8337563
+575,Dog Man,,9781338535631,2020-01-01,2002,18.90,en,240,385,"humor, fiction",202,15017455
+576,Diary of a Wimpy Kid Hot Mess,Diary of a Wimpy Kid,9781419766954,2024-01-01,2024,16.90,en,224,20,"humor, fiction",72,14832103
+577,Cat Kid Comic Club,,9781338712773,2020-01-01,2020,13.90,en,176,385,"humor, fiction",202,15265337
+578,Dork Diaries: Tales from a Not-So-Happy Birthday,Tales from a Not-So-Happy Birthday,9781471173158,2018-01-01,2018,15.90,en,300,4,"humor, fiction",329,8309455
+579,The Bad Guys: Episode 1,The Bad Guys,9781760150426,2016-04-18,2016,14.90,en,144,383,"humor, fiction",459,10835704
+580,A Nation of Idiots,,9788194275015,2019-09-19,2019,16.90,en,215,143,"humor, fiction",460,13186163
+581,Wyrd Sisters,,9780061020667,2001-01-01,1988,16.90,en,322,204,"humor, fiction",75,14646688
+582,Restart,,9798885783170,2023-01-01,2017,13.50,en,256,74,"humor, fiction",461,14607223
+583,Big Nate,Big Nate - Game On!,9781449427771,2013-01-01,2013,14.90,en,224,21,"humor, fiction",455,9378949
+584,Me Talk Pretty One Day,,9780316776967,2001-06-01,2000,13.50,en,272,35,"humor, fiction",462,14839451
+585,For Whom the Ball Rolls,Dog Man,9781338290943,2019-01-01,2018,16.50,en,240,385,"humor, fiction",202,14648902
+586,My friend is sad,,9781406338478,2012-01-01,2007,11.50,en,61,457,"humor, fiction",328,15236355
+587,Wintersmith,,9780552157025,2007-01-01,2006,20.90,en,360,88,"humor, fiction",75 463,14646837
+588,I love my new toy!,I Love My New Toy! (Elephant and Piggie),9780545232623,2009-01-01,2008,10.90,en,57,380,"humor, fiction",328,9489152
+589,The Calvin and Hobbes tenth anniversary book,,9780590508278,1995-01-01,1989,15.50,en,208,380,"humor, fiction",464,6620894
+590,The Book of Dragons,,9780440406969,1986-01-01,1973,11.90,en,112,96,"short stories, fiction",465,6620667
+591,"No, David!",,9780590930031,1998-01-01,1998,9.90,en,32,56,"short stories, fiction",466 467,15136178
+592,How to train your dragon,,9780316407472,2014-01-01,2003,14.90,en,223,262,"short stories, fiction",468,8503213
+593,Fictions,Ficciones,9780714509570,1974-01-01,1945,11.50,en,196,66,"short stories, fiction",469,12817086
+594,Everything's Eventual,Everything's Eventual. 14 Dark Tales,9781416537816,2007-04-01,2002,19.50,en,480,340,"short stories, fiction",42,14651644
+595,The Tales of Beedle the Bard,,9781408835043,2012-01-01,2008,15.90,en,127,55,"short stories, fiction",36,14455031
+596,The Things They Carried,,9780767902892,2007-01-01,1990,17.90,en,256,62,"short stories, fiction",470,14819633
+597,Goosebumps,Goosebumps - Vanishing collection,9780681025196,2004-01-01,2004,16.50,en,,380,"short stories, fiction",315,8818965
+598,Stories of your life and others,,9781931520720,2010-01-01,2002,19.90,en,317,407,"short stories, fiction",471,15098886
+599,The Ultimate Hitchhiker's Guide to the Galaxy,"Works (Hitch Hiker's Guide to the Galaxy / Restaurant at the End of the Universe / Life, the Universe and Everything / So Long, and Thanks for All the Fish / Mostly Harmless / Young Zaphod Plays it Safe)",9780307291813,2014-01-01,1996,30.50,en,815,195,"short stories, fiction",35,8545846
+600,Eva Luna,,9780553280586,1989-01-01,1987,14.50,en,288,37,"short stories, fiction",472,6799879
+601,Sideways stories from Wayside School,,9780380731480,2005-01-01,1978,15.90,en,128,205,"short stories, fiction",69,6873704
+602,Frog and Toad Together,,9780060239596,1972-01-01,1971,12.90,en,64,197,"short stories, fiction",473,11318416
+603,Step Closer (Five Nights at Freddy’s Fazbear Frights #4),,9781338576054,2020-07-07,2020,14.90,en,224,380,"short stories, fiction",330 474 475,14822857
+604,The Shining / 'Salem's Lot / Night Shift / Carrie,Works (Carrie / Night Shift / 'Salem's Lot / Shining),9780905712604,1981-01-01,1981,31.50,en,992,300,"short stories, fiction",42,12015639
+605,Haunted,,9781400032822,2006-01-01,2005,20.50,en,432,18,"short stories, fiction",476,15238579
+606,A cow called Boy,,9780552520522,1974-01-01,1973,14.90,en,108,72,"short stories, fiction",477,15158137
+607,"My father, Sun-Sun Johnson",,9780233964546,1974-01-01,1974,11.90,en,111,101,"short stories, fiction",477,2338281
+608,His Last Bow,His Last Bow [8 stories],9780425015766,1964-04-01,1917,13.90,en,236,46,"short stories, fiction",46,13436621
+609,The Secret Seven,,9781444922400,2014-01-01,1949,12.90,en,127,215,"short stories, fiction",393,14589572
+610,Demigods and Magicians,Demigods & magicians,9780141367286,2016-01-01,2000,16.90,en,208,348,"short stories, fiction",37,14858904
+611,Nicholas,Le petit Nicolas,9780714845296,2005-01-01,1960,11.90,en,155,329,"short stories, fiction",478 479,6823791
+612,Giovanni's Room,,9780440328810,1988-01-01,1956,14.90,en,224,97,"classics, fiction",480,6790980
+613,The autobiography of Benjamin Franklin,,9781596254497,1909-01-01,1791,17.90,en,214,105,"classics, fiction",481,15039839
+614,Death of a Salesman,,9781444121582,2011-01-01,1940,15.90,en,139,216,"classics, fiction",286,14633422
+615,The fountainhead,,9780780756908,2006-01-01,1943,28.50,en,724,395,"classics, fiction",323,15140829
+616,Wicked,,9780061350962,2007-10-01,1995,22.90,en,461,196,"classics, fiction",482,6617181
+617,Confessions of ST. Augustine,Confessions,9780020642305,1961-12-01,1482,17.90,en,351,388,"classics, fiction",483,14374
+618,One Flew Over the Cuckoo's Nest,,9780606042390,1989-02-11,1962,18.90,en,311,98,"classics, fiction",484,15220644
+619,Can We Be Strangers Again?,,9780143475927,2025-03-20,2024,15.50,en,232,479,"young adult, fiction",485,14873833
+620,Better Than the Movies,,9781534467637,2022-01-01,2021,21.90,en,368,400,"young adult, fiction",486,14357862
+621,We Were Liars,,9780375984402,2014-05-13,2014,18.90,en,240,95,"young adult, fiction",487,8409356
+622,Percy Jackson and the Greek Gods,Percy Jackson's Greek Gods,9780141355207,2014-01-01,2006,17.50,en,406,348,"young adult, fiction",37,15104653
+623,Our Fault,,9781728290799,2024-01-01,2014,23.90,en,448,408,"young adult, fiction",188,14832318
+624,As Long as the Lemon Trees Grow,,9781526648549,2023-09-13,2022,22.90,en,425,54,"young adult, fiction",488,13872888
+625,Insurgent,,9780062388483,2015-01-01,2011,25.90,en,525,237,"young adult, fiction",199,13326741
+626,Five Feet Apart,,9781534437333,2018-11-20,2018,19.90,en,288,400,"young adult, fiction",489,8352504
+627,Scythe,,9781481485265,2016-11-29,2016,19.90,en,449,401,"young adult, fiction",490,15152462
+628,Turtles All the Way Down,,9780241335437,2017-01-01,2017,14.50,en,304,479,"young adult, fiction",91,9255739
+629,Solitaire,,9780007559220,2018-01-01,2014,15.50,en,357,202,"young adult, fiction",491,9014294
+630,Heir of Fire,,9781619630659,2014-01-01,2014,24.50,en,576,53,"young adult, fiction",175,15251338
+631,Crooked Kingdom,,9781250119315,2016-01-01,2016,25.90,en,584,210,"young adult, fiction",176,12817070
+632,Grumpy Darling,,9780008762278,2025-01-01,2025,17.50,en,400,151,"young adult, fiction",492,15101727
+633,Uglies,,9780345527226,2012-01-01,2005,19.90,en,432,94,"young adult, fiction",493,15145853
+634,Eldest,,9780375840401,2007-01-01,2005,24.50,en,705,7,"young adult, fiction",93,6748903
+635,Glass Sword,,9781409150749,2016-07-09,2016,21.50,en,478,304,"young adult, fiction",254,15255026
+636,Keeping 13,,9781728299976,2023-01-01,2020,24.90,en,672,410,"young adult, fiction",494,15271320
+637,Allegiant,,9780062024077,2016-01-19,2011,24.90,en,516,237,"young adult, fiction",199,13276035
+638,The One,The One (The Selection #3),9780062338501,2014-01-01,2012,16.90,en,306,200,"young adult, fiction",495,13327928
+639,"Everything, Everything",,9780385683654,2015-01-01,2015,19.90,en,336,324,"young adult, fiction",496,15096589
+640,Brisingr,,9780385613859,2008-01-01,2004,28.90,en,784,109,"young adult, fiction",93,12848702
+641,They Both Die At The End,,9781398514751,2021-01-01,2017,17.90,en,373,397,"children, fiction",497,12506861
+642,Diary of a Wimpy Kid Rodrick Rules,Rodrick Rules,9780810994737,2008-01-01,2007,15.50,en,224,15,"children, fiction",72,14819388
+643,The Very Hungry Caterpillars Finger Puppet Book,The Very Hungry Caterpillar,9780141329949,2010-01-01,1969,7.50,en,26,348,"children, fiction",297,7474999
+644,The Long Haul,,9781223092874,2014-01-01,2014,17.90,en,218,206,"children, fiction",72,10782700
+645,We'll Always Have Summer,,9781416995586,2011-01-01,2011,19.90,en,289,399,"children, fiction",334,15112274
+646,Fantastic Mr Fox,,9780141327761,2009-09-01,1970,10.90,en,96,348,"children, fiction",73,12895064
+647,I Don't Love You Anymore,,9780143469131,2024-01-01,2024,14.50,en,184,120,"poetry, fiction",498,15116470
+648,Thank You for Leaving,,9789367901229,2025-02-14,2025,15.50,en,200,119,"poetry, fiction",498,14847895
+649,I Have to Tell You Something,,9780645545593,2022-07-05,2022,15.90,en,130,473,"poetry, fiction",499,14653914
+650,Pillow thoughts,,9781449489755,2017-01-01,2016,18.90,en,262,21,"poetry, fiction",500,12780684
+651,Every last word,,9781484705278,2015-01-01,2015,17.90,en,364,220,"poetry, fiction",501,13571807
+652,Where the Sidewalk Ends,,9780060572341,1974-01-01,1974,15.90,en,170,201,"poetry, fiction",502,6667345
+653,Twenty love poems and a song of despair,Veinte poemas de amor y una canción desesperada,9780140422054,1978-01-01,1924,14.90,en,96,318,"poetry, fiction",503,6866952
+654,Save me an orange,,9798990047709,2024-03-12,2024,11.90,en,114,296,"poetry, fiction",504,15217280
+655,"Ovid's Amores, Book 1",Ars Amatoria,9780199120239,1973-01-01,1494,14.90,en,201,82,"poetry, fiction",277 505 506,11691613
+656,Barbie,Barbie Horse Trouble Barbie Look Look,9780307960405,2002-01-14,1921,10.50,en,32,177,"poetry, fiction",507,168683
+657,Borderlands/La Frontera,,9781879960749,2007-01-01,1987,14.90,en,251,31,"poetry, fiction",508,15090395
+658,Brown Girl Dreaming,,9780399252518,2014-01-01,2014,16.50,en,360,287,"poetry, fiction",509,7348213
+659,Sister Outsider,,9781580911863,2007-08-01,1984,11.50,en,191,90,"poetry, fiction",510 511,1940446
+660,The Princess Saves Herself in This One,,9781449486419,2017-01-01,2016,11.50,en,178,22,"poetry, fiction",512,12181847
+661,The Butterfly's Burden,,9781556592416,2007-01-01,2006,16.90,en,327,86,"poetry, fiction",513 514 515,9318249
+662,Poems and Prose,,9780679445050,1995-01-01,1995,17.90,en,255,7,"poetry, fiction",408 516,11773891
+663,Ariel,,9780060908904,1965-01-01,1965,13.90,en,96,199,"poetry, fiction",97,6974152
+664,Love Is a Dog from Hell,,9780876853634,1977-01-01,1977,18.90,en,307,49,"poetry, fiction",517,4414678
+665,Hop on Pop,,9780375844836,2007-01-01,1963,10.90,en,64,355,"poetry, fiction",98,8330469
+666,Horton hears a Who!,,9780394800783,2008-01-01,1954,13.90,en,65,355,"poetry, fiction",98,9455779
+667,Out of the dust,,9780590371254,1999-01-01,1997,16.90,en,227,384,"poetry, fiction",518,6548891
+668,A poetry handbook,,9780156724005,1994-01-01,1994,10.50,en,137,193,"poetry, fiction",519,116458
+669,The Gruffalo,,9780333710937,1999-01-01,1999,9.90,en,32,266,"drama, fiction",520,10549185
+670,dork diaries: Tales from a not so fabulous life,Dork Diaries,9781416980063,2009-01-01,2009,17.50,en,282,81,"drama, fiction",329,15091802
+671,Hyperion,,9780553283686,1990-01-01,1989,22.50,en,481,37,"drama, fiction",521,15211746
+672,"Bud, Not Buddy",,9780439219419,1999-01-01,1994,16.50,en,246,385,"drama, fiction",522 523 524,14889455
+673,The Joy Luck Club,,9780143038092,2006-01-01,1989,18.90,en,312,318,"drama, fiction",525 526 527,14599648
+674,Computer Networks,,9780132553179,2010-01-01,1981,30.50,en,813,316,"drama, fiction",528 529 530,15112119
+675,The Hunger Games Special Sales Set,The Hunger Games Trilogy (Hunger Games / Catching Fire / Mockingjay),9781407191287,2018-01-01,2010,37.90,en,1136,380,"drama, fiction",30,14854851
+676,Ugly Duckling in Signed English,The Ugly Duckling,9780913580295,1974-06-01,1851,12.90,en,32,83,"drama, fiction",531,2685236
+677,The diary of Anne Frank,,9780822203070,1986-01-01,1956,10.90,en,116,111,"drama, fiction",532 108 533,15103359
+678,A streetcar named desire,,9780606237796,2004-01-01,1947,12.90,en,142,437,"drama, fiction",534,12173042
+679,We Need to Talk about Kevin,,9781921145087,2006-01-01,2003,21.50,en,468,428,"drama, fiction",535,15144009
+680,The Five People You Meet in Heaven,,9780786868711,2003-01-01,2003,17.90,en,223,220,"drama, fiction",214,12884239
+681,Storm of the Century,,9781442006997,1999-01-01,1999,21.50,en,445,314,"drama, fiction",42,14654932
+682,Crooked House,,9780816144631,1988-01-01,1949,15.50,en,219,166,"drama, fiction",45,9586758
+683,Wings of Fire,,9788173711466,2015-01-01,1999,13.90,en,180,444,"biography, non-fiction",536,15121728
+684,Shoe Dog,,9781471146732,2016-01-01,2014,21.90,en,386,403,"biography, non-fiction",537,15178240
+685,Maybe You Should Talk to Someone,,9781328663047,2019-01-01,2019,17.50,en,432,271,"biography, non-fiction",538,8596019
+686,The Glass Castle,,9780739458211,2005-01-01,2005,18.50,en,347,388,"biography, non-fiction",539,15169511
+687,Michelle Obama in her own words,,9781905264858,2009-01-01,2008,11.90,en,149,452,"biography, non-fiction",540,14633420
+688,The Immortal Life of Henrietta Lacks,,9781410427922,2010-01-01,2009,17.90,en,381,430,"biography, non-fiction",541,12571825
+689,Diary of a Young Girl,The Diary of a Young Girl- Anne Frank,9780141971667,2011-01-01,2001,17.90,en,320,319,"biography, non-fiction",108,15087911
+690,Fear no evil,,9780297793823,1988-01-01,1988,21.90,en,437,462,"biography, non-fiction",542,13089357
+691,Elvis and me,,9780399129841,1985-01-01,1985,15.50,en,320,349,"biography, non-fiction",543,15125989
+692,Ikigai,,9781953021144,2021-01-01,2021,18.90,en,,60,"biography, non-fiction",544 545,13110612
+693,Make your bed,,9781432843342,2017-01-01,2017,13.50,en,144,431,"biography, non-fiction",546 547,13330560
+694,Just Mercy,,9780812994520,2014-01-01,1600,19.90,en,352,413,"biography, non-fiction",548,12001726
+695,Mercury and Me,,9780747521341,1995-01-01,1994,16.50,en,266,53,"biography, non-fiction",549 550,15160208
+696,We should all be feminists,,9781101911761,2015-01-01,2014,13.90,en,64,18,"biography, non-fiction",422,15092050
+697,Educated,,9781987146127,2018-01-01,2018,21.90,en,384,356,"biography, non-fiction",551 552,15216613
+698,The devil in the white city,,9780609608449,2003-01-01,2003,24.90,en,496,91,"biography, non-fiction",553,9811837
+699,Little girl lost,,9780671689230,1999-01-01,1990,19.90,en,303,340,"biography, non-fiction",554,12181733
+700,A Long Way Gone,,9781553653981,2009-01-01,2007,18.90,en,240,110,"biography, non-fiction",555,11593149
+701,I am Malala,,9781471259913,2014-01-01,2012,15.50,en,336,455,"biography, non-fiction",556 557,12592703
+702,Eyewitness,,9780789468130,2000-06-01,2000,11.50,en,64,107,"biography, non-fiction",558,553120
+703,Angela's ashes,,9780684874357,1999-01-01,1996,22.90,en,432,435,"biography, non-fiction",559,9278042
+704,Not Without My Daughter,,9780312925888,1991-01-01,1987,22.90,en,423,414,"biography, non-fiction",560 561,8404291
+705,The Duke and I,,9780380800827,2000-01-01,2000,22.90,en,432,33,"history, non-fiction",562,13097852
+706,"Guns, germs, and steel",,9780393061314,2005-01-01,1997,20.50,en,528,456,"history, non-fiction",563,15253013
+707,Mere Christianity,,9780916441180,1985-01-01,1943,15.90,en,191,38,"history, non-fiction",80,9184573
+708,Eleanor & Park,,9781250012579,2013-01-01,2012,18.50,en,336,415,"history, non-fiction",564,15216441
+709,Cujo,,9780881037272,1992-01-01,1981,18.50,en,352,395,"history, non-fiction",42,14651733
+710,Americanah,,9781594139550,2016-01-01,1969,25.90,en,592,248,"history, non-fiction",422,12993417
+711,12 Rules for Life,,9780241351635,2018-01-01,2015,21.90,en,480,12,"philosophy, non-fiction",565,14946038
+712,Meditations,,9780140449334,2006-01-01,2006,16.90,en,189,318,"philosophy, non-fiction",289,15256763
+713,Why Has Nobody Told Me This Before?,,9780241529720,2022-01-06,2022,21.90,en,368,319,"philosophy, non-fiction",566,12821544
+714,The Things You Can See Only When You Slow Down,,9780241340660,2017-01-01,2017,13.50,en,278,322,"philosophy, non-fiction",567,8880898
+715,You're Too Good to Feel This Bad,,9780578643427,2020-02-24,2020,13.50,en,256,289,"philosophy, non-fiction",568,11291723
+716,The price of salt,,9781562800031,1991-01-01,1952,15.90,en,276,285,"philosophy, non-fiction",569,10671718
+717,The Myth of Sisyphus and Other Essays,,9780679733737,1991-01-01,1955,15.50,en,212,450,"philosophy, non-fiction",68,12726570
+718,The Rudest Book Ever,,9789393986047,2022-11-20,2019,14.90,en,232,236,"philosophy, non-fiction",570,13228159
+719,Kybalion,The Kybalion,9781635617566,2021-01-01,1912,12.50,en,107,121,"philosophy, non-fiction",571,12420563
+720,Why I am an atheist,,9788123748147,2008-01-01,2008,7.50,en,30,290,"philosophy, non-fiction",572,15254322
+721,The Black Swan,,9781400063512,2007-01-01,2005,17.50,en,421,355,"philosophy, non-fiction",573 574,15095632
+722,Braiding Sweetgrass,,9780141991955,2020-01-01,2013,18.90,en,409,318,"philosophy, non-fiction",575,15239422
+723,The audacity of hope,,9781408414231,2008-01-01,2006,17.50,en,413,470,"philosophy, non-fiction",576 577 578,10400810
+724,Being and nothingness,L'être et le néant,9781453228555,1956-01-01,1943,27.50,en,716,330,"philosophy, non-fiction",358,14907540
+725,Superintelligence,,9780199678112,2014-01-01,2014,15.50,en,352,308,"philosophy, non-fiction",579,8113388
+726,Ways of seeing,,9780140216318,1972-01-01,1972,11.50,en,166,61,"philosophy, non-fiction",580,15138302
+727,Life 3.0,,9781101946596,2017-01-01,2017,16.50,en,384,7,"philosophy, non-fiction",581,15104654
+728,Anatema,Anathem,9788466641135,2009-01-01,2008,35.90,en,937,123,"philosophy, non-fiction",582,15166222
+729,The theory of everything,,9781893224544,2002-01-01,2002,12.90,en,132,293,"philosophy, non-fiction",130,942436
+730,Nexus,,9780593734247,2024-01-01,2024,23.50,en,544,359,"philosophy, non-fiction",118,15125217
+731,The Last Lecture,,9781401323257,2008-01-01,2008,15.50,en,233,220,"philosophy, non-fiction",583 584,15218053
+732,A history of Western philosophy,,9780041000450,1984-01-01,1945,33.90,en,895,445,"philosophy, non-fiction",585,15135556
+733,Mindset,,9781780332000,2012-02-01,2006,16.90,en,288,369,"science, non-fiction",586,15108109
+734,Principles of Anatomy and Physiology,,9780471689348,2005-04-26,1975,40.90,en,1248,464,"science, non-fiction",229 587 588,306335
+735,The Scorch Trials,,9781906427795,2011-08-01,2010,17.90,en,384,80,"science, non-fiction",367,8572864
+736,Ultralearning,,9780062852748,2019-01-01,2019,15.90,en,304,201,"science, non-fiction",589,14595853
+737,Accounting principles,,9780471382287,2002-01-01,1987,28.90,en,811,233,"science, non-fiction",590,304011
+738,Nonviolent communication,,9781892005038,2003-01-01,1999,13.90,en,227,347,"science, non-fiction",591 592 593,940687
+739,Silent Spring,,9780395166116,1994-08-19,1962,18.50,en,336,218,"science, non-fiction",594,15199104
+740,Drive,,9781594488849,2009-01-01,2009,16.50,en,249,366,"science, non-fiction",595,14649541
+741,American Prometheus,,9780375412028,2005-01-01,2005,30.90,en,721,1,"science, non-fiction",596 597,14988042
+742,Molecular biology of the gene,,9780805396140,1988-01-01,1965,29.90,en,742,44,"science, non-fiction",598 599 600,15144761
+743,Ignited Minds,,9780143424123,2014-11-01,2012,16.90,en,208,318,"science, non-fiction",536,10369810
+744,Organic Chemistry,,9780534362744,1999-01-01,1984,37.50,en,1233,63,"science, non-fiction",601,15114882
+745,Glucose Revolution,,9781982179410,2022-01-01,2022,19.90,en,288,397,"science, non-fiction",602 603,12771419
+746,Botany,,9780763706692,1995-01-01,1991,30.90,en,794,170,"science, non-fiction",604,15112093
+747,Brief answers to the big questions,,9781984819192,2018-01-01,2014,18.90,en,256,37,"science, non-fiction",130,14362642
+748,Signals and systems,,9780138097318,1983-01-01,1983,30.50,en,828,343,"science, non-fiction",605 606,14380640
+749,Anthropocene Reviewed,The Anthropocene Reviewed,9780525555247,2023-01-01,2019,20.90,en,320,323,"science, non-fiction",91,13534512
+750,Storytelling with Data,,9781119002253,2015-01-01,2015,14.50,en,288,464,"science, non-fiction",607,7932707
+751,Prescott's Microbiology,,9780073402406,2013-01-01,2013,48.90,en,1688,274,"science, non-fiction",608 609 610,15144117
+752,The Sixth Extinction,,9780805092998,2014-01-01,2014,16.90,en,352,210,"science, non-fiction",611 612,7910870
+753,The Brain that changes itself,,9780670038305,2007-01-01,2007,18.50,en,448,448,"science, non-fiction",613,15178995
+754,The pleasure of finding things out,,9781606710159,1999-01-01,1999,14.90,en,270,275,"science, non-fiction",292 614 615,10656394
+755,The Laws of human nature,,9780525428145,2018-01-01,2018,27.90,en,617,448,"psychology, non-fiction",237,15254578
+756,"Men are from Mars, women are from Venus book of days","Men are From Mars, Women are From Venus",9780060192778,1998-01-01,1992,15.50,en,321,201,"psychology, non-fiction",616,22889
+757,The Body Keeps the Score,,9780670785933,2014-01-01,2014,22.90,en,520,448,"psychology, non-fiction",617,15156002
+758,Influence,,9780688015602,1984-01-01,1983,14.50,en,287,281,"psychology, non-fiction",618,14633417
+759,Talking with Psychopaths and Savages,,9781789464221,2021-01-01,2019,17.50,en,288,50,"psychology, non-fiction",619,15125998
+760,It didn't start with you,,9781101980361,2016-01-01,2016,15.90,en,256,448,"psychology, non-fiction",620 621,12642444
+761,Outliers,,9781306768115,2008-01-01,2008,16.90,en,320,259,"psychology, non-fiction",622,15032287
+762,Think Again,,9780753553916,2022-01-01,2021,16.90,en,320,120,"psychology, non-fiction",623,13550122
+763,Daily Laws,The Daily Laws,9781788168540,2021-01-01,2021,17.50,en,432,424,"psychology, non-fiction",237,12430598
+764,The art of thinking clearly,,9780062219688,2013-01-01,2013,17.90,en,384,198,"psychology, non-fiction",624,15215439
+765,The psychology of everyday things,,9780465067091,1988-01-01,1988,13.50,en,271,40,"psychology, non-fiction",625,14642284
+766,Surrounded by Psychopaths,Omgiven av Psykopater,9781785043321,2020-01-01,2020,17.90,en,272,120,"psychology, non-fiction",626,15089923
+767,All About Love,,9780060959470,2001-01-09,2000,17.90,en,239,198,"psychology, non-fiction",627,15096703
+768,I Want to Die but I Want to Eat Tteokbokki,,9781526694034,2025-01-01,2022,17.90,en,208,54,"psychology, non-fiction",628 629,15269813
+769,The Concise 33 Strategies of War,The 33 Strategies of War,9781861979988,2008-01-01,1998,20.90,en,496,345,"psychology, non-fiction",237 630,7759577
+770,"Act Like a Lady, Think Like a Man",,9780061728976,2009-01-27,2006,15.50,en,232,14,"psychology, non-fiction",631,14856997
+771,Psychology,,9780721615660,1978-01-01,1977,27.90,en,660,378,"psychology, non-fiction",632,15120453
+772,Attached,,9780330544078,2011-01-01,2010,17.50,en,294,371,"psychology, non-fiction",633,12660336
+773,"A Macat Analysis of Daniel Kahneman's Thinking, Fast and Slow",,9781912453054,2018-01-01,2018,13.90,en,87,423,"psychology, non-fiction",634,13214974
+774,Moonwalking with Einstein,,9781846140297,2011-01-01,2000,15.90,en,307,12,"psychology, non-fiction",635,10788358
+775,Flow,,9780061339202,1990-01-01,1990,17.50,en,317,197,"psychology, non-fiction",636,9082625
+776,Grit,,9781501111105,2016-01-01,2016,19.90,en,353,388,"psychology, non-fiction",637,15169731
+777,The Dot,,9780763619619,2003-09-15,2003,10.50,en,32,67,"art, non-fiction",638,516040
+778,A Visit from the Goon Squad,,9780307592835,2010-01-01,2010,16.90,en,359,7,"art, non-fiction",639,6452334
+779,How to Do Nothing,,9781760641795,2019-01-01,2019,17.90,en,256,386,"art, non-fiction",640,15240965
+780,The Call of Cthulhu,,9780241260777,2016-05-31,2016,12.90,en,64,320,"art, non-fiction",641,10215163
+781,"Bauhaus, 1919-1933",,9783822876275,1998-01-01,1990,17.90,en,256,34,"art, non-fiction",642 643,14847025
+782,Production for graphic designers,,9781856690287,1992-01-01,1992,16.50,en,240,249,"art, non-fiction",644,11699348
+783,Art & fear,,9780884963790,1993-01-01,1993,14.90,en,122,68,"art, non-fiction",645 646,683054
+784,The zombie survival guide,,9780307888235,2010-01-01,2003,15.90,en,319,432,"art, non-fiction",271,10967576
+785,Survey of historic costume,,9781563671425,1998-01-01,1989,21.50,en,571,147,"art, non-fiction",647 648,797645
+786,My Name is Red,Benim Adım Kırmızı,9780571200474,2001-01-01,1998,25.90,en,536,146,"art, non-fiction",649 650,11438774
+787,Art,Art history,9780131954519,2006-10-01,1995,28.90,en,640,317,"art, non-fiction",651 652,2322541
+788,Chasing Vermeer,,9781904442820,2006-01-01,2003,17.90,en,259,80,"art, non-fiction",653,10738764
+789,Janson's history of art,,9780131934559,2007-01-01,2006,36.50,en,1056,315,"art, non-fiction",654 655 656,89101
+790,The Thames and Hudson manual of rendering with pen and ink,Rendering with Pen and Ink,9780500670033,1973-01-01,1973,17.50,en,400,429,"art, non-fiction",657,14560302
+791,History of art,,9780810910942,1986-01-01,1962,29.90,en,824,189,"art, non-fiction",654 658 659,11644869
+792,Georg Baselitz,,9781878283672,1997-01-01,1970,13.90,en,87,309,"art, non-fiction",660 661 662,12153956
+793,Pablo Picasso,Picasso,9780739866283,2004-01-01,1932,15.90,en,135,354,"art, non-fiction",663,4692063
+794,How to Draw Manga,,9784766111507,2001-07-01,1999,11.90,en,128,180,"art, non-fiction",664,1043368
+795,Marc Chagall,,9780847806249,1985-01-01,1948,12.90,en,128,367,"art, non-fiction",665 666 667,5327343
+796,Brunelleschi's dome,,9780701169039,2000-01-01,2000,11.50,en,193,78,"art, non-fiction",668,12596729
+797,The recognitions,,9780380000302,1955-01-01,1955,34.90,en,956,33,"art, non-fiction",669,15152339
+798,The lonely city,,9781250039576,2016-01-01,2016,18.90,en,315,331,"art, non-fiction",670,12672997
+799,Midnight in the garden of good and evil,,9780679751526,1999-01-01,1785,21.90,en,388,450,"travel, non-fiction",671,7119509
+800,"Junie B., First Grader: Aloha-ha-ha! (Junie B. Jones #26)",Aloha-Ha-Ha!,9780545037907,2007-01-01,2006,13.90,en,119,380,"travel, non-fiction",672 673,6520780
+801,All the Pretty Horses (Border Trilogy),All the Pretty Horses,9780330325318,1993-02-12,1992,16.90,en,306,331,"travel, non-fiction",157,10980151
+802,Endurance,,9780465062881,2014-01-01,1959,15.90,en,282,40,"travel, non-fiction",674 675,14435246
+803,The Celestine Prophecy,The Celestine Prophecy - An Adventure,9780446518628,1994-01-01,1993,14.90,en,262,460,"travel, non-fiction",676,8749264
+804,What I talk about when I talk about running,走ることについて語るときに僕の語ること,9780307269195,2008-01-01,2006,11.50,en,192,7,"travel, non-fiction",677,7167416
+805,On the Banks of Plum Creek,,9780140302288,1979-01-01,1937,16.90,en,338,348,"travel, non-fiction",678,11277509
+806,The motorcycle diaries,Diarios de Motocicleta,9781876175702,2003-01-01,1993,13.90,en,173,299,"travel, non-fiction",679 680,9927906
+807,84 Charing Cross Road / The Duchess of Bloomsbury Street,"84, Charing Cross Road",9780860074380,1976-01-01,1970,15.90,en,120,165,"travel, non-fiction",681,10697439
+808,Cheese-Colored Camper (#16),Un Disparatado Viaje A Ratikistan,9780756958862,2005-01-01,2000,15.90,en,124,327,"travel, non-fiction",160,15187840
+809,The other side of midnight.,The Other Side of Midnight,9780688002206,1974-01-01,1974,19.90,en,440,281,"travel, non-fiction",682,12704222
+810,Scarlett,,9780446515078,1991-01-01,1991,30.50,en,823,460,"travel, non-fiction",683,7888269
+811,A small place,,9780374266387,1988-01-01,1988,12.50,en,81,150,"travel, non-fiction",684 685,10004051
+812,Wise and Otherwise - A Salute to life,Wise and otherwise,9780143062226,2006-08-01,2002,16.90,en,197,318,"travel, non-fiction",686,10795720
+813,Until You,,9781568951607,2011-11-01,1994,21.90,en,432,463,"travel, non-fiction",687,7400686
+814,The story of a shipwrecked sailor,Relato de un náufrago,9780141032443,2007-01-01,1970,10.50,en,128,448,"travel, non-fiction",257,10311893
+815,The Bean Trees,,9780060915544,1989-01-01,1988,17.90,en,259,326,"travel, non-fiction",688,8231861
+816,Pyongyang,,9781896597898,2005-09-22,2003,15.90,en,184,112,"travel, non-fiction",689,944795
+817,Che Guevara,Che,9780802135582,1998-03-09,1997,26.90,en,732,185,"travel, non-fiction",690,568880
+818,The prime of Miss Jean Brodie,,9780140022353,1965-01-01,1961,16.90,en,164,318,"travel, non-fiction",691,11411626
+819,"Electric kool-aid acid test ""invalid see 0553257943""",The Electric Kool-Aid Acid Test,9780553234589,1969-01-01,1968,21.90,en,416,405,"travel, non-fiction",692,6494213
+820,From Here to Eternity,,9780393249897,2017-01-01,2017,13.50,en,272,456,"travel, non-fiction",693,13323759
+821,Crying in H Mart,,9780525657750,2021-01-01,2020,14.90,en,256,7,"cooking, non-fiction",694,11531019
+822,Self Heal by Design,,9780992475536,2018-01-01,2014,16.90,en,162,298,"cooking, non-fiction",695 696 697,14856060
+823,On cooking,,9780139241017,1999-01-01,1994,39.50,en,1183,343,"cooking, non-fiction",698 699 700,15125308
+824,How to cook everything,,9780028610108,1998-01-01,1998,31.90,en,944,267,"cooking, non-fiction",701,15968
+825,On Food and Cooking,,9780684800011,2004-11-16,1984,24.50,en,684,388,"cooking, non-fiction",702,424824
+826,Betty Crocker's Cookbook,Cookbook,9780307098139,1985-04-01,1969,24.90,en,480,177,"cooking, non-fiction",703,12595763
+827,The Flavor Bible,,9780316039840,2008-01-01,2008,17.90,en,380,260,"cooking, non-fiction",704,6421086
+828,Le répertoire de la cuisine,,9780812051094,1976-12-01,1914,14.90,en,239,39,"cooking, non-fiction",705,14352328
+829,The professional chef,,9780764557347,2006-01-01,1962,41.90,en,1232,233,"cooking, non-fiction",706 707 708,521999
+830,White Heat,,9781840003437,2000-06-01,1990,13.50,en,128,329,"cooking, non-fiction",709,881623
+831,The Food Lab: Better Home Cooking Through Science,The Food Lab,9780393081084,2015-01-01,2015,31.90,en,958,456,"cooking, non-fiction",710,8355275
+832,Cooking Basics for Dummies,,9780764572067,2004-01-01,2004,20.90,en,456,465,"cooking, non-fiction",711 712,522576
+833,Kitchen Witch's Cookbook,,9781567187076,2002-09-01,1994,20.90,en,377,263,"cooking, non-fiction",713,809297
+834,Everything but Espresso,,9781450708708,2010-01-01,2010,13.50,en,,387,"cooking, non-fiction",714,7882605
+835,One Piece: Pirate Recipes,ONE PIECE PIRATE RECIPES,9781974724468,2021-11-23,2012,10.90,en,96,454,"cooking, non-fiction",715,13011785
+836,Betty Crocker cookbook,,9780764568770,2006-01-01,2002,24.50,en,575,464,"cooking, non-fiction",703,10345249
+837,The art of fermentation,,9781603582865,2012-01-01,2012,20.50,en,528,79,"cooking, non-fiction",716 717,9303498
+838,Food in history,,9780517571866,1989-01-01,1973,21.90,en,424,91,"cooking, non-fiction",718,6886423
+839,Flour Water Salt Yeast,,9781607742739,2012-01-01,2012,14.90,en,272,427,"cooking, non-fiction",719,8163031
+840,Girlosophy,,9781741140774,2003-01-01,2000,13.90,en,224,11,"cooking, non-fiction",720,881297
+841,The South Beach diet,,9780755311293,2003-01-01,2003,17.90,en,326,207,"cooking, non-fiction",721 722,10644419
+842,Marva Collins' Way,,9780874772357,1982-01-01,1982,12.50,en,235,229,"cooking, non-fiction",723 724,9910234
+843,Shatter Me (reprint),,9780062741738,,2011,16.90,en,357,201,"science fiction, fiction",366,

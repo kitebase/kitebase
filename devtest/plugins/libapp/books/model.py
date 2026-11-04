@@ -1,4 +1,4 @@
-from sqlalchemy import Index
+from sqlalchemy import Index, func
 from sqlalchemy.orm import validates
 from sqlalchemy.ext.hybrid import hybrid_property
 from kitebase.i18n import _
@@ -6,13 +6,14 @@ from kitebase.i18n import _
 
 class Author:
 
+    # Trimmed, as one-name authors (Voltaire, Rembrandt) have no first name.
     @hybrid_property
     def full_name(self):
-        return f"{self.first_name} {self.last_name}"
+        return f"{self.first_name or ''} {self.last_name}".strip()
 
     @full_name.expression
     def full_name(cls):
-        return cls.first_name + ' ' + cls.last_name
+        return func.trim(func.coalesce(cls.first_name, '') + ' ' + cls.last_name)
 
     __table_args__ = (
         Index("name", "last_name", "first_name", unique=True),

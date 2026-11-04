@@ -391,6 +391,12 @@ views:
           scope: global
           key: a
           endpoint: archivable
+        # A call to the outside: the description from Open Library, by ISBN
+        # (libapp/books/lookup.py). It asks before replacing a text.
+        - id: fetch_description
+          label: Fetch description
+          scope: row
+          endpoint: book_fetch_description
     actions:
       row:
         - id: edit
