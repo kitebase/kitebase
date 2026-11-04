@@ -1,0 +1,10 @@
+# secrets/smtp.yaml: an example of a kind a plugin owns (docs: email.md, not
+# implemented yet). One file per kind, one top-level key per name; what an
+# entry holds is checked by the plugin that reads it with
+# kitebase.secrets.get('smtp', 'relay').
+relay:
+  host: smtp.example.com
+  port: 587
+  security: starttls
+  user: noreply@example.com
+  password: CHANGE-ME

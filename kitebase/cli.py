@@ -450,6 +450,25 @@ def db_backup(app: Any, dest: Optional[str] = None) -> Tuple[str, str]:
 
 # ── CLI parser ─────────────────────────────────────────────────────────────────
 
+class _ChooseEngine(argparse.Action):
+    """`--engine NAME` is KITEBASE_ENGINE=NAME for this process.
+
+    Set while parsing, so it is in place when the application loads its
+    config.yaml right after, and any process it starts inherits it.
+    """
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        import os
+        os.environ['KITEBASE_ENGINE'] = values
+        setattr(namespace, self.dest, values)
+
+
+def _engine_option(p: argparse.ArgumentParser) -> None:
+    p.add_argument('--engine', metavar='NAME', action=_ChooseEngine,
+                   help='Use the engine NAME of secrets/engines.yaml instead of '
+                        "config.yaml's db_engine")
+
+
 def make_parser() -> argparse.ArgumentParser:
     """
     Build and return the kitebase CLI argument parser.
@@ -482,6 +501,7 @@ examples:
   db-sync --dry-run                     show the DDL an alignment would run
   db-sync                               apply what loses no data
   db-sync --force                       also drop and truncate, after a confirmation
+  db-sync --engine pg                   the same, on the engine 'pg' of secrets/engines.yaml
   db-backup                             consistent SQLite snapshot next to the database, stamped
   db-backup /mnt/backup/                a directory, or a file path
   dev                                   run this app and its client, together
@@ -540,6 +560,7 @@ examples:
         'db-check',
         help='Compare the database with the schema described by the plugins (read-only)',
     )
+    _engine_option(p)
 
     # ── db-sync ────────────────────────────────────────────────────────────────
     p = sub.add_parser(
@@ -552,6 +573,7 @@ examples:
                    help='Also apply the changes marked --force: drops, truncated strings')
     p.add_argument('--yes', action='store_true',
                    help='With --force, do not ask for confirmation')
+    _engine_option(p)
 
     # ── db-backup ──────────────────────────────────────────────────────────────
     p = sub.add_parser(
@@ -560,6 +582,7 @@ examples:
     )
     p.add_argument('dest', nargs='?',
                    help='Target file or directory (default: next to the database, timestamped)')
+    _engine_option(p)
 
     # ── new ────────────────────────────────────────────────────────────────────
     # The one command that runs without an application, hence from the `kitebase`
@@ -662,6 +685,12 @@ def run_cli(app: Any, args: argparse.Namespace, output_dir: Path = Path('.')) ->
                     or a user-supplied --output-dir.
     """
     out_arg = getattr(args, 'output', None) or ''
+
+    if args.command in DB_COMMANDS and getattr(app, 'engine', None) is not None:
+        # Which database the report is about, before the report: with --engine
+        # the answer is not the one config.yaml gives. The password is masked.
+        engine = app.engine.url.render_as_string(hide_password=True)
+        print(f'Engine: {engine}', file=sys.stderr)
 
     if args.command == 'dump-page':
         try:

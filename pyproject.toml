@@ -68,6 +68,8 @@ flask = ["flask>=3.0"]
 fastapi = ["fastapi", "uvicorn", "python-multipart"]
 # Pillow: the renditions of an image (thumb, medium), made on the first request
 media = ["Pillow>=10"]
+# psycopg (v3): an engine on PostgreSQL, `postgresql+psycopg://...`
+postgres = ["psycopg[binary]>=3.2"]
 dev = ["pytest", "flask>=3.0", "fastapi", "uvicorn", "httpx", "python-multipart", "Pillow>=10"]
 
 [project.urls]

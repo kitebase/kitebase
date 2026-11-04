@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Union, Any
 import yaml
-from kitebase import apptime
+from kitebase import apptime, secrets
 from kitebase.utils import deep_merge
 
 # Merge directives. They belong to the YAML protocol, not to a single function:
@@ -227,6 +227,16 @@ class PluginsManager:
         with open(config) as f:
             data = yaml.safe_load(f)
         deep_merge(self.config, data)
+
+        # The engine: a URL, or the name of an entry in secrets/engines.yaml.
+        # KITEBASE_ENGINE picks another one for this process (the CLI's
+        # --engine sets it); a name is resolved only when the engine opens.
+        secrets.set_app_root(self.app_root)
+        self.db_engine_source = 'config.yaml'
+        chosen = os.environ.get('KITEBASE_ENGINE')
+        if chosen:
+            self.config['db_engine'] = chosen
+            self.db_engine_source = 'KITEBASE_ENGINE'
 
         # The timezone the stored naive datetimes are written in. Declaring it
         # is what asks for the guarantee: from here on the clock is read

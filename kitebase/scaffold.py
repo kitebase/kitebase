@@ -406,6 +406,9 @@ data/*
 # Inside a plugin, model.py is real code (behaviour mixins) and is versioned.
 /model.py
 
+# Credentials by name (kitebase.secrets): engines.yaml and the like.
+/secrets/
+
 # Environment
 .venv/
 __pycache__/

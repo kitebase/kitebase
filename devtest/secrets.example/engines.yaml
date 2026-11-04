@@ -1,0 +1,24 @@
+# secrets/engines.yaml: database engines by name (kitebase.secrets).
+#
+# The real folder is `secrets/`, out of git, readable only by the user the
+# server runs as. Copy this one and fill it in:
+#
+#   cp -r secrets.example secrets && chmod 700 secrets && chmod 600 secrets/*
+#
+# A name chooses the engine instead of config.yaml's db_engine:
+#   uv run devtest.py db-check --engine test
+#   KITEBASE_ENGINE=pg uv run server_fastapi.py
+#
+# A relative SQLite path hangs from the application directory.
+#
+# The default is config.yaml's db_engine, a URL or a name of this file. Devtest
+# keeps a URL there: SQLite has no credentials, and a fresh clone starts without
+# this folder. An installation whose default carries a password names it:
+#   config.yaml           db_engine: main
+#   secrets/engines.yaml  main: postgresql+psycopg://app:...@db.example.com/app
+
+# A second database beside the real one: trials, copies, demonstrations.
+test: sqlite:///data/devtest-test.sqlite
+
+# PostgreSQL, with the psycopg driver (the `postgres` extra of kitebase).
+pg: postgresql+psycopg://kitebase:CHANGE-ME@localhost:5432/kitebase_devtest

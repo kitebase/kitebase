@@ -8,6 +8,7 @@ wheels/
 *.egg-info
 
 devtest/data
+devtest/secrets/
 devtest/media/
 # the compiled client, built by `pnpm build` in the client repository
 devtest/clientui/
