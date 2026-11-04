@@ -449,6 +449,33 @@ def test_save_tree_refuses_rows_whose_rules_it_would_skip(app):
     assert titles(app) == []
 
 
+def test_save_tree_writes_the_root_when_the_ruled_rows_are_untouched(app):
+    # The page declares a collection whose table has rules, but the tree carries
+    # none of its rows: the client prunes what was not touched, nothing is skipped.
+    @flow.on_write('Page')
+    def page_rule(ctx):
+        pass
+
+    result = send('save_tree', {'page': 'loan_tree', 'root': {
+        'op': 'create', 'id': -1, 'values': {'title': 'Dune', 'member_id': 1},
+        'children': {}}})
+
+    assert result['status'] == 'success'
+    assert titles(app) == ['Dune'] and titles(app, 'Page') == []
+
+
+def test_save_tree_counts_the_rows_a_delete_takes_with_it(app):
+    # A deleted root takes its rows through the ORM composition, unseen by the
+    # tree: their tables count as written, and their rules refuse the delete.
+    from kitebase.endpoint_tree import _written_models, page_aggregate
+
+    aggregate = page_aggregate(app, 'loan_tree')
+    assert _written_models(aggregate, {'op': 'update', 'id': 1, 'children': {}}) == []
+    assert _written_models(aggregate, {'op': 'delete', 'id': 1, 'children': {}}) == ['Page']
+    assert _written_models(aggregate, {'op': 'update', 'id': 1, 'children': {
+        'pages': [{'id': 5, 'values': {}}]}}) == []
+
+
 # ── Proposals: what a form suggests on its way, before anything is written ──
 
 def document(title='Dune', pages=('p1', 'p2'), root_id=-1):

@@ -175,6 +175,40 @@ def _aggregate_models(aggregate: Aggregate) -> List[str]:
     return found
 
 
+def _written_models(aggregate: Aggregate, root_node: Dict[str, Any]) -> List[str]:
+    """
+    The models of the rows below the root that this tree writes.
+
+    A row without `op` is a pass-through and writes nothing. A deleted row takes
+    its children with it through the ORM composition, unseen here, so every
+    model declared below it counts as written.
+    """
+    found: List[str] = []
+
+    def below(node_def) -> None:
+        for coll in node_def.collections.values():
+            found.append(coll.model)
+            below(coll)
+
+    def walk(node_def, node: Dict[str, Any]) -> None:
+        for cid, rows in (node.get('children') or {}).items():
+            coll = node_def.collections.get(cid)
+            if coll is None or not isinstance(rows, list):
+                continue  # refused with its own message when the rows are saved
+            for row in rows:
+                op = str(row.get('op') or '').lower()
+                if op:
+                    found.append(coll.model)
+                if op == 'delete':
+                    below(coll)
+                walk(coll, row)
+
+    walk(aggregate, root_node)
+    if str(root_node.get('op') or '').lower() == 'delete':
+        below(aggregate)
+    return found
+
+
 def _root_action(root_node: Dict[str, Any]) -> str:
     """What writing a tree asks of its root: a change below it modifies it."""
     return {'create': 'create', 'delete': 'delete'}.get(root_node.get('op'), 'update')
@@ -437,10 +471,11 @@ def _judge_root(app, aggregate: Aggregate, root_node: Dict[str, Any], answers):
     The rules of the root's table, on the root as it will be written.
 
     The rows below are written by this same call, and a rule of theirs would be
-    skipped in silence: until a row's rules are judged here, a tree whose rows
-    have rules is refused rather than written around them.
+    skipped in silence: until a row's rules are judged here, a tree that writes
+    rows with rules is refused rather than written around them. A page that only
+    declares such a collection, untouched, saves its root.
     """
-    ruled = [m for m in _aggregate_models(aggregate)[1:] if flow.has_rules(m)]
+    ruled = [m for m in _written_models(aggregate, root_node) if flow.has_rules(m)]
     if ruled:
         raise ValueError(f"Rules on rows are not judged by save_tree yet: "
                          f"{', '.join(sorted(set(ruled)))}")
