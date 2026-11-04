@@ -25,7 +25,7 @@ for what is expected of macOS and Windows.*
 |---|---|
 | **git** | also to install: dependencies come from repositories, not from an index |
 | **uv** | it installs Python too, so Python is not a prerequisite of its own |
-| **Node** | `^20.19` or `>=22.12`, the floor vite declares; `corepack enable` gives you pnpm |
+| **Node** | 22.17 or later, the floor SvelteKit declares: take an LTS release. pnpm comes through corepack |
 
 Node is only for the client — and chapter 3 compiles one, so on this road it is
 not optional. Skip it only if you will never build a client, and the API is all
@@ -615,23 +615,33 @@ Only Linux has been walked end to end. The other two say what is expected.
 ```bash
 sudo apt install git curl
 curl -LsSf https://astral.sh/uv/install.sh | sh     # uv
-sudo apt install nodejs npm && corepack enable
 uv python install 3.12                              # only if you have no Python
+```
+
+Node does not come from apt: the distributions often ship one below the floor
+(Ubuntu 24.04 has 18). Install [nvm](https://github.com/nvm-sh/nvm) with the
+one line its page gives, then:
+
+```bash
+nvm install --lts
+npm install -g corepack && corepack enable   # Node 25 and later no longer bundle corepack
 ```
 
 **macOS**
 
 ```bash
-brew install git node uv
-corepack enable
+brew install git uv
 ```
+
+and Node through nvm, as on Linux.
 
 **Windows**
 
 Everything here is a command line; use PowerShell, and:
 
 - activate a venv with `.venv\Scripts\activate`, not `source`;
-- install uv with `winget install astral-sh.uv`, Node with `winget install OpenJS.NodeJS`;
+- install uv with `winget install astral-sh.uv`, Node with `winget install OpenJS.NodeJS.LTS`,
+  then `npm install -g corepack` and `corepack enable`;
 - write paths in `config.yaml` with forward slashes — Python and Node both accept
   them, and a backslash inside a YAML string is an escape.
 
@@ -688,7 +698,7 @@ Two things to know before choosing this road:
 
 pnpm, on the other hand, is not optional: the client is a pnpm workspace whose
 packages depend on each other with `workspace:*`, which npm cannot install.
-`corepack enable` is all it takes.
+corepack gives it to you, as in [Appendix A](#appendix-a--prerequisites-by-platform).
 
 ---
 
