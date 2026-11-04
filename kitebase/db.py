@@ -165,11 +165,26 @@ class DB:
         self._calc_tables()
         self._calc_junctions()
         self._calc_columns()
-        self.media = kitebase.media.Media(self.pm.config.get('media'), self.pm.resolve_path)
+        self.media = kitebase.media.Media(self.pm.config.get('media'), self.pm.resolve_media_path)
+        self._warn_missing_media_base()
         self._calc_endpoints()
         self._load_multi_tenant_config()
         # After the endpoints: a policy plugin registers its guard on import.
         kitebase.access.bind(self)
+
+    def _warn_missing_media_base(self) -> None:
+        """
+        An engine other than the default whose media folder does not exist
+        still runs: the rows are there, the files they refer to are not, so the
+        references do not resolve. Said once at startup, not discovered later.
+        """
+        if self.pm.engine_name is None or not self.media.roots:
+            return
+        base = self.pm.media_base()
+        if not base.exists():
+            self.pm.logger.warning(
+                f"Media of engine '{self.pm.engine_name}': {base} does not exist, "
+                "file references will not resolve (db-copy --media copies them)")
 
     def _calc_types(self) -> None:
         """

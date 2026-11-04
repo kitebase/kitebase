@@ -14,7 +14,7 @@ Two layers:
                     write output to file or stdout.  Accepts an output_dir
                     so callers can point it at their project's data folder.
 
-Commands needing a live database (db-check, db-sync, db-backup) are listed in DB_COMMANDS:
+Commands needing a live database (db-check, db-sync, db-backup, db-copy) are listed in DB_COMMANDS:
 the caller builds the app with an engine for those, and with the schema alone
 for the rest.
 
@@ -336,7 +336,7 @@ def dump_types(app: Any, include_builtin: bool = False) -> Tuple[str, str]:
 
 # Commands that need app.initialize_db() to have run — the others work on the
 # merged schema alone.
-DB_COMMANDS = {'db-check', 'db-sync', 'db-backup'}
+DB_COMMANDS = {'db-check', 'db-sync', 'db-backup', 'db-copy'}
 
 
 def db_check(app: Any) -> Tuple[str, bool]:
@@ -408,7 +408,7 @@ def db_sync(app: Any, dry_run: bool = False, force: bool = False,
     return '\n'.join(lines), len(diff.refused) == len(forced)
 
 
-def db_backup(app: Any, dest: Optional[str] = None) -> Tuple[str, str]:
+def db_backup(app: Any, dest: Optional[str] = None, media: bool = False) -> Tuple[str, str]:
     """
     A consistent copy of a SQLite database, taken while the server runs.
 
@@ -420,8 +420,13 @@ def db_backup(app: Any, dest: Optional[str] = None) -> Tuple[str, str]:
     application runs on one, this is where `pg_dump`/`mysqldump` plug in,
     under the same command.
 
+    With `media` the backup is the unit a database makes with its files: a
+    folder `<name>-<stamp>/` holding the snapshot and the relative media roots
+    (kitebase.db_copy.media_roots), each file hard-linked to the previous such
+    folder when unchanged, so a series costs what changed.
+
     Returns:
-        (report, path) — the file written.
+        (report, path) — the file, or with `media` the folder, written.
     """
     import sqlite3
     from datetime import datetime
@@ -432,8 +437,11 @@ def db_backup(app: Any, dest: Optional[str] = None) -> Tuple[str, str]:
                          f'{url.get_backend_name()} — use that engine\'s own tool.')
 
     source = Path(url.database)
+    stamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+    if media:
+        return _backup_unit(app, source, Path(dest) if dest else source.parent, stamp)
+
     if dest is None:
-        stamp = datetime.now().strftime('%Y%m%d-%H%M%S')
         target = source.with_name(f'{source.stem}-{stamp}{source.suffix}')
     else:
         target = Path(dest)
@@ -448,7 +456,122 @@ def db_backup(app: Any, dest: Optional[str] = None) -> Tuple[str, str]:
     return f'Backup written: {target} ({size:,} bytes)', str(target)
 
 
+def _backup_unit(app: Any, source: Path, parent: Path, stamp: str) -> Tuple[str, str]:
+    """The snapshot and the media in one folder, linked to the previous one."""
+    import sqlite3
+    from kitebase.db_copy import media_roots, snapshot_files
+
+    if not parent.is_dir():
+        raise SystemExit(f'db-backup --media: {parent} is not a directory.')
+    folder = parent / f'{source.stem}-{stamp}'
+    earlier = sorted(p for p in parent.glob(f'{source.stem}-*')
+                     if p.is_dir() and p != folder)
+    previous = earlier[-1] if earlier else None
+    folder.mkdir()
+
+    db_file = folder / source.name
+    with sqlite3.connect(str(source)) as src, sqlite3.connect(str(db_file)) as out:
+        src.backup(out)
+
+    roots, shared = media_roots(app.pm.config.get('media') or {})
+    base = app.pm.media_base()
+    copied = linked = 0
+    for _, path in roots:
+        c, l = snapshot_files(base / path, folder / path,
+                              previous / path if previous else None)
+        copied, linked = copied + c, linked + l
+
+    lines = [f'Backup written: {folder}',
+             f'  database  {db_file.name} ({db_file.stat().st_size:,} bytes)',
+             f'  media     {copied} file(s) copied, {linked} linked to '
+             f'{previous.name if previous else "nothing (first backup)"}']
+    if shared:
+        lines.append(f"  not here  {', '.join(shared)}: absolute roots, back them up "
+                     'where they live')
+    return '\n'.join(lines), str(folder)
+
+
 # ── CLI parser ─────────────────────────────────────────────────────────────────
+
+def db_copy(app: Any, to: str, force: bool = False, dry_run: bool = False,
+            media: bool = False, confirm: Optional[Any] = None,
+            metadata: Optional[Any] = None) -> Tuple[str, bool]:
+    """
+    Copy every row of the application's database (the source: its engine,
+    chosen with --from) into the engine `to`, a name of secrets/engines.yaml or
+    a URL. With `media`, the files of the relative media roots go too, from the
+    source's media base to the target's (PluginsManager.media_base). See
+    kitebase.db_copy for the preconditions and the checks.
+
+    Returns:
+        (report, ok)
+    """
+    from sqlalchemy import create_engine
+    from kitebase.db import Base
+    from kitebase.db_copy import CopyError, MediaCopy, copy_database, media_roots
+
+    metadata = Base.metadata if metadata is None else metadata
+    target = create_engine(app._resolve_db_url(to))
+    shown = target.url.render_as_string(hide_password=True)
+    source = app.engine.url.render_as_string(hide_password=True)
+    head = f'{source}  ->  {shown}'
+    roots, shared = media_roots(app.pm.config.get('media') or {})
+
+    try:
+        files = None
+        if media and roots:
+            if '://' in to:
+                raise CopyError('--media needs the target engine by name: the name '
+                                'places its media folder')
+            files = MediaCopy(app.pm.media_base(), app.pm.media_base(to), roots)
+            occupied = files.occupied()
+            if occupied and not force:
+                raise CopyError(
+                    f"The target's media are not empty ({', '.join(occupied)} in "
+                    f"{files.target}): pass --force to replace them")
+
+        if force and not dry_run and confirm is not None and not confirm(
+                shown + (f' and the media in {files.target}' if files else '')):
+            return 'Not confirmed: nothing copied.', False
+
+        if dry_run or files is None:
+            report = copy_database(app.engine, target, metadata,
+                                   truncate=force, dry_run=dry_run)
+            count = files.count() if files else 0
+        else:
+            count = files.copy_to_stage()
+            try:
+                report = copy_database(app.engine, target, metadata, truncate=force)
+            except BaseException:
+                files.abort()
+                raise
+            files.commit()
+    except CopyError as e:
+        return f'{head}\n\n{e}', False
+    finally:
+        target.dispose()
+
+    lines = [report.format(source, shown)]
+    if files is not None:
+        verb = 'would be copied' if dry_run else 'copied'
+        lines.append(f'Media: {count} file(s) {verb}, {app.pm.media_base()} -> {files.target}.')
+    elif roots:
+        lines.append('Media not copied (--media copies them): the files these rows '
+                     'refer to are where the target engine finds them, or missing.')
+    if shared:
+        lines.append(f"Shared by every engine, not copied: {', '.join(shared)} "
+                     '(absolute paths).')
+    return '\n'.join(lines), True
+
+
+def _confirm_truncate(target: str) -> bool:
+    """--force empties the target first. Anything but yes is no."""
+    try:
+        answer = input(f'--force deletes every row of {target} first. Proceed? [y/N] ')
+    except EOFError:
+        return False
+    return answer.strip().lower() in ('y', 'yes')
+
 
 class _ChooseEngine(argparse.Action):
     """`--engine NAME` is KITEBASE_ENGINE=NAME for this process.
@@ -504,6 +627,10 @@ examples:
   db-sync --engine pg                   the same, on the engine 'pg' of secrets/engines.yaml
   db-backup                             consistent SQLite snapshot next to the database, stamped
   db-backup /mnt/backup/                a directory, or a file path
+  db-backup --media /mnt/backup/        the database and its media, unchanged files linked
+  db-copy --to pg                       every row into the engine 'pg', empty and aligned
+  db-copy --from pg --to test --dry-run the order and the counts, nothing written
+  dev --engine pg                       server and client, the server on 'pg'
   dev                                   run this app and its client, together
   dev /path/to/app --no-client          just the server, on another app
   build-client                          compile this app's client into clientui/
@@ -582,7 +709,28 @@ examples:
     )
     p.add_argument('dest', nargs='?',
                    help='Target file or directory (default: next to the database, timestamped)')
+    p.add_argument('--media', action='store_true',
+                   help='A folder with the database and its media, files unchanged since '
+                        'the previous one hard-linked')
     _engine_option(p)
+
+    # ── db-copy ────────────────────────────────────────────────────────────────
+    p = sub.add_parser(
+        'db-copy',
+        help='Copy every row into another engine, aligned with the schema and empty',
+    )
+    p.add_argument('--from', dest='engine', metavar='NAME', action=_ChooseEngine,
+                   help="Source engine (default: config.yaml's db_engine); same as --engine")
+    p.add_argument('--to', required=True, metavar='NAME',
+                   help='Target engine: a name of secrets/engines.yaml, or a URL')
+    p.add_argument('--force', action='store_true',
+                   help='Copy into a target that has rows, emptying it first, after a confirmation')
+    p.add_argument('--yes', action='store_true',
+                   help='With --force, do not ask for confirmation')
+    p.add_argument('--dry-run', action='store_true',
+                   help='Show the order, the deferred keys and the counts; write nothing')
+    p.add_argument('--media', action='store_true',
+                   help="Copy the files of the media roots too, into the target engine's folder")
 
     # ── new ────────────────────────────────────────────────────────────────────
     # The one command that runs without an application, hence from the `kitebase`
@@ -619,6 +767,7 @@ examples:
                    help='Client checkout (default: $KITEBASE_UI, or the workspace layout)')
     p.add_argument('--no-server', action='store_true', help='Client only')
     p.add_argument('--no-client', action='store_true', help='Server only')
+    _engine_option(p)
 
     # ── build-client ───────────────────────────────────────────────────────────
     p = sub.add_parser(
@@ -751,8 +900,16 @@ def run_cli(app: Any, args: argparse.Namespace, output_dir: Path = Path('.')) ->
             sys.exit(1)
 
     elif args.command == 'db-backup':
-        report, _ = db_backup(app, args.dest)
+        report, _ = db_backup(app, args.dest, media=args.media)
         print(report)
+
+    elif args.command == 'db-copy':
+        confirm = None if args.yes else _confirm_truncate
+        report, ok = db_copy(app, args.to, force=args.force, dry_run=args.dry_run,
+                             media=args.media, confirm=confirm)
+        print(report)
+        if not ok:
+            sys.exit(1)
 
     elif args.command == 'new':
         print('`new` writes a fresh application, so it does not run from one: '

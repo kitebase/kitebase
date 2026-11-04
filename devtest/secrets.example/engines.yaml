@@ -18,7 +18,8 @@
 #   secrets/engines.yaml  main: postgresql+psycopg://app:...@db.example.com/app
 
 # A second database beside the real one: trials, copies, demonstrations.
-test: sqlite:///data/devtest-test.sqlite
+# Its media live in <media.engines_dir>/test/, here data/engines/test/.
+test: sqlite:///data/engines/test/devtest.sqlite
 
 # PostgreSQL, with the psycopg driver (the `postgres` extra of kitebase).
 pg: postgresql+psycopg://kitebase:CHANGE-ME@localhost:5432/kitebase_devtest

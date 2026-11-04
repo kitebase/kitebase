@@ -111,6 +111,22 @@ def _core_timestamp() -> float:
     return _CORE_TIMESTAMP
 
 
+_ENGINE_NAME = re.compile(r'^[a-z][a-z0-9_]*$')
+# Names Windows reserves for devices, whatever the extension: an engine name
+# becomes a folder name, and a folder called `con` cannot be created there.
+_WINDOWS_RESERVED = {'con', 'prn', 'aux', 'nul',
+                     *(f'com{i}' for i in range(1, 10)), *(f'lpt{i}' for i in range(1, 10))}
+
+
+def check_engine_name(name: str) -> str:
+    """An engine name is also a folder name: lowercase, digits, `_`, on any OS."""
+    if not _ENGINE_NAME.match(name) or name in _WINDOWS_RESERVED:
+        raise ValueError(
+            f"Engine name {name!r}: use lowercase letters, digits and '_', starting "
+            "with a letter, and not a name Windows reserves (con, nul, com1...)")
+    return name
+
+
 class PluginsManager:
     """
     Manages the loading, dependency resolution, and merging of plugins.
@@ -231,11 +247,23 @@ class PluginsManager:
         # The engine: a URL, or the name of an entry in secrets/engines.yaml.
         # KITEBASE_ENGINE picks another one for this process (the CLI's
         # --engine sets it); a name is resolved only when the engine opens.
+        # Another engine is chosen by name, because its name places its media
+        # (media_base): two databases never write files into the same folder.
         secrets.set_app_root(self.app_root)
         self.db_engine_source = 'config.yaml'
+        self.default_engine = self.config['db_engine']
+        self.engine_name: Optional[str] = None
+        if self.default_engine and '://' not in self.default_engine:
+            check_engine_name(self.default_engine)
         chosen = os.environ.get('KITEBASE_ENGINE')
-        if chosen:
+        if chosen and chosen != self.default_engine:
+            if '://' in chosen:
+                raise ValueError(
+                    "KITEBASE_ENGINE (or --engine) takes a name of secrets/engines.yaml, "
+                    "not a URL: the name is what keeps that database's media apart")
+            check_engine_name(chosen)
             self.config['db_engine'] = chosen
+            self.engine_name = chosen
             self.db_engine_source = 'KITEBASE_ENGINE'
 
         # The timezone the stored naive datetimes are written in. Declaring it
@@ -254,6 +282,40 @@ class PluginsManager:
             self.logger.warning(
                 "config.yaml 'log_file' is no longer honoured: the log is configured "
                 "by the process (server_utils.setup_logging), not by the library.")
+
+    def engines_dir(self) -> Path:
+        """
+        Where the engines other than the default keep their files: one folder
+        each, named after the engine. `KITEBASE_ENGINES_DIR`, else
+        `media.engines_dir` in config.yaml, else `engines/` in the app directory.
+        """
+        declared = (os.environ.get('KITEBASE_ENGINES_DIR')
+                    or (self.config.get('media') or {}).get('engines_dir')
+                    or 'engines')
+        return self.resolve_path(declared)
+
+    def media_base(self, engine: Optional[str] = None) -> Path:
+        """
+        The directory the relative media roots hang from, for `engine`.
+
+        The default engine keeps the application directory, so `media/books`
+        stays where it always was. Any other engine, by name, gets
+        `<engines_dir>/<name>/`, mirroring that layout: a database and its
+        files make one unit, and two databases never allocate the same path.
+        An absolute root is the same folder for every engine.
+
+        Args:
+            engine: an engine name; None means the one this process runs on
+        """
+        name = self.engine_name if engine is None else engine
+        if not name or name == self.default_engine:
+            return self.app_root
+        check_engine_name(name)
+        return self.engines_dir() / name
+
+    def resolve_media_path(self, path: Union[str, Path]) -> Path:
+        """A media root's path, against the media base of this process's engine."""
+        return (self.media_base() / Path(path)).resolve()
 
     def resolve_path(self, path: Union[str, Path]) -> Path:
         """

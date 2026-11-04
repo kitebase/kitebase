@@ -29,6 +29,11 @@ db_engine: "sqlite:///devtest.sqlite"
 # Where uploaded files live (kitebase.media). A column names its root, and
 # stores `root:path`; the bytes stay here, out of the database.
 media:
+  # The engines other than db_engine (chosen by name: --engine, KITEBASE_ENGINE)
+  # keep their files in <engines_dir>/<name>/, laid out like this directory:
+  # a database and its media are one unit, and two databases never write the
+  # same file. Here under data/, out of git; KITEBASE_ENGINES_DIR overrides it.
+  engines_dir: data/engines
   roots:
     books:   { type: fs, path: media/books }                         # yyyymm
     records: { type: fs, path: media/records, allocate: by_record }
