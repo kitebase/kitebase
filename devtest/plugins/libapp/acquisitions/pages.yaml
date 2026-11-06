@@ -5,6 +5,7 @@ pages:
 
   purchaseorder_list:
     title: Purchase orders
+    help: The orders sent to the publishers, newest first. Open one to read or change it, or add a new one.
     content:
       type: table
       source:
@@ -24,11 +25,20 @@ pages:
         commands:
           - id: import_sheet
             label: Import from spreadsheet
+            help: |
+              Creates orders from a spreadsheet with one row per order line. The
+              columns are `order`, `publisher`, `isbn` and `quantity`, with `price`
+              and `discount` if you have them. The sheet is written whole or not at
+              all: if one order is refused, none is created.
             scope: global
             endpoint: purchase_order_import
           # A new order from this one (orders.py asks whether to copy the lines)
           - id: duplicate
             label: Duplicate
+            help: |
+              A new order from the selected one, with the same publisher. It asks
+              for the date, proposing a month after the original, and whether to
+              copy the lines. Nothing is written until you save.
             scope: row
             endpoint: duplicate
             params: { page: purchaseorder_form }
@@ -53,6 +63,7 @@ pages:
 
   purchaseorder_form:
     title: Purchase order
+    help: An order is written in three steps, and each step is checked before you move on.
     content:
       type: form
       source:
@@ -99,6 +110,7 @@ pages:
                 # column holds it, the new lines take it (prefill below).
                 - name: default_discount
                   label: Discount for new lines
+                  help: Proposed for the lines you add from now on. It starts from the purchasing settings and is not kept with the order.
                   type: Number
                   transient: true
                   width: 20%
@@ -148,10 +160,12 @@ pages:
                       commands:
                         - id: discount_lines
                           label: Discount on lines
+                          help: Sets the same discount on the ticked lines, or on all of them when none is ticked. Nothing is written until you save the order.
                           scope: global
                           endpoint: purchase_order_discount
                         - id: sort_by_publication
                           label: Sort by publication date
+                          help: Puts all the lines in the order their books came out, oldest first. A book without a date goes last.
                           scope: global
                           endpoint: purchase_order_sort_by_publication
 

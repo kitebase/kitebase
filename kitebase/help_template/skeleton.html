@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }}{% if app_title %} - {{ app_title }}{% endif %}</title>
+<style>{{ style | safe }}</style>
+</head>
+<body>
+{% block header %}{% if app_title %}<header class="app">{{ app_title }}</header>
+{% endif %}{% endblock %}
+<main>
+<h1 id="top">{{ title }}</h1>
+{% for text in intro %}{{ text | safe }}{% endfor %}
+{% block index %}{% if sections | length + (how | length > 0) > 1 %}<nav aria-label="Contents">
+<ul>
+{% for s in sections %}<li><a href="#{{ s.id }}">{{ s.title }}</a>{% if s.subs %}
+<ul>{% for sub in s.subs %}<li><a href="#{{ sub.id }}">{{ sub.title }}</a></li>{% endfor %}</ul>{% endif %}</li>
+{% endfor %}{% if how %}<li><a href="#filling-in">Filling in the fields</a></li>
+{% endif %}</ul>
+</nav>
+{% endif %}{% endblock %}
+{% macro body(s) %}{% for text in s.texts %}{{ text | safe }}{% endfor %}
+{% if s.fields %}<dl>
+{% for f in s.fields %}<dt id="{{ f.id }}">{{ f.label | safe }}</dt>
+<dd>{{ f.html | safe }}</dd>
+{% endfor %}</dl>
+{% endif %}{% if s.commands %}<h4>Commands</h4>
+<dl>
+{% for c in s.commands %}<dt>{{ c.label }}</dt>
+<dd>{{ c.html | safe }}</dd>
+{% endfor %}</dl>
+{% endif %}{% endmacro %}
+{% for s in sections %}<section id="{{ s.id }}">
+<h2>{{ s.title }}</h2>
+{{ body(s) }}
+{% for sub in s.subs %}<section id="{{ sub.id }}">
+<h3>{{ sub.title }}</h3>
+{{ body(sub) }}
+</section>
+{% endfor %}</section>
+{% endfor %}
+{% if how %}<section id="filling-in">
+<h2>Filling in the fields</h2>
+<dl>
+{% for h in how %}<dt>{{ h.title }}</dt>
+<dd>{{ h.html | safe }}</dd>
+{% endfor %}</dl>
+</section>
+{% endif %}
+{% if see_also %}<section id="see-also">
+<h2>See also</h2>
+<ul>
+{% for link in see_also %}<li>{{ link | safe }}</li>
+{% endfor %}</ul>
+</section>
+{% endif %}
+</main>
+</body>
+</html>

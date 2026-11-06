@@ -653,6 +653,15 @@ examples:
     p.add_argument('-o', '--output', metavar='PATH',
                    help='Output file path (- = stdout; default: <output_dir>/pages/<id>.yaml)')
 
+    # ── help ───────────────────────────────────────────────────────────────────
+    p = sub.add_parser(
+        'help',
+        help='Write the guide of a page as a standalone HTML file',
+    )
+    p.add_argument('page_id', help='The page of a menu entry (e.g. book_list)')
+    p.add_argument('-o', '--output', metavar='PATH',
+                   help='Output file path (- = stdout; default: <output_dir>/help/<id>.html)')
+
     # ── dump-table ─────────────────────────────────────────────────────────────
     p = sub.add_parser(
         'dump-table',
@@ -849,6 +858,25 @@ def run_cli(app: Any, args: argparse.Namespace, output_dir: Path = Path('.')) ->
             sys.exit(1)
         _write(yaml_text, label, out_arg,
                output_dir / 'pages' / f'{args.page_id}.yaml')
+
+    elif args.command == 'help':
+        from kitebase.help import help_merge, render_html
+        try:
+            rendered = render_html(app, help_merge(app, args.page_id))
+        except ValueError as e:
+            print(f'Error: {e}', file=sys.stderr)
+            sys.exit(1)
+        for warning in rendered.warnings:
+            print(f'Warning: {warning}', file=sys.stderr)
+        if rendered.external:
+            print(f"Linked, not generated: {', '.join(rendered.external)}", file=sys.stderr)
+        if out_arg == '-':
+            print(rendered.html)
+        else:
+            out_path = Path(out_arg) if out_arg else output_dir / 'help' / f'{args.page_id}.html'
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(rendered.html, encoding='utf-8')
+            print(f'Written: {out_path}')
 
     elif args.command == 'dump-table':
         names = args.table or None

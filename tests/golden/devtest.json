@@ -5,7 +5,7 @@
    "primary_key": true,
    "autoincrement": true,
    "label": "ID",
-   "help": "The primary key for the table\n",
+   "doc": "The primary key for the table.",
    "$plugin": "common"
   },
   "ShortID": {
@@ -13,7 +13,7 @@
    "length": 32,
    "primary_key": true,
    "label": "ID",
-   "help": "The primary key for the table\n",
+   "doc": "The primary key for the table.",
    "$plugin": "common"
   },
   "ShortStr": {
@@ -1169,6 +1169,8 @@
   },
   "PurchaseOrder": {
    "name": "purchase_orders",
+   "help": "An order to one publisher for the books the library wants to buy.",
+   "doc": "A bench for the document form (header, rows, phases, commands on the\nrows), not a purchasing module: quantities are numbers and nothing counts\ncopies or stock.\n",
    "tags": [
     "journal"
    ],
@@ -1186,6 +1188,8 @@
      "name": "order_date",
      "type": "Date",
      "label": "Date",
+     "help": "The date of the order. A new order starts from the working date.",
+     "doc": "Not duplicated, because a copy is a new order with a date of its own.",
      "default": "$op_date",
      "nullable": false,
      "duplicate": false,
@@ -1194,6 +1198,7 @@
     {
      "name": "publisher_id",
      "label": "Publisher",
+     "help": "The publisher the books are ordered from.",
      "nullable": false,
      "foreign_key": {
       "target": "Publisher.id"
@@ -1204,6 +1209,7 @@
      "name": "supplier_reference",
      "type": "String",
      "label": "Supplier reference",
+     "help": "The publisher's own reference: their quote, or the sheet they sent.",
      "length": 50,
      "nullable": true,
      "duplicate": false,
@@ -1220,6 +1226,7 @@
      "name": "expected_delivery",
      "type": "Date",
      "label": "Expected delivery",
+     "help": "When the books should arrive. It cannot come before the date of the order.",
      "nullable": true,
      "duplicate": false,
      "$plugin": "acquisitions"
@@ -1228,6 +1235,7 @@
      "name": "footer_discount",
      "type": "Percent",
      "label": "Discount on the order",
+     "help": "A discount on the whole order, beside the discount of each line.",
      "nullable": true,
      "$plugin": "acquisitions"
     }
@@ -1244,6 +1252,7 @@
     },
     {
      "name": "purchase_order_id",
+     "doc": "A part of its order, which goes when the order goes.",
      "nullable": false,
      "foreign_key": {
       "target": "PurchaseOrder.id",
@@ -1254,11 +1263,13 @@
     {
      "name": "sequence",
      "type": "Sequence",
+     "doc": "The place of the row in its document, which the reader chose.",
      "$plugin": "acquisitions"
     },
     {
      "name": "book_id",
      "label": "Book",
+     "help": "A book of the order's publisher.",
      "nullable": false,
      "foreign_key": {
       "target": "Book.id"
@@ -1280,6 +1291,7 @@
     {
      "name": "discount",
      "type": "Percent",
+     "help": "The discount on this line. A new line starts from the discount set in the header.",
      "nullable": true,
      "$plugin": "acquisitions"
     }
@@ -2622,6 +2634,7 @@
   },
   "purchaseorder_list": {
    "title": "Purchase orders",
+   "help": "The orders sent to the publishers, newest first. Open one to read or change it, or add a new one.",
    "content": {
     "type": "table",
     "source": {
@@ -2661,6 +2674,7 @@
       {
        "id": "import_sheet",
        "label": "Import from spreadsheet",
+       "help": "Creates orders from a spreadsheet with one row per order line. The\ncolumns are `order`, `publisher`, `isbn` and `quantity`, with `price`\nand `discount` if you have them. The sheet is written whole or not at\nall: if one order is refused, none is created.\n",
        "scope": "global",
        "endpoint": "purchase_order_import",
        "$plugin": "acquisitions"
@@ -2668,6 +2682,7 @@
       {
        "id": "duplicate",
        "label": "Duplicate",
+       "help": "A new order from the selected one, with the same publisher. It asks\nfor the date, proposing a month after the original, and whether to\ncopy the lines. Nothing is written until you save.\n",
        "scope": "row",
        "endpoint": "duplicate",
        "params": {
@@ -2736,6 +2751,7 @@
   },
   "purchaseorder_form": {
    "title": "Purchase order",
+   "help": "An order is written in three steps, and each step is checked before you move on.",
    "content": {
     "type": "form",
     "source": {
@@ -2820,6 +2836,7 @@
          {
           "name": "default_discount",
           "label": "Discount for new lines",
+          "help": "Proposed for the lines you add from now on. It starts from the purchasing settings and is not kept with the order.",
           "type": "Number",
           "transient": true,
           "width": "20%"
@@ -2895,12 +2912,14 @@
              {
               "id": "discount_lines",
               "label": "Discount on lines",
+              "help": "Sets the same discount on the ticked lines, or on all of them when none is ticked. Nothing is written until you save the order.",
               "scope": "global",
               "endpoint": "purchase_order_discount"
              },
              {
               "id": "sort_by_publication",
               "label": "Sort by publication date",
+              "help": "Puts all the lines in the order their books came out, oldest first. A book without a date goes last.",
               "scope": "global",
               "endpoint": "purchase_order_sort_by_publication"
              },

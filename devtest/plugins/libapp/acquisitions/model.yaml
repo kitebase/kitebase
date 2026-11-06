@@ -9,6 +9,11 @@ tables:
 
   PurchaseOrder:
     name: purchase_orders
+    help: An order to one publisher for the books the library wants to buy.
+    doc: |
+      A bench for the document form (header, rows, phases, commands on the
+      rows), not a purchasing module: quantities are numbers and nothing counts
+      copies or stock.
     tags: [journal]
     mixins: [TimeStamp]
     columns:
@@ -16,24 +21,26 @@ tables:
         type: ID
         label: Number
 
-      # A copy is a new order: today's date, not the one it was copied from.
       - name: order_date
         type: Date
         label: Date
+        help: The date of the order. A new order starts from the working date.
+        doc: Not duplicated, because a copy is a new order with a date of its own.
         default: $op_date
         nullable: false
         duplicate: false
 
       - name: publisher_id
         label: Publisher
+        help: The publisher the books are ordered from.
         nullable: false
         foreign_key:
           target: Publisher.id
 
-      # The publisher's own reference: their quote, or the sheet they sent.
       - name: supplier_reference
         type: String
         label: Supplier reference
+        help: "The publisher's own reference: their quote, or the sheet they sent."
         length: 50
         nullable: true
         duplicate: false
@@ -43,17 +50,17 @@ tables:
         label: Notes
         nullable: true
 
-      # The footer: when the books should arrive, and a discount on the whole
-      # order beside the one of each line.
       - name: expected_delivery
         type: Date
         label: Expected delivery
+        help: When the books should arrive. It cannot come before the date of the order.
         nullable: true
         duplicate: false
 
       - name: footer_discount
         type: Percent
         label: Discount on the order
+        help: A discount on the whole order, beside the discount of each line.
         nullable: true
 
   PurchaseOrderLine:
@@ -62,19 +69,20 @@ tables:
       - name: id
         type: ID
 
-      # A part of its order: it goes when the order goes.
       - name: purchase_order_id
+        doc: A part of its order, which goes when the order goes.
         nullable: false
         foreign_key:
           target: PurchaseOrder.id
           owned: true
 
-      # The place of the row in its document, which the reader chose.
       - name: sequence
         type: Sequence
+        doc: The place of the row in its document, which the reader chose.
 
       - name: book_id
         label: Book
+        help: A book of the order's publisher.
         nullable: false
         foreign_key:
           target: Book.id
@@ -89,6 +97,7 @@ tables:
 
       - name: discount
         type: Percent
+        help: The discount on this line. A new line starts from the discount set in the header.
         nullable: true
 
   Receipt:

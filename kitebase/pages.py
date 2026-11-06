@@ -614,6 +614,21 @@ def can_open(app: Any, page_id: str) -> bool:
     return all(access.can(p) for p in page_permissions(app, page_id) or [])
 
 
+def lookup_page(field: Dict[str, Any]) -> Optional[str]:
+    """The page a foreign key's "Search more..." opens: `lookup.page`, or the list
+    of its table. None when the field is no foreign key, or the lookup is closed."""
+    fk = field.get('foreign_key')
+    if not isinstance(fk, dict) or not fk.get('target'):
+        return None
+    lookup = field.get('lookup') if isinstance(field.get('lookup'), dict) else {}
+    page = lookup.get('page')
+    if page is False:
+        return None
+    if isinstance(page, str) and page:
+        return page
+    return f"{str(fk['target']).lower()}_list"
+
+
 def restrict(app: Any, obj: Any, in_collection: bool = False) -> None:
     """Take out of a resolved page what the current user cannot use. In place,
     on the copy `get_page` is about to send:
@@ -640,15 +655,11 @@ def restrict(app: Any, obj: Any, in_collection: bool = False) -> None:
     if not isinstance(obj, dict):
         return
 
-    fk = obj.get('foreign_key')
-    if isinstance(obj.get('name'), str) and isinstance(fk, dict) and fk.get('target'):
-        lookup = obj.get('lookup') if isinstance(obj.get('lookup'), dict) else {}
-        page = lookup.get('page')
-        if page is not False:
-            if not isinstance(page, str) or not page:
-                page = f"{str(fk['target']).lower()}_list"
-            if not can_open(app, page):
-                obj['lookup'] = {**lookup, 'page': False}
+    if isinstance(obj.get('name'), str):
+        page = lookup_page(obj)
+        if page is not None and not can_open(app, page):
+            lookup = obj.get('lookup') if isinstance(obj.get('lookup'), dict) else {}
+            obj['lookup'] = {**lookup, 'page': False}
 
     if obj.get('type') == COLLECTION:
         in_collection = True

@@ -23,6 +23,10 @@ plugins:
 # here runs `devtest.py db-check` (default: kite.py)
 cli: devtest.py
 
+# Where this application replaces the templates of its guides (`kitebase help`),
+# relative to this file: skeleton.html, style.css. The originals are core/<name>.
+# help_templates: help/templates
+
 # db engine for sqlalchemy
 db_engine: "sqlite:///devtest.sqlite"
 
