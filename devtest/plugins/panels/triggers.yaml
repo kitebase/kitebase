@@ -15,6 +15,7 @@ pages:
   #    detail starts collapsed; TabView bottom switches between Reviews/Loans.
   book_with_reviews:
     title: Books & Reviews
+    help: The catalogue with what readers did. Click a book to see its detail, its reviews and its loans.
     content:
       $ref: "views.book_list_view"
     panels:

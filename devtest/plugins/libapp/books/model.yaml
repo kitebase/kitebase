@@ -2,6 +2,7 @@ tables:
 
   Author:
     name: authors
+    help: A writer of the catalogue, with the dates and the biography.
     tags: [anag]
     display_field: full_name
     search_fields: [first_name, last_name]
@@ -29,18 +30,19 @@ tables:
         type: String
         length: 50
 
-      # The author's item on Wikidata (Q154756): the key the biography and the
-      # dates are looked up by, since a name is no key.
       - name: wikidata
         type: String
         length: 20
         nullable: true
         label: Wikidata
+        help: "The author's item on Wikidata, such as Q154756: it is how the biography is found."
+        doc: The key the biography and the dates are looked up by, since a name is no key.
 
       - name: bio
         type: Text
         nullable: true
         label: Biography
+        help: The text the Fetch biography command loads, which you can then change.
 
       - name: full_name
         type: String
@@ -84,6 +86,7 @@ tables:
 
   Book:
     name: books
+    help: A book of the catalogue, one row per title, with the data of this edition.
     doc: |
       One row per title. The library plugin adds the columns it needs to lend
       and show a book (status, cover, sample) to this same table.
@@ -97,16 +100,16 @@ tables:
         type: Description
         index: True
 
-      # The work's title when this edition is a translation, or carries another.
       - name: original_title
         type: Description
         nullable: true
+        help: The title of the work, when this edition is a translation or carries another.
 
-      # The year of the work, not of this edition (publication_date).
       - name: first_published
         type: Integer
         nullable: true
         label: First published
+        help: The year the work first came out, not the year of this edition.
 
       - name: isbn
         type: String
@@ -118,6 +121,7 @@ tables:
         type: Date
         nullable: true
         default: null
+        help: When this edition came out.
 
       - name: price
         type: Price
@@ -128,6 +132,7 @@ tables:
         nullable: true
         index: true
         description: "ISO 639-1 (en, it, fr, es, de)"
+        help: "The language of this edition, as a two-letter code: en, it, fr."
 
       - name: pages
         type: Integer
@@ -136,6 +141,8 @@ tables:
       - name: publisher_id
         type: Integer
         nullable: true
+        label: Publisher
+        help: The publisher of this edition.
         foreign_key:
           target: Publisher.id
 
@@ -148,6 +155,7 @@ tables:
         length: 200
         nullable: true
         description: "Comma-separated tags (first = primary genre)"
+        help: Tags separated by commas. The first one is the main genre.
 
     # Compound indexes
     indexes:
@@ -165,6 +173,7 @@ tables:
     columns:
       - name: notes
         type: String
+        help: A note on the part of this author in the book, such as translator or editor.
     many_to_many:
       target1:
         table: Book.id

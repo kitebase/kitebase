@@ -84,6 +84,7 @@
     "gif"
    ],
    "max_size": "10MB",
+   "help_how": "One picture per field: drag it in or choose it, and it is kept when you save the form. A very large photo can be reduced before it is sent.\n",
    "resize": 2048,
    "$plugin": "common"
   },
@@ -92,6 +93,7 @@
    "length": 255,
    "media": "file",
    "max_size": "20MB",
+   "help_how": "One file per field. Drag it in or choose it, and it is kept when you save the form.",
    "$plugin": "common"
   },
   "Files": {
@@ -100,6 +102,7 @@
    "virtual": true,
    "editable": false,
    "max_size": "20MB",
+   "help_how": "The files of this record, one per row, each with its description. Every gesture counts at once, without saving the form, and what you remove goes to the bin. A new record must be saved before its first file.\n",
    "$plugin": "common"
   },
   "Json": {
@@ -688,6 +691,7 @@
   },
   "Author": {
    "name": "authors",
+   "help": "A writer of the catalogue, with the dates and the biography.",
    "tags": [
     "anag"
    ],
@@ -738,6 +742,8 @@
      "length": 20,
      "nullable": true,
      "label": "Wikidata",
+     "help": "The author's item on Wikidata, such as Q154756: it is how the biography is found.",
+     "doc": "The key the biography and the dates are looked up by, since a name is no key.",
      "$plugin": "books"
     },
     {
@@ -745,6 +751,7 @@
      "type": "Text",
      "nullable": true,
      "label": "Biography",
+     "help": "The text the Fetch biography command loads, which you can then change.",
      "$plugin": "books"
     },
     {
@@ -757,6 +764,7 @@
     },
     {
      "name": "documents",
+     "help": "What the library keeps about this author, such as contracts and letters.",
      "type": "Files",
      "root": "records",
      "accept": [
@@ -829,6 +837,7 @@
   },
   "Book": {
    "name": "books",
+   "help": "A book of the catalogue, one row per title, with the data of this edition.",
    "doc": "One row per title. The library plugin adds the columns it needs to lend\nand show a book (status, cover, sample) to this same table.\n",
    "tags": [
     "anag"
@@ -852,6 +861,7 @@
      "name": "original_title",
      "type": "Description",
      "nullable": true,
+     "help": "The title of the work, when this edition is a translation or carries another.",
      "$plugin": "books"
     },
     {
@@ -859,6 +869,7 @@
      "type": "Integer",
      "nullable": true,
      "label": "First published",
+     "help": "The year the work first came out, not the year of this edition.",
      "$plugin": "books"
     },
     {
@@ -874,6 +885,7 @@
      "type": "Date",
      "nullable": true,
      "default": null,
+     "help": "When this edition came out.",
      "$plugin": "books"
     },
     {
@@ -888,6 +900,7 @@
      "nullable": true,
      "index": true,
      "description": "ISO 639-1 (en, it, fr, es, de)",
+     "help": "The language of this edition, as a two-letter code: en, it, fr.",
      "$plugin": "books"
     },
     {
@@ -900,6 +913,8 @@
      "name": "publisher_id",
      "type": "Integer",
      "nullable": true,
+     "label": "Publisher",
+     "help": "The publisher of this edition.",
      "foreign_key": {
       "target": "Publisher.id"
      },
@@ -917,6 +932,7 @@
      "length": 200,
      "nullable": true,
      "description": "Comma-separated tags (first = primary genre)",
+     "help": "Tags separated by commas. The first one is the main genre.",
      "$plugin": "books"
     },
     {
@@ -930,6 +946,7 @@
      "name": "cover",
      "type": "Image",
      "root": "books",
+     "help": "The picture of the cover. It can be uploaded before the book is saved.",
      "doc": "Uploaded before the book is saved too, so book files lay out by date.",
      "$plugin": "library"
     },
@@ -941,6 +958,7 @@
       "pdf"
      ],
      "label": "Sample chapter",
+     "help": "A chapter to read, as a PDF. It opens in the browser.",
      "$plugin": "library"
     }
    ],
@@ -972,6 +990,7 @@
     {
      "name": "notes",
      "type": "String",
+     "help": "A note on the part of this author in the book, such as translator or editor.",
      "$plugin": "books"
     }
    ],
@@ -1064,6 +1083,7 @@
    "$plugin": "library"
   },
   "Review": {
+   "help": "What a reader thought of a book.",
    "name": "reviews",
    "tags": [
     "journal"
@@ -1079,6 +1099,7 @@
     },
     {
      "name": "rating",
+     "help": "From one to five stars.",
      "type": "Integer",
      "$plugin": "library"
     },
@@ -1104,6 +1125,7 @@
     },
     {
      "name": "book_id",
+     "doc": "A review is edited inside the book's form and still outlives it: lifetime and editing surface are independent axes, and saying so settles the question.",
      "nullable": false,
      "foreign_key": {
       "target": "Book.id",
@@ -1115,6 +1137,7 @@
    "$plugin": "library"
   },
   "Loan": {
+   "help": "A book lent to a member, from the day it goes out to the day it comes back.",
    "name": "loans",
    "tags": [
     "journal"
@@ -1137,12 +1160,14 @@
     },
     {
      "name": "due_date",
+     "help": "When the book should come back.",
      "type": "DateTime",
      "nullable": false,
      "$plugin": "library"
     },
     {
      "name": "returned_at",
+     "help": "Empty while the book is out.",
      "type": "DateTime",
      "nullable": true,
      "$plugin": "library"
@@ -1157,6 +1182,7 @@
     },
     {
      "name": "book_id",
+     "doc": "A loan is a journal entry, edited inside the book's form behind a button and not a part of the book: deleting a book leaves its history standing.",
      "nullable": false,
      "foreign_key": {
       "target": "Book.id",
@@ -1622,6 +1648,7 @@
   },
   "book_with_reviews": {
    "title": "Books & Reviews",
+   "help": "The catalogue with what readers did. Click a book to see its detail, its reviews and its loans.",
    "content": {
     "$ref": "views.book_list_view",
     "$plugin": "panels"
@@ -1810,6 +1837,7 @@
   },
   "book_list": {
    "title": "Books",
+   "help": "The catalogue. Open a book to read or change it, or add a new one.",
    "content": {
     "$ref": "views.book_list_view",
     "$plugin": "panels"
@@ -1844,6 +1872,7 @@
   },
   "book_form": {
    "title": "Book",
+   "help": "A book in one screen. What is read less often stays behind the buttons.",
    "content": {
     "type": "form",
     "source": {
@@ -1928,6 +1957,7 @@
          {
           "type": "button",
           "label": "Loans",
+          "help": "Who borrowed this book, and when. The button shows how many loans there are.",
           "icon": "book-open-check",
           "count": true,
           "opens": {
@@ -1982,6 +2012,7 @@
          {
           "type": "button",
           "label": "Statistics",
+          "help": "Counts the loans of this book. The book must be saved first.",
           "icon": "chart-column",
           "endpoint": "book_stats",
           "pass": {
@@ -2084,6 +2115,7 @@
   },
   "book_description_form": {
    "title": "Description & tags",
+   "help": "The same book with the fields read less often. Confirm brings them back to the form.",
    "content": {
     "type": "form",
     "source": {
@@ -2220,6 +2252,7 @@
   },
   "payment_wizard_params": {
    "title": "Parametri solleciti",
+   "help_compose": false,
    "access": "playground.demos",
    "content": {
     "$ref": "views.payment_wizard_params_form",
@@ -2253,6 +2286,7 @@
       {
        "id": "fetch_bio",
        "label": "Fetch biography",
+       "help": "Looks up the biography on Wikipedia, through the Wikidata item of the author.",
        "scope": "row",
        "endpoint": "author_fetch_bio",
        "$plugin": "books"
@@ -3256,6 +3290,7 @@
      {
       "id": "archive",
       "label": "Archive",
+      "help": "Chooses whether the list shows active, archived or all books, and archives or restores the selected one.",
       "scope": "global",
       "key": "a",
       "endpoint": "archivable",
@@ -3264,6 +3299,7 @@
      {
       "id": "fetch_description",
       "label": "Fetch description",
+      "help": "Looks up the description on Open Library by ISBN, and asks before replacing a text.",
       "scope": "row",
       "endpoint": "book_fetch_description",
       "$plugin": "panels"
@@ -3485,6 +3521,7 @@
      {
       "id": "print_ticket",
       "label": "Print ticket",
+      "help": "Prints the ticket of the selected loan again.",
       "scope": "row",
       "endpoint": "loan_print_ticket",
       "$plugin": "panels"

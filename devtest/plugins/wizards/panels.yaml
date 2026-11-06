@@ -41,8 +41,11 @@ schemas:
 
 pages:
 
+  # An endpoint drives the steps: nothing in the YAML says how they follow each
+  # other, so the guide of this entry is written by hand.
   payment_wizard_params:
     title: Parametri solleciti
+    help_compose: false
     access: playground.demos
     content:
       $ref: "views.payment_wizard_params_form"

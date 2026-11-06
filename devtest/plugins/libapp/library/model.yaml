@@ -32,6 +32,7 @@ tables:
       - name: cover
         type: Image
         root: books
+        help: The picture of the cover. It can be uploaded before the book is saved.
         doc: Uploaded before the book is saved too, so book files lay out by date.
 
       - name: sample
@@ -39,11 +40,13 @@ tables:
         root: books
         accept: [pdf]
         label: Sample chapter
+        help: A chapter to read, as a PDF. It opens in the browser.
 
   Author:
     columns:
       # The folder Author/000/<id>/documents/, read from disk.
       - name: documents
+        help: What the library keeps about this author, such as contracts and letters.
         type: Files
         root: records
         accept: [pdf, jpg, jpeg, png]
@@ -98,6 +101,7 @@ tables:
 
 
   Review:
+    help: What a reader thought of a book.
     name: reviews
     tags: [journal]
     mixins: [TimeStamp]
@@ -106,6 +110,7 @@ tables:
         type: ID
 
       - name: rating
+        help: From one to five stars.
         type: Integer
 
       - name: comment
@@ -121,15 +126,15 @@ tables:
         foreign_key:
           target: LibraryUser.id
 
-      # A review is edited inside the book's form and still outlives it: lifetime
-      # and editing surface are independent axes, and saying so settles the question.
       - name: book_id
+        doc: "A review is edited inside the book's form and still outlives it: lifetime and editing surface are independent axes, and saying so settles the question."
         nullable: false
         foreign_key:
           target: Book.id
           owned: false
 
   Loan:
+    help: A book lent to a member, from the day it goes out to the day it comes back.
     name: loans
     tags: [journal]
     mixins: [TimeStamp]
@@ -143,10 +148,12 @@ tables:
         nullable: false
 
       - name: due_date
+        help: When the book should come back.
         type: DateTime
         nullable: false
 
       - name: returned_at
+        help: Empty while the book is out.
         type: DateTime
         nullable: true
 
@@ -155,9 +162,8 @@ tables:
         foreign_key:
           target: LibraryUser.id
 
-      # A loan is a journal entry, edited inside the book's form behind a button
-      # and not a part of the book: deleting a book leaves its history standing.
       - name: book_id
+        doc: "A loan is a journal entry, edited inside the book's form behind a button and not a part of the book: deleting a book leaves its history standing."
         nullable: false
         foreign_key:
           target: Book.id

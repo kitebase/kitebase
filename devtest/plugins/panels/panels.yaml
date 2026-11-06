@@ -126,6 +126,7 @@ pages:
   # ── Minimal panel: inline view, no splits ────────────────────────────────
   book_list:
     title: Books
+    help: The catalogue. Open a book to read or change it, or add a new one.
     content:
       $ref: "views.book_list_view"
 
@@ -153,6 +154,7 @@ pages:
   #    the bench works before anyone writes a descriptor for it.
   book_form:
     title: Book
+    help: A book in one screen. What is read less often stays behind the buttons.
     content:
       type: form
       source:
@@ -219,6 +221,7 @@ pages:
                 # reads the buffer, so the label says whether it is worth opening.
                 - type: button
                   label: Loans
+                  help: Who borrowed this book, and when. The button shows how many loans there are.
                   icon: book-open-check
                   count: true
                   opens:
@@ -256,6 +259,7 @@ pages:
                 # The other family: no frame, no buffer — it calls and reports.
                 - type: button
                   label: Statistics
+                  help: Counts the loans of this book. The book must be saved first.
                   icon: chart-column
                   endpoint: book_stats
                   pass:
@@ -305,6 +309,7 @@ pages:
   #    places refreshes without a round-trip.
   book_description_form:
     title: Description & tags
+    help: The same book with the fields read less often. Confirm brings them back to the form.
     content:
       type: form
       source:
@@ -388,6 +393,7 @@ views:
       commands:
         - id: archive
           label: Archive
+          help: Chooses whether the list shows active, archived or all books, and archives or restores the selected one.
           scope: global
           key: a
           endpoint: archivable
@@ -395,6 +401,7 @@ views:
         # (libapp/books/lookup.py). It asks before replacing a text.
         - id: fetch_description
           label: Fetch description
+          help: Looks up the description on Open Library by ISBN, and asks before replacing a text.
           scope: row
           endpoint: book_fetch_description
     actions:
@@ -489,6 +496,7 @@ views:
         # The ticket printed when a loan is made (library/loans.py), again on demand
         - id: print_ticket
           label: Print ticket
+          help: Prints the ticket of the selected loan again.
           scope: row
           endpoint: loan_print_ticket
     actions:

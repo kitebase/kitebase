@@ -1,13 +1,18 @@
 """
 kitebase.help: the guide of a menu entry, composed from what the plugins declare.
 
-Whoever sees a menu entry wants one page from there on, not one per screen. So
-`help_merge` starts from the page of the entry and follows the screens it can
-reach, and the guide reads in the order the user meets them: a section for each
-screen, one for each phase of a form, with the fields and the commands found
-there. Every field is told once, whichever screens show it. A foreign key ends
-the walk and stays a link, and a page with a menu entry of its own becomes a
-reference.
+Whoever sees a menu entry wants one page from there on: what the table means, what
+can be done on the list, what the fields of the record mean. So `help_merge` starts
+from the page of the entry and follows the screens it can reach, and every field is
+told once, whichever screens show it.
+
+What depends on the record weighs less. A table whose rows belong to the record
+(`owned`), or that only links two tables, is told with it; any other has a guide of
+its own and gets a line here, with the commands this view adds to it. A panel says
+what it depends on through its trigger. A foreign key stays a link, and a page with
+a menu entry of its own becomes a reference. `help_embed` on a node overrides the
+rule, and `help_compose: false` on a page replaces the composition with its text:
+for what the YAML cannot tell, like a wizard driven by an endpoint.
 
 Only `help:` and the discursive `help/en/<page>.md` of the plugins are read here.
 `doc:` is written for whoever develops, and never reaches the guide.
@@ -26,6 +31,7 @@ from typing import Any, Dict, Iterator, List, Optional, Set
 from jinja2 import ChoiceLoader, Environment, FileSystemLoader, PrefixLoader, select_autoescape
 from markdown_it import MarkdownIt
 
+from kitebase.media import MediaError, parse_size
 from kitebase.pages import BUTTON, COLLECTION, LIST_TYPES, field_from_column, load_page, lookup_page
 
 _TEMPLATES = Path(__file__).parent / 'help_template'
@@ -33,17 +39,28 @@ _TEMPLATES = Path(__file__).parent / 'help_template'
 # Keys of a descriptor that hold other nodes.
 _CHILDREN = ('layout', 'columns', 'fields', 'pages', 'tabs', 'children')
 
-# How a kind of field is filled in, the same everywhere: said once in a guide.
-_HOW_TO_FILL = {
-    'foreign_key': (
+# Where a part that depends on the record stands, and what its heading says.
+INSIDE = 'inside'
+SELECTING = 'selecting'
+BESIDE = 'beside'
+_PART_TITLES = {
+    INSIDE: 'Inside the form',
+    SELECTING: 'When you select a row',
+    BESIDE: 'Beside the list',
+}
+
+_HOW_TITLE = 'Filling in the fields'
+
+# How the types of the core are filled in, which no YAML declares: they exist even in
+# an application without the shared plugins. `help_how` says the same for any other.
+_BUILTIN_HOW = {
+    'FK': (
         'Choosing from another table',
         'Type to search and pick with the arrow keys and Enter. '
         '*Search more...*, at the end of the list, opens the whole table.',
     ),
-    'date': (
-        'Dates',
-        'Type the date, or pick it from the calendar.',
-    ),
+    'Date': ('Dates', 'Type the date, or pick it from the calendar.'),
+    'DateTime': ('Dates', 'Type the date, or pick it from the calendar.'),
 }
 
 
@@ -53,6 +70,15 @@ class HelpField:
     label: str
     text: str
     link: Optional[str] = None
+    # What the server accepts in this field, from its own declaration
+    limits: str = ''
+
+
+@dataclass
+class HelpHow:
+    key: str
+    title: str
+    text: str
 
 
 @dataclass
@@ -62,18 +88,28 @@ class HelpCommand:
 
 
 @dataclass
-class HelpSection:
-    """A screen, or a part of one: subsections never hold subsections."""
+class HelpGroup:
+    """Fields of the record, or of a table that is part of it, under one title.
+    The group without a title holds what the form does not gather under any."""
     id: str
-    title: str
-    parent: Optional['HelpSection'] = None
+    title: Optional[str] = None
     texts: List[str] = field(default_factory=list)
     fields: List[HelpField] = field(default_factory=list)
     commands: List[HelpCommand] = field(default_factory=list)
-    subs: List['HelpSection'] = field(default_factory=list)
 
     def is_empty(self) -> bool:
-        return not (self.texts or self.fields or self.commands or self.subs)
+        return not (self.texts or self.fields or self.commands)
+
+
+@dataclass
+class HelpItem:
+    """Something that depends on the record: a line, a reference to where its own
+    fields are told, and the commands available right here."""
+    title: str
+    text: Optional[str] = None
+    ref: Optional[str] = None
+    anchor: Optional[str] = None
+    commands: List[HelpCommand] = field(default_factory=list)
 
 
 @dataclass
@@ -81,25 +117,38 @@ class HelpDoc:
     root: str
     title: str
     intro: List[str] = field(default_factory=list)
-    sections: List[HelpSection] = field(default_factory=list)
-    how: List[str] = field(default_factory=list)
+    commands: List[HelpCommand] = field(default_factory=list)
+    groups: List[HelpGroup] = field(default_factory=list)
+    # Where each dependent part stands: INSIDE, SELECTING or BESIDE
+    parts: Dict[str, List[HelpItem]] = field(default_factory=dict)
+    how: List[HelpHow] = field(default_factory=list)
     see_also: List[str] = field(default_factory=list)
     screens: List[str] = field(default_factory=list)
-    # The section each screen landed in
+    # Where each screen is told in the page
     anchors: Dict[str, str] = field(default_factory=dict)
-
-    def all_sections(self) -> Iterator[HelpSection]:
-        for section in self.sections:
-            yield section
-            yield from section.subs
+    warnings: List[str] = field(default_factory=list)
 
     def all_fields(self) -> Iterator[HelpField]:
-        for section in self.all_sections():
-            yield from section.fields
+        for group in self.groups:
+            yield from group.fields
 
 
 def _humanize(name: str) -> str:
     return name.replace('_', ' ').strip().capitalize()
+
+
+def _limits(attrs: Dict[str, Any]) -> str:
+    """The files a media field takes: `pdf, jpg, up to 20 MB`."""
+    if not attrs.get('media'):
+        return ''
+    parts = [str(a) for a in attrs.get('accept') or []]
+    try:
+        size = parse_size(attrs.get('max_size'))
+    except MediaError:
+        size = None
+    if size:
+        parts.append(f'up to {size / 1024 / 1024:g} MB')
+    return ', '.join(parts)
 
 
 def _discourse(app: Any, page_id: str) -> Optional[str]:
@@ -118,6 +167,11 @@ def _menu_pages(app: Any) -> Dict[str, str]:
             if isinstance(item, dict) and isinstance(item.get('panel'), str)}
 
 
+def _model_of(node: Dict[str, Any]) -> Optional[str]:
+    source = node.get('source')
+    return source.get('model') if isinstance(source, dict) else None
+
+
 class _Merge:
     """One walk: the screens already seen and the fields already told."""
 
@@ -130,10 +184,12 @@ class _Merge:
         self.seen_fields: Set[str] = set()
         self.grids: List[Dict[str, Any]] = []
 
-    def screen(self, page_id: str, into: Optional[HelpSection] = None,
+    # ── Screens ─────────────────────────────────────────────────────────────
+
+    def screen(self, page_id: str, group: Optional[HelpGroup] = None,
                skip: Optional[str] = None) -> None:
-        """Walk a screen: into a section of its own, or into `into` when it only
-        details the place it is reached from, like the form of a row."""
+        """Walk a screen: as the record itself, or inside `group` when it only details
+        a part of it. `help_compose: false` leaves its written text and nothing else."""
         if page_id in self.doc.screens:
             return
         if page_id != self.root and page_id in self.menu:
@@ -145,23 +201,79 @@ class _Merge:
             return
         self.doc.screens.append(page_id)
 
-        section = into
-        if section is None:
-            section = HelpSection(f'page-{page_id}', page.get('title') or _humanize(page_id))
-            self.doc.sections.append(section)
-        self.doc.anchors[page_id] = section.id
-
         content = page.get('content') or {}
-        model = (content.get('source') or {}).get('model')
-        self.table_text(model, self.doc.intro if page_id == self.root else section.texts)
-        self.text(section.texts, page.get('help'))
-        self.text(section.texts, _discourse(self.app, page_id))
+        model = _model_of(content)
+        texts = group.texts if group else self.doc.intro
+        by_hand = page.get('help_compose') is False
+        if not by_hand:
+            self.table_text(model, texts)
+        before = len(texts)
+        self.text(texts, page.get('help'))
+        self.text(texts, _discourse(self.app, page_id))
+        if by_hand:
+            if len(texts) == before:
+                self.doc.warnings.append(
+                    f"Page '{page_id}' declares help_compose: false and has no text")
+            return
 
-        self.content(content, model, section, skip)
+        is_list = content.get('type') in LIST_TYPES
+        self.doc.anchors[page_id] = group.id if group else ('top' if is_list else 'fields')
+        if is_list:
+            self.list_screen(content, model)
+        elif content.get('phases'):
+            self.phases(content, content['phases'], model, group, skip)
+        else:
+            self.walk(content, model, group, skip)
+        self.panels(page, model, is_list)
+
+    def list_screen(self, view: Dict[str, Any], model: Optional[str]) -> None:
+        """The list the entry opens, and the forms it leads to: `navigator.form_id` or
+        `{model}_form` like the client, and whatever page a row action names, since
+        that is the screen the user lands on."""
+        self.grids.append({'view': view, 'model': model, 'group': None})
+        self.doc.commands.extend(self.local_commands(view))
+        navigator = view.get('navigator')
+        if navigator and model:
+            form = navigator.get('form_id') if isinstance(navigator, dict) else None
+            self.screen(form or f'{model.lower()}_form')
+        actions = view.get('actions')
+        for action in (actions.get('row') or []) if isinstance(actions, dict) else []:
+            if isinstance(action, dict) and isinstance(action.get('panel'), str):
+                self.screen(action['panel'])
+
+    def phases(self, node: Dict[str, Any], phases: List[Dict[str, Any]], model: Optional[str],
+               group: Optional[HelpGroup], skip: Optional[str]) -> None:
+        """A form with phases reads in the order of its phases, not of its layout,
+        where a footer may well stand before the rows."""
+        by_id = {n['id']: n for n in node.get('layout') or [] if isinstance(n, dict) and n.get('id')}
+        placed: Set[str] = set()
+        for phase in phases:
+            label = phase.get('label')
+            where = self.group(label) if label else group
+            for node_id in phase.get('nodes') or []:
+                if node_id in by_id:
+                    placed.add(node_id)
+                    self.walk(by_id[node_id], model, where, skip)
+        for node_id, rest in by_id.items():
+            if node_id not in placed:
+                self.walk(rest, model, group, skip)
+
+    def panels(self, page: Dict[str, Any], model: Optional[str], is_list: bool) -> None:
+        """What stands beside the screen, placed by what it depends on: the trigger
+        says it, and without one it only stands there."""
         for panel in page.get('panels') or []:
-            label = panel.get('label')
-            self.content(panel, (panel.get('source') or {}).get('model') or model,
-                         self.sub(section, label) if label else section)
+            trigger = panel.get('trigger')
+            event = trigger.get('event') if isinstance(trigger, dict) else None
+            if event == 'row_click':
+                part = SELECTING
+            elif event == 'form_load' or not is_list:
+                part = INSIDE
+            else:
+                part = BESIDE
+            for node in panel.get('tabs') or [panel]:
+                self.dependent(node, model, part)
+
+    # ── Texts ───────────────────────────────────────────────────────────────
 
     def text(self, texts: List[str], text: Any) -> None:
         if isinstance(text, str) and text.strip():
@@ -173,150 +285,227 @@ class _Merge:
             self.seen_tables.add(model)
             self.text(texts, table.attributes.get('help'))
 
-    def sub(self, section: HelpSection, title: str) -> HelpSection:
-        """The part of a screen with this title: a tab called like its phase is that phase."""
-        if section.title == title:
-            return section
-        owner = section.parent or section
-        if owner.title == title:
-            return owner
-        for sub in owner.subs:
-            if sub.title == title:
-                return sub
-        sub = HelpSection(f'{owner.id}-{len(owner.subs) + 1}', title, parent=owner)
-        owner.subs.append(sub)
-        return sub
-
-    def content(self, node: Dict[str, Any], model: Optional[str], section: HelpSection,
-                skip: Optional[str] = None) -> None:
-        if node.get('type') in LIST_TYPES:
-            self.grid(node, model, section)
-            return
-        phases = node.get('phases')
-        if phases:
-            self.phases(node, phases, model, section, skip)
+    def group(self, title: Optional[str]) -> HelpGroup:
+        for group in self.doc.groups:
+            if group.title == title:
+                return group
+        group = HelpGroup(f'fields-{len(self.doc.groups) + 1}' if title else 'fields-0', title)
+        if title:
+            self.doc.groups.append(group)
         else:
-            self.walk(node, model, section, skip)
+            self.doc.groups.insert(0, group)
+        return group
 
-    def phases(self, node: Dict[str, Any], phases: List[Dict[str, Any]],
-               model: Optional[str], section: HelpSection, skip: Optional[str]) -> None:
-        """A form with phases reads in the order of its phases, not of its layout,
-        where a footer may well stand before the rows."""
-        by_id = {n['id']: n for n in node.get('layout') or [] if isinstance(n, dict) and n.get('id')}
-        placed: Set[str] = set()
-        for phase in phases:
-            label = phase.get('label')
-            where = self.sub(section, label) if label else section
-            for node_id in phase.get('nodes') or []:
-                if node_id in by_id:
-                    placed.add(node_id)
-                    self.walk(by_id[node_id], model, where, skip)
-        for node_id, rest in by_id.items():
-            if node_id not in placed:
-                self.walk(rest, model, section, skip)
+    # ── The form ────────────────────────────────────────────────────────────
 
-    def walk(self, node: Any, model: Optional[str], section: HelpSection,
+    def walk(self, node: Any, model: Optional[str], group: Optional[HelpGroup],
              skip: Optional[str] = None) -> None:
         if isinstance(node, list):
             for item in node:
-                self.walk(item, model, section, skip)
+                self.walk(item, model, group, skip)
             return
         if not isinstance(node, dict):
             return
         kind = node.get('type')
         if kind == COLLECTION:
-            self.collection(node, section)
+            self.collection(node, group)
             return
         if kind == BUTTON:
-            self.button(node, section)
+            self.button(node, model, group)
             return
+        if kind in LIST_TYPES:
+            self.dependent(node, model, INSIDE, group)
+            return
+        model = _model_of(node) or model
         if isinstance(node.get('field'), str):
             return
         if isinstance(node.get('label'), str) and any(k in node for k in _CHILDREN):
-            section = self.sub(section, node['label'])
+            group = self.group(node['label'])
         if isinstance(node.get('name'), str) and 'filler' not in node:
-            self.form_field(node, model, section, skip)
+            self.form_field(node, model, group, skip)
             return
         for key in _CHILDREN:
-            self.walk(node.get(key), model, section, skip)
+            self.walk(node.get(key), model, group, skip)
 
-    def collection(self, node: Dict[str, Any], section: HelpSection) -> None:
+    def is_part(self, node: Dict[str, Any], model: Optional[str], fk: Optional[str]) -> bool:
+        """Whether a table shown inside the record is told with it. It is when its rows
+        belong to the record (`owned`), or when it only links two tables; any other
+        table has a life of its own, and a guide of its own. `help_embed` overrides."""
+        explicit = node.get('help_embed')
+        if isinstance(explicit, bool):
+            return explicit
+        table = self.app.tables.get(model) if model else None
+        if table is None:
+            return False
+        if table.attributes.get('many_to_many'):
+            return True
+        column = next((c for c in table.effective_columns if c.name == fk), None)
+        foreign_key = column.attributes.get('foreign_key') if column is not None else None
+        return isinstance(foreign_key, dict) and foreign_key.get('owned') is True
+
+    def collection(self, node: Dict[str, Any], group: Optional[HelpGroup],
+                   title: Optional[str] = None, text: Optional[str] = None) -> None:
         model = node.get('model')
-        self.table_text(model, section.texts)
-        self.grid(node.get('view') or {}, model, section, follow=False)
+        fk = node.get('fk')
+        title = title or (group.title if group else None) or _humanize(str(node.get('id') or model))
+        view = node.get('view') or {}
+        if not self.is_part(node, model, fk):
+            self.item(INSIDE, title, text or node.get('help'), model, view)
+            return
+        part = self.group(title)
+        self.text(part.texts, text)
+        self.table_text(model, part.texts)
+        self.grids.append({'view': view, 'model': model, 'group': part})
+        part.commands.extend(self.local_commands(view))
         form = node.get('form') or (f'{str(model).lower()}_form' if model else None)
         if form:
-            self.screen(form, into=section, skip=node.get('fk'))
+            self.screen(form, part, skip=fk)
 
-    def button(self, node: Dict[str, Any], section: HelpSection) -> None:
-        self.command(node, section)
+    def button(self, node: Dict[str, Any], model: Optional[str], group: Optional[HelpGroup]) -> None:
+        """A page on the same model is another face of the record, told with it; one
+        on another model, or with a menu entry of its own, is a reference."""
+        title = node.get('label') or _humanize(str(node.get('id', '')))
+        text = node.get('help')
         opens = node.get('opens')
-        if not isinstance(opens, dict):
-            return
-        if opens.get('type') == COLLECTION:
-            label = node.get('label')
-            self.collection(opens, self.sub(section, label) if label else section)
-        elif isinstance(opens.get('page'), str):
-            self.screen(opens['page'])
+        if isinstance(opens, dict) and opens.get('type') == COLLECTION:
+            self.collection(opens, group, title, text)
+        elif isinstance(opens, dict) and isinstance(opens.get('page'), str):
+            page_id = opens['page']
+            page = load_page(self.app, page_id) or {}
+            if _model_of(page.get('content') or {}) == model and page_id not in self.menu:
+                face = self.group(title)
+                self.text(face.texts, text)
+                self.screen(page_id, face)
+            else:
+                self.add_item(INSIDE, HelpItem(title, text.strip() if text else None, ref=page_id))
+        elif isinstance(text, str) and text.strip():
+            self.add_item(INSIDE, HelpItem(title, text.strip()))
 
-    def grid(self, view: Dict[str, Any], model: Optional[str], section: HelpSection,
-             follow: bool = True) -> None:
-        self.grids.append({'view': view, 'model': model, 'section': section})
+    def dependent(self, node: Dict[str, Any], model: Optional[str], part: str,
+                  group: Optional[HelpGroup] = None) -> None:
+        """A view that depends on the record: a panel, a tab, a table inside the form."""
+        own = _model_of(node)
+        label = node.get('label')
+        title = label or (group.title if group else None) or _humanize(str(node.get('id') or own or ''))
+        text = node.get('help')
+        if own and self.is_part(node, own, None):
+            target = self.group(title)
+            self.table_text(own, target.texts)
+            self.text(target.texts, text)
+            self.grids.append({'view': node, 'model': own, 'group': target})
+            target.commands.extend(self.local_commands(node))
+        elif own and own == model:
+            self.walk({k: node.get(k) for k in _CHILDREN if k != 'columns' or node.get('type') not in LIST_TYPES},
+                      model, None)
+            self.add_item(part, HelpItem(title, text.strip() if isinstance(text, str) else None,
+                                         anchor='fields', commands=self.local_commands(node)))
+        elif own:
+            self.item(part, title, text, own, node)
+        elif label or text:
+            self.add_item(part, HelpItem(title, text.strip() if isinstance(text, str) else None))
+
+    def item(self, part: str, title: str, text: Optional[str], model: Optional[str],
+             view: Dict[str, Any]) -> None:
+        """A table with a life of its own: what it is, where its fields are told, and
+        the commands this view adds to it."""
+        table = self.app.tables.get(model) if model else None
+        if not text and table is not None:
+            text = table.attributes.get('help')
+        self.add_item(part, HelpItem(title, text.strip() if isinstance(text, str) else None,
+                                     ref=self.home(model), commands=self.local_commands(view)))
+
+    def add_item(self, part: str, item: HelpItem) -> None:
+        items = self.doc.parts.setdefault(part, [])
+        for known in items:
+            if known.title == item.title:
+                known.text = known.text or item.text
+                known.ref = known.ref or item.ref
+                known.commands.extend(c for c in item.commands if c not in known.commands)
+                return
+        items.append(item)
+
+    def home(self, model: Optional[str]) -> Optional[str]:
+        """Where a table is told: the page of a menu entry on it, or its generated list."""
+        if not model:
+            return None
+        for page_id in self.menu:
+            page = load_page(self.app, page_id) or {}
+            if _model_of(page.get('content') or {}) == model:
+                return page_id
+        return f'{model.lower()}_list'
+
+    def local_commands(self, view: Dict[str, Any]) -> List[HelpCommand]:
+        found: List[HelpCommand] = []
         navigator = view.get('navigator')
-        if isinstance(navigator, dict):
-            for command in navigator.get('commands') or []:
-                self.command(command, section)
-        if follow and navigator and model:
-            form = navigator.get('form_id') if isinstance(navigator, dict) else None
-            self.screen(form or f'{model.lower()}_form')
+        actions = view.get('actions')
+        declared = list((navigator.get('commands') or []) if isinstance(navigator, dict) else [])
+        declared += list((actions.get('row') or []) if isinstance(actions, dict) else [])
+        for command in declared:
+            if isinstance(command, dict) and isinstance(command.get('help'), str):
+                label = command.get('label') or _humanize(str(command.get('id', '')))
+                found.append(HelpCommand(label, command['help'].strip()))
+        return found
 
-    def command(self, command: Any, section: HelpSection) -> None:
-        if isinstance(command, dict) and isinstance(command.get('help'), str):
-            label = command.get('label') or _humanize(str(command.get('id', '')))
-            section.commands.append(HelpCommand(label, command['help'].strip()))
+    # ── Fields ──────────────────────────────────────────────────────────────
 
-    def form_field(self, node: Dict[str, Any], model: Optional[str], section: HelpSection,
+    def form_field(self, node: Dict[str, Any], model: Optional[str], group: Optional[HelpGroup],
                    skip: Optional[str]) -> None:
         name = node['name']
         if name == skip:
             return
         if not node.get('readonly'):
             self.how(node)
-        self.add_field(f'{model or "form"}.{name}', node, section)
+        self.add_field(f'{model or "form"}.{name}', node, group)
 
     def how(self, node: Dict[str, Any]) -> None:
-        kind = None
-        if node.get('foreign_key'):
-            kind = 'foreign_key'
-        elif self.is_date(node):
-            kind = 'date'
-        if kind and kind not in self.doc.how:
-            self.doc.how.append(kind)
-
-    def is_date(self, node: Dict[str, Any]) -> bool:
+        """How this field is filled in: the nearest `help_how` from the field up the
+        chain of its types, down to the types of the core. A foreign key is of type
+        FK, whatever column holds it."""
+        own = node.get('help_how')
+        own = own.strip() if isinstance(own, str) and own.strip() else None
+        builtin = 'FK' if node.get('foreign_key') else None
         type_name = node.get('type')
         visited: Set[str] = set()
         while isinstance(type_name, str) and type_name not in visited:
-            if type_name in ('Date', 'DateTime'):
-                return True
             visited.add(type_name)
+            if type_name in _BUILTIN_HOW:
+                builtin = builtin or type_name
+                break
             declared = self.app.pm.get(f'types.{type_name}')
-            type_name = declared.get('base') if isinstance(declared, dict) else None
-        return False
+            if not isinstance(declared, dict):
+                break
+            text = declared.get('help_how')
+            if isinstance(text, str) and text.strip() and own in (None, text.strip()):
+                self.add_how(type_name, declared.get('label') or type_name, text.strip())
+                return
+            type_name = declared.get('base')
+        if own:
+            self.add_how(node['name'], node.get('label') or _humanize(node['name']), own)
+        elif builtin:
+            self.add_how(builtin, *_BUILTIN_HOW[builtin])
 
-    def add_field(self, key: str, attrs: Dict[str, Any], section: HelpSection,
+    def add_how(self, key: str, title: str, text: str) -> None:
+        if not any(h.text == text for h in self.doc.how):
+            self.doc.how.append(HelpHow(key, title, text))
+
+    def add_field(self, key: str, attrs: Dict[str, Any], group: Optional[HelpGroup],
                   label: Optional[str] = None) -> None:
+        """Every field the user sees is listed, with or without a text: whoever looks
+        for one must find it, even to learn there is nothing more to say. The key of
+        the table says nothing to the user, unless somebody wrote that it does."""
         if key in self.seen_fields:
             return
         self.seen_fields.add(key)
         text = attrs.get('help')
-        if not isinstance(text, str) or not text.strip():
+        text = text.strip() if isinstance(text, str) else ''
+        if attrs.get('primary_key') and not text:
             return
-        section.fields.append(HelpField(
+        (group or self.group(None)).fields.append(HelpField(
             key=key,
             label=attrs.get('label') or label or _humanize(attrs.get('name', key)),
-            text=text.strip(),
+            text=text,
             link=lookup_page(attrs),
+            limits=_limits(attrs),
         ))
 
     def grid_columns(self) -> None:
@@ -330,23 +519,24 @@ class _Merge:
             columns = {c.name: c for c in table.effective_columns}
             for column in grid['view'].get('columns') or []:
                 expr = column.get('field') if isinstance(column, dict) else None
-                if not isinstance(expr, str):
+                if not isinstance(expr, str) or column.get('visible') is False:
                     continue
                 name = expr.split(' as ')[0].strip()
                 head, _, rest = name.partition('.')
                 if rest and head in self.app.tables and head != grid['model']:
                     continue
                 name = rest if rest and head == grid['model'] else head
-                if name in columns:
+                attrs = columns[name].attributes if name in columns else {}
+                if name in columns and not (attrs.get('secret') or attrs.get('hidden')):
                     self.add_field(f"{grid['model']}.{name}", field_from_column(columns[name]),
-                                   grid['section'], column.get('title'))
+                                   grid['group'], column.get('title'))
 
     def prune(self) -> None:
-        """A screen with nothing to tell leaves no heading behind."""
-        for section in self.doc.sections:
-            section.subs = [s for s in section.subs if not s.is_empty()]
-        self.doc.sections = [s for s in self.doc.sections if not s.is_empty()]
-        kept = {s.id for s in self.doc.all_sections()}
+        """A part with nothing to tell leaves no heading behind."""
+        self.doc.groups = [g for g in self.doc.groups if not g.is_empty()]
+        kept = {g.id for g in self.doc.groups} | {'top'}
+        if self.doc.groups:
+            kept.add('fields')
         self.doc.anchors = {p: a for p, a in self.doc.anchors.items() if a in kept}
 
 
@@ -471,19 +661,45 @@ def render_html(app: Any, doc: HelpDoc) -> RenderedHelp:
     links = _Links(app, doc)
     md = _markdown(links)
 
-    def view(section: HelpSection) -> Dict[str, Any]:
+    def commands(items: List[HelpCommand]) -> List[Dict[str, str]]:
+        return [{'label': c.label, 'html': md.render(c.text)} for c in items]
+
+    def group(g: HelpGroup) -> Dict[str, Any]:
         return {
-            'id': section.id,
-            'title': section.title,
-            'texts': [md.render(t) for t in section.texts],
+            'id': g.id,
+            'title': g.title,
+            'texts': [md.render(t) for t in g.texts],
             'fields': [{
                 'id': f'field-{f.key}',
                 'label': links.anchor(f.link, f.label) if f.link else html.escape(f.label),
-                'html': md.render(f.text),
-            } for f in section.fields],
-            'commands': [{'label': c.label, 'html': md.render(c.text)} for c in section.commands],
-            'subs': [view(s) for s in section.subs],
+                'html': md.render(f.text) if f.text else '',
+                'limits': f.limits,
+            } for f in g.fields],
+            'commands': commands(g.commands),
         }
+
+    def item(i: HelpItem) -> Dict[str, Any]:
+        if i.ref:
+            title = links.anchor(i.ref, i.title)
+        elif i.anchor:
+            title = f'<a href="#{html.escape(i.anchor, quote=True)}">{html.escape(i.title)}</a>'
+        else:
+            title = html.escape(i.title)
+        return {'title': title, 'html': md.render(i.text) if i.text else '',
+                'commands': commands(i.commands)}
+
+    parts = [{'id': key, 'title': title, 'items': [item(i) for i in doc.parts[key]]}
+             for key, title in _PART_TITLES.items() if doc.parts.get(key)]
+
+    index: List[Dict[str, Any]] = []
+    if doc.commands:
+        index.append({'id': 'commands', 'title': 'Commands', 'subs': []})
+    if doc.groups:
+        index.append({'id': 'fields', 'title': 'Fields',
+                      'subs': [{'id': g.id, 'title': g.title} for g in doc.groups if g.title]})
+    index.extend({'id': p['id'], 'title': p['title'], 'subs': []} for p in parts)
+    if doc.how:
+        index.append({'id': 'filling-in', 'title': _HOW_TITLE, 'subs': []})
 
     env = _environment(app)
     menu = _menu_pages(app)
@@ -493,8 +709,12 @@ def render_html(app: Any, doc: HelpDoc) -> RenderedHelp:
         title=doc.title,
         style=env.loader.get_source(env, 'style.css')[0],
         intro=[md.render(t) for t in doc.intro],
-        sections=[view(s) for s in doc.sections],
-        how=[{'title': _HOW_TO_FILL[k][0], 'html': md.render(_HOW_TO_FILL[k][1])} for k in doc.how],
+        index=index,
+        commands=commands(doc.commands),
+        groups=[group(g) for g in doc.groups],
+        parts=parts,
+        how_title=_HOW_TITLE,
+        how=[{'title': h.title, 'html': md.render(h.text)} for h in doc.how],
         see_also=[links.anchor(p, menu.get(p)) for p in doc.see_also],
     )
-    return RenderedHelp(page, links.warnings, sorted(links.external))
+    return RenderedHelp(page, doc.warnings + links.warnings, sorted(links.external))

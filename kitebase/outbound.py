@@ -45,6 +45,9 @@ _policies: Dict[str, str] = {
     'data': DATA,
     '$plugin': META,
     'doc': SERVER,
+    'help_compose': SERVER,
+    'help_embed': SERVER,
+    'help_how': SERVER,
 }
 
 _JSON_SCALARS = (str, int, float, bool, type(None))

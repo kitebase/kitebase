@@ -9,5 +9,6 @@ pages:
         commands:
           - id: fetch_bio
             label: Fetch biography
+            help: Looks up the biography on Wikipedia, through the Wikidata item of the author.
             scope: row
             endpoint: author_fetch_bio
