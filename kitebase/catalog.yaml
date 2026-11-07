@@ -1,0 +1,157 @@
+# The forms the merged YAML is made of, and what each key means (kitebase/catalog.py).
+#
+# A form is a named shape: `Column` is the same whether it sits under a table or
+# a composite type, and is described once. `roots` says which form a path of the
+# merged tree holds; the vocabulary (vocabulary.yaml) lists the keys in use, path
+# by path, and this file says what they mean.
+#
+# A key: `type` of its value (str, int, bool, list, map, any), or `form` when the
+# value is another form (`list: true` when it is a list of them); `values` when
+# the set is closed; `doc`, one line; `see`, the section of server/docs that
+# tells the rest. `derived: true` marks a key the framework writes while
+# resolving, which nobody declares: it is in the dump, not in a plugin.
+#
+# The `$` words are not keys of a form: they are listed once, in `directives`
+# (the merge and the framework) and `tokens` (values resolved later).
+
+roots:
+  tables.*: Table
+  tables.*.columns[]: Column
+  tables.*.columns[].columns[]: Column
+  tables.*.columns[].foreign_key: ForeignKey
+  tables.*.indexes[]: Index
+  tables.*.many_to_many: ManyToMany
+  tables.*.many_to_many.target1: JunctionTarget
+  tables.*.many_to_many.target2: JunctionTarget
+  types.*: Type
+  types.*.columns[]: Column
+
+forms:
+
+  Table:
+    doc: A table of the database, and the model class generated for it.
+    see: PLUGIN_MODEL.md §4
+    keys:
+      name: { type: str, doc: "The physical table name; the snake_case of the key when absent." }
+      label: { type: str, doc: "The name shown to the user; the key when absent." }
+      help: { type: str, doc: "What the table holds, for the user." }
+      doc: { type: str, doc: "A note for whoever develops: never sent to the browser." }
+      tags: { type: list, doc: "Free words that group tables, for whoever filters them." }
+      mixins: { type: list, ref: type, doc: "Composite types whose columns, and Python class, the table takes on." }
+      columns: { form: Column, list: true, doc: "The columns, merged by name across plugins." }
+      indexes: { form: Index, list: true, doc: "Indexes on more than one column, merged by name." }
+      many_to_many: { form: ManyToMany, doc: "Makes the table a junction between two others." }
+      display_field: { type: str, ref: column, doc: "The column that names a record: in a combobox, a breadcrumb, a reference." }
+      search_fields: { type: list, ref: column, doc: "The columns a text search matches, in place of the display field." }
+      include_pk: { type: bool, doc: "Whether a text search also tries the key; true by default." }
+
+  Column:
+    doc: A column of a table, or of a composite type; under a type its keys are inherited.
+    see: PLUGIN_MODEL.md §4.4
+    keys:
+      name: { type: str, doc: "The column name, and the identity key of the merge." }
+      type: { type: str, ref: type, doc: "A type of the `types` section, or a SQLAlchemy base type." }
+      base: { type: str, ref: type, doc: "The resolved base type, when the column is read after resolution." }
+      label: { type: str, doc: "The name shown to the user; over the type's." }
+      help: { type: str, doc: "What the field is for, for the user: the ? beside the label and F1." }
+      help_how: { type: str, doc: "How the field is filled in, for the user; over the type's and the widget's." }
+      doc: { type: str, doc: "A note for whoever develops: never sent to the browser." }
+      description: { type: str, doc: "A short note on the value, returned by the column info of a record." }
+      nullable: { type: bool, doc: "Whether the column may be empty; true by default, and a form makes it required when false." }
+      default: { type: any, tokens: defaults, doc: "The value of a new row: a literal, a Python expression or a $ token." }
+      onupdate: { type: any, tokens: defaults, doc: "The value written on every update, as `default` is on insert." }
+      deferred: { type: bool, doc: "Filled by the server at save: a form neither prefills nor sends it." }
+      primary_key: { type: bool, doc: "Part of the table's key." }
+      autoincrement: { type: bool, doc: "The database numbers the key." }
+      unique: { type: bool, doc: "No two rows share the value; a duplicated record leaves it empty." }
+      index: { type: bool, doc: "An index on this column alone." }
+      length: { type: int, doc: "The width of a String." }
+      precision: { type: int, doc: "The digits of a Numeric." }
+      scale: { type: int, doc: "The decimals of a Numeric." }
+      case: { values: [upper, lower, neutral], doc: "The case the column type gives the value, on every write and query." }
+      granularity: { values: [minute, second], doc: "On a DateTime, what lists and forms show; the value keeps its seconds." }
+      foreign_key: { form: ForeignKey, doc: "Makes the column a reference to a row of another table." }
+      virtual: { type: bool, doc: "Not in the database: a hybrid property of the plugin's model.py." }
+      secret: { type: bool, doc: "Never read back by any client, nor searched, filtered or sorted on." }
+      on_write: { type: str, ref: transform, doc: "A registered transform applied to the value before it is stored." }
+      validate: { type: str, ref: validator, doc: "A registered validator the db endpoint runs on write." }
+      column_group: { type: str, doc: "The access group: <group>.read shows the column, <group>.write changes it." }
+      editable: { type: bool, doc: "False: generated forms show it read only." }
+      hidden: { type: bool, doc: "Travels with the record but is never shown as a column or field." }
+      widget: { type: str, ref: widget, doc: "The widget of forms, over the one the type implies." }
+      searchable: { type: bool, doc: "Adds the column to what a text search matches." }
+      query_rank: { values: [top, normal, low, more, none], doc: "Where the query editor offers the column; normal by default." }
+      duplicate: { type: bool, doc: "Whether duplicating a record copies it; by default every column but key, virtual and unique ones." }
+      prefix: { type: str, doc: "On a composite column, the prefix of the columns it expands to." }
+      columns: { form: Column, list: true, doc: "The parts of a composite column, as expanded." }
+      media: { values: [image, file, files], doc: "The column holds a file reference, in a media root." }
+      root: { type: str, doc: "The media root the files go to." }
+      accept: { type: list, doc: "The file extensions an upload may have." }
+      max_size: { type: str, doc: "The largest upload, as 5MB." }
+      resize: { type: int, doc: "The long side the client offers to shrink a photo to." }
+      timezone: { type: bool, doc: "On a DateTime, whether the database stores the time zone." }
+      plugin: { type: str, derived: true, doc: "The plugin that declared the column." }
+
+  Type:
+    doc: A reusable column, named; a column of that type inherits what the column does not say.
+    see: PLUGIN_MODEL.md §3
+    includes: Column
+    without: [name, foreign_key, prefix, plugin]
+    keys:
+      base: { type: str, ref: type, doc: "The type this one derives from, or a SQLAlchemy base type." }
+      columns: { form: Column, list: true, doc: "Makes the type composite: a mixin, or a column that expands to these." }
+
+  ForeignKey:
+    doc: The reference of a column to a row of another table.
+    see: PLUGIN_MODEL.md §4.5
+    keys:
+      target: { type: str, ref: column, doc: "The referenced column, as Table.column." }
+      relation: { type: str, doc: "The name of the attribute leading to the row; the column cut at the last underscore by default." }
+      backref: { type: str, doc: "The name of the collection on the target; the source table by default." }
+      constraint: { type: bool, doc: "False makes the key soft: the relation stays, the database checks nothing." }
+      owned: { type: bool, doc: "The row is a part of the one it points at, and is deleted with it." }
+      ondelete: { type: str, doc: "The SQL ON DELETE action, passed to SQLAlchemy." }
+      onupdate: { type: str, doc: "The SQL ON UPDATE action, passed to SQLAlchemy." }
+      table: { type: str, derived: true, doc: "The target table, resolved from `target`." }
+      id: { type: str, derived: true, doc: "The target column, resolved from `target`." }
+
+  Index:
+    doc: An index on more than one column.
+    see: PLUGIN_MODEL.md §4.7
+    keys:
+      name: { type: str, doc: "The index name, and the identity key of the merge." }
+      columns: { type: list, ref: column, doc: "The columns, in order." }
+      unique: { type: bool, doc: "No two rows share the values." }
+      description: { type: str, doc: "What the index is for." }
+
+  ManyToMany:
+    doc: The two ends a junction table links.
+    see: PLUGIN_MODEL.md §4.6
+    keys:
+      target1: { form: JunctionTarget }
+      target2: { form: JunctionTarget }
+
+  JunctionTarget:
+    doc: One end of a junction, and the names of what it generates.
+    keys:
+      table: { type: str, ref: column, doc: "The referenced key, as Table.column." }
+      column: { type: str, doc: "The column of the junction holding it." }
+      relation: { type: str, doc: "The attribute of the junction leading to the end." }
+      backref: { type: str, doc: "The collection of junction rows on the end." }
+      collection: { type: str, doc: "The shortcut past the junction, on the end." }
+      owned: { type: bool, doc: "False: the junction rows survive this end." }
+      id: { type: str, derived: true, doc: "The referenced column, resolved from `table`." }
+      db_type: { type: str, derived: true, doc: "The type of the referenced column." }
+
+directives:
+  $plugin: { family: framework, doc: "Which plugin last contributed the node; injected by the merge, stripped before the client.", see: PLUGIN_MODEL.md §2.6 }
+  $ref: { family: framework, doc: "Replace the node with the object at the path, merging the sibling keys on top." }
+  $auto: { family: framework, doc: "On a page: start from the generated page of that id and merge this one on top." }
+  $error: { family: framework, doc: "In a dump: the node could not be serialized." }
+  $remove: { family: merge, doc: "Delete the item, or the entry of a keyed section.", see: PLUGIN_MODEL.md §2.3 }
+  $after: { family: merge, doc: "Insert the item after the one with this identity." }
+  $before: { family: merge, doc: "Insert the item before the one with this identity." }
+  $replace: { family: merge, doc: "The listed keys supersede the base's instead of merging with them." }
+
+tokens:
+  defaults: { doc: "A $ name in default or onupdate, called on insert or update.", registry: kitebase.defaults, see: PLUGIN_MODEL.md §2.6 }

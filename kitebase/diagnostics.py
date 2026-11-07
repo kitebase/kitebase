@@ -27,6 +27,7 @@ Issue format (shared with PluginsManager.add_issue):
   {severity: 'error'|'warning'|'info', code, path, message, plugin}
 """
 
+import inspect
 import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set
@@ -714,6 +715,22 @@ def mask_yaml_text(text: str) -> str:
 
 # ── Full dump ──────────────────────────────────────────────────────────────────
 
+def _catalog_dump(app: Any) -> Dict[str, Any]:
+    """The catalog of the forms, and where the application uses each key."""
+    from kitebase import catalog, vocabulary
+
+    cat = catalog.load()
+    sections = {norm.split('.')[0] for norm in cat.get('roots') or {}}
+    data = {name: app.pm.data[name] for name in sections if name in app.pm.data}
+    return {
+        'roots': cat.get('roots') or {},
+        'forms': catalog.forms(cat),
+        'directives': cat.get('directives') or {},
+        'tokens': catalog.tokens(cat),
+        'uses': catalog.uses(data, vocabulary.load(), cat),
+    }
+
+
 def dump_app(app: Any) -> Dict[str, Any]:
     """
     Build the complete effective-state snapshot of a loaded app.
@@ -799,9 +816,11 @@ def dump_app(app: Any) -> Dict[str, Any]:
             name: {
                 'module': getattr(fn, '__module__', ''),
                 'doc': (getattr(fn, '__doc__', None) or '').strip().split('\n')[0],
+                'docstring': inspect.cleandoc(getattr(fn, '__doc__', None) or ''),
             }
             for name, fn in sorted(_ENDPOINTS.items())
         },
+        'catalog': _catalog_dump(app),
         'contested_keys': contested,
         'merge_history': dict(sorted(pm.history.items())),
         'source_files': source_files,

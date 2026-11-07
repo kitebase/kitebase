@@ -60,6 +60,13 @@ def walk(data: Dict[str, Any], vocabulary: Vocabulary
     an open map the keys are not yielded, and the names of the maps beneath
     them become `*`, so `joins[].Committente` is read as `joins[].*`.
     """
+    for norm, key, real, plugin, _value in walk_values(data, vocabulary):
+        yield norm, key, real, plugin
+
+
+def walk_values(data: Dict[str, Any], vocabulary: Vocabulary
+                ) -> Iterator[Tuple[str, str, str, Optional[str], Any]]:
+    """As `walk`, with the value each key holds."""
     def visit(node: Any, norm: str, real: str, plugin: Optional[str]):
         if isinstance(node, dict):
             plugin = node.get('$plugin', plugin)
@@ -68,7 +75,7 @@ def walk(data: Dict[str, Any], vocabulary: Vocabulary
                 if _free(key) and not is_open:
                     continue
                 if not is_open:
-                    yield norm, key, real, plugin
+                    yield norm, key, real, plugin, value
                 child = f'{norm}.{OPEN if is_open else key}'
                 yield from visit(value, child, f'{real}.{key}', plugin)
         elif isinstance(node, list):
