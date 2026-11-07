@@ -53,3 +53,27 @@ code { font-size: .9em; padding: .05em .3em; border: 1px solid var(--line); bord
 .local { margin-block-start: .4rem; padding-inline-start: .75rem; border-inline-start: 2px solid var(--line); }
 .local dt { margin-block-start: .3rem; }
 .limits { font-size: .85rem; color: var(--muted); }
+h5 { font-size: .9rem; margin: 1.25rem 0 .25rem; }
+h6 { font-size: .8rem; margin: 1rem 0 0; color: var(--muted); font-weight: 600; }
+
+/* The manual: the menu as its tree, a card for every entry */
+.meta { color: var(--muted); font-size: .85rem; }
+.toc ul ul { font-size: .94rem; }
+.menu-group > h2, .appendix > h2, .others > h2 { margin-block-start: 3rem; }
+article.card { margin-block-start: 2rem; }
+
+@media print {
+  :root { color-scheme: light; --bg: #fff; --text: #000; --panel: #fff; --link: #000; }
+  body { font-size: 11pt; }
+  main { max-width: none; padding: 0; }
+  header.app { background: none; padding: 0 0 .5rem; }
+  nav { border: 1px solid var(--line); }
+  /* A new page for every group, card and appendix: the notes read one by one */
+  .menu-group, article.card, .appendix, .others { break-before: page; }
+  /* Except the card of a single guide, which is the page, */
+  /* and the first card of a group, which stays with its introduction */
+  main > article.card:first-child, .menu-group + article.card { break-before: auto; }
+  h1, h2, h3, h4, h5, h6, dt { break-after: avoid; }
+  a { text-decoration: none; }
+  a[target="_blank"]::after { content: " (" attr(href) ")"; }
+}

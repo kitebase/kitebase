@@ -24,8 +24,9 @@ plugins:
 cli: devtest.py
 
 # Where this application replaces the templates of its guides (`kitebase help`),
-# relative to this file: skeleton.html, style.css. The originals are core/<name>.
-# help_templates: help/templates
+# relative to this file: skeleton.html, card.html, style.css. The originals are
+# core/<name>, for whoever only extends them: here the logo and a few colours.
+help_templates: help/templates
 
 # db engine for sqlalchemy
 db_engine: "sqlite:///devtest.sqlite"

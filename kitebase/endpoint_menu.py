@@ -86,35 +86,19 @@ def _passes_access(app: Any, item: Dict[str, Any]) -> bool:
     return all(access.can(p) for p in access.declared(item.get('access')))
 
 
-@endpoint('get_menu', access=access.AUTHENTICATED)
-def get_menu(data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Return a composed, filtered, ordered menu tree for one root.
-
-    Parameters:
-        id: Root menu id (e.g. "main", "production"). Defaults to the app's
-            `menu.default_root` when omitted.
-
-    Returns:
-        { status, data: { id, label, ...root_attrs, items: [<node>, ...] }, code }
-
-        Each node carries the item's presentation/action attributes (label, icon,
-        order, action, panel, props, op, params, style, badge, ...) plus its `id`,
-        and a `children` list when it is a group with descendants. Internal keys
-        ($plugin, parent, root, access) are stripped.
-    """
-    app = kitebase.utils.get_app()
-
+def menu_tree(app: Any, root_id: str, for_user: bool = True) -> Optional[Dict[str, Any]]:
+    """The tree of one menu root, as `get_menu` sends it, or None for an unknown
+    root. `for_user: False` keeps every item, for whoever describes the whole
+    application (the manual from the command line)."""
     # Skip merge-metadata keys ($plugin and any future $-prefixed convention),
     # matching how the rest of the codebase iterates a merged section
     # (db.py _calc_tables, types.py, diagnostics.py all use startswith('$')).
     menus = {k: v for k, v in (app.pm.data.get('menus') or {}).items() if not k.startswith('$')}
     raw_items = {k: v for k, v in (app.pm.data.get('menu_items') or {}).items() if not k.startswith('$')}
 
-    root_id = data.get('id') or _app_default_root(app)
     root_def = menus.get(root_id)
     if not isinstance(root_def, dict):
-        return {'status': 'error', 'message': f"Menu not found: '{root_id}'", 'code': 404}
+        return None
 
     # 2/3. Select the items of this root that pass the auth filter, resolving any
     #      $ref embedded in their props along the way (§6 steps 2,3,5). The
@@ -128,7 +112,7 @@ def get_menu(data: Dict[str, Any]) -> Dict[str, Any]:
         if _effective_root(app, item) != root_id:
             continue
         groups.add(_effective_parent(app, item))
-        if not _passes_access(app, item):
+        if for_user and not _passes_access(app, item):
             continue
         selected[item_id] = app.pm.resolve_refs(item)
 
@@ -162,11 +146,33 @@ def get_menu(data: Dict[str, Any]) -> Dict[str, Any]:
         nodes.sort(key=lambda n: (n.get('order', _ORDER_LAST), str(n.get('label', ''))))
         return nodes
 
-    tree = build(None, frozenset())
-
     root_out = to_client({k: v for k, v in root_def.items()
                           if k not in _INTERNAL_KEYS and k != 'items'})
     root_out['id'] = root_id
-    root_out['items'] = tree
+    root_out['items'] = build(None, frozenset())
+    return root_out
 
-    return {'status': 'success', 'data': root_out, 'code': 200}
+
+@endpoint('get_menu', access=access.AUTHENTICATED)
+def get_menu(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Return a composed, filtered, ordered menu tree for one root.
+
+    Parameters:
+        id: Root menu id (e.g. "main", "production"). Defaults to the app's
+            `menu.default_root` when omitted.
+
+    Returns:
+        { status, data: { id, label, ...root_attrs, items: [<node>, ...] }, code }
+
+        Each node carries the item's presentation/action attributes (label, icon,
+        order, action, panel, props, op, params, style, badge, ...) plus its `id`,
+        and a `children` list when it is a group with descendants. Internal keys
+        ($plugin, parent, root, access) are stripped.
+    """
+    app = kitebase.utils.get_app()
+    root_id = data.get('id') or _app_default_root(app)
+    tree = menu_tree(app, root_id)
+    if tree is None:
+        return {'status': 'error', 'message': f"Menu not found: '{root_id}'", 'code': 404}
+    return {'status': 'success', 'data': tree, 'code': 200}

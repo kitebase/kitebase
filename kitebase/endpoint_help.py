@@ -11,8 +11,9 @@ from typing import Any, Dict
 
 import kitebase.utils
 from kitebase import access
-from kitebase.endpoints import endpoint
-from kitebase.help import focus_anchor, guide_root, help_merge, render_html, target_page
+from kitebase.endpoints import FileResult, endpoint
+from kitebase.help import (focus_anchor, guide_root, help_manual, help_merge, render_html,
+                           render_manual, target_page)
 from kitebase.i18n import _, current_locale
 from kitebase.pages import load_page, page_permissions
 
@@ -26,7 +27,8 @@ def get_help(data: Dict[str, Any]) -> Dict[str, Any]:
 
     Parameters:
         stack: the ids of the pages open, from the bottom: the guide is the one
-               that tells the top (`help.guide_root`)
+               that tells the top (`help.guide_root`); empty, the head of the
+               manual, for the home
         ref:   instead of `stack`, what a link of a guide points to: a page,
                `Table` or `Table.column`
         focus: where to open it, a field (`Book.title`) or a screen; by default
@@ -47,7 +49,9 @@ def get_help(data: Dict[str, Any]) -> Dict[str, Any]:
         if root is None:
             return {'status': 'error', 'message': f"Nothing answers to '{ref}'", 'code': 404}
         focus = focus or ref
-    elif isinstance(stack, list) and stack and all(isinstance(p, str) and p for p in stack):
+    elif stack == []:
+        return _head(app)
+    elif isinstance(stack, list) and all(isinstance(p, str) and p for p in stack):
         root = guide_root(app, stack)
         focus = focus or stack[-1]
     else:
@@ -68,3 +72,31 @@ def get_help(data: Dict[str, Any]) -> Dict[str, Any]:
         'root': root,
         'anchor': focus_anchor(doc, focus),
     }}
+
+
+def _head(app: Any) -> Dict[str, Any]:
+    """The home has no page of its own: the head of the manual, the texts of the
+    application and the menu, each entry leading to its guide."""
+    manual = help_manual(app, current_locale(), for_user=True, cards=False)
+    rendered = render_manual(app, manual)
+    for warning in rendered.warnings:
+        logger.warning('[help] home: %s', warning)
+    return {'status': 'success', 'code': 200, 'data': {
+        'html': rendered.html, 'title': manual.title, 'root': None, 'anchor': 'top'}}
+
+
+@endpoint('help_manual', access=access.AUTHENTICATED)
+def help_manual_file(data: Dict[str, Any]) -> Any:
+    """
+    The manual of the current user, through the download route: one HTML file
+    with what they may open, opened in a new tab, to read or print. It holds
+    texts and the shape of the screens, never data.
+    """
+    app = kitebase.utils.get_app()
+    lang = current_locale()
+    rendered = render_manual(app, help_manual(app, lang, for_user=True))
+    for warning in rendered.warnings:
+        logger.warning('[help] manual: %s', warning)
+    name = (app.pm.config.get('name') or 'manual').lower()
+    return FileResult(rendered.html.encode('utf-8'), f'{name}-manual-{lang}.html',
+                      'text/html; charset=utf-8', 'inline')

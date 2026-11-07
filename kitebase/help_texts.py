@@ -188,21 +188,55 @@ def translate(text: str) -> str:
     return catalog(app, lang).translate(text) or text
 
 
-def discourse(app: Any, page_id: str, lang: str = SOURCE) -> Optional[str]:
-    """The long text of a page: the plugin that comes last wins, like a merge, and
-    within it the language before the English. A translation from a plugin before
-    the one that wrote the English does not count, like the short texts."""
+def _layers(app: Any) -> List[Path]:
+    """Where the long texts are, in order: the plugins, then the application,
+    whose `help/` folder comes last and can rewrite any of them."""
+    layers = [help_dir(app.pm.plugins[name]) for name in app.pm.sorted]
+    root = getattr(app.pm, 'app_root', None)
+    if root is not None:
+        layers.append(Path(root) / 'help')
+    return layers
+
+
+def discourse(app: Any, name: str, lang: str = SOURCE) -> Optional[str]:
+    """The long text `name` (a page, `menu.<group>`, `appendix/<name>`): the layer
+    that comes last wins, like a merge, and within it the language before the
+    English. A translation from a layer before the one that wrote the English
+    does not count, like the short texts."""
     english: Optional[Tuple[int, Path]] = None
     translated: Optional[Tuple[int, Path]] = None
-    for index, name in enumerate(app.pm.sorted):
-        folder = help_dir(app.pm.plugins[name])
-        if (folder / SOURCE / f'{page_id}.md').is_file():
-            english = (index, folder / SOURCE / f'{page_id}.md')
-        if lang != SOURCE and (folder / lang / f'{page_id}.md').is_file():
-            translated = (index, folder / lang / f'{page_id}.md')
+    for index, folder in enumerate(_layers(app)):
+        if (folder / SOURCE / f'{name}.md').is_file():
+            english = (index, folder / SOURCE / f'{name}.md')
+        if lang != SOURCE and (folder / lang / f'{name}.md').is_file():
+            translated = (index, folder / lang / f'{name}.md')
     if translated is not None and (english is None or translated[0] >= english[0]):
         return translated[1].read_text(encoding='utf-8')
     return english[1].read_text(encoding='utf-8') if english else None
+
+
+def discourses(app: Any, name: str, lang: str = SOURCE) -> List[str]:
+    """The long texts `name` of every layer, in order: what adds to a text instead
+    of replacing it, like the introduction of a group of the menu, to which each
+    plugin may append its own."""
+    texts: List[str] = []
+    for folder in _layers(app):
+        for path in (folder / lang / f'{name}.md', folder / SOURCE / f'{name}.md'):
+            if path.is_file():
+                texts.append(path.read_text(encoding='utf-8'))
+                break
+    return texts
+
+
+def appendix_names(app: Any, lang: str = SOURCE) -> List[str]:
+    """The appendices written by hand, in the order the layers bring them."""
+    names: List[str] = []
+    for folder in _layers(app):
+        found = set()
+        for language in {SOURCE, lang}:
+            found.update(f.stem for f in (folder / language / 'appendix').glob('*.md'))
+        names.extend(n for n in sorted(found) if n not in names)
+    return names
 
 
 # ── Writing ─────────────────────────────────────────────────────────────────────

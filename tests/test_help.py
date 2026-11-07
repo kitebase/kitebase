@@ -8,7 +8,8 @@ import kitebase.utils
 from kitebase import access
 from kitebase.db import DB
 from kitebase.endpoint_help import get_help
-from kitebase.help import BESIDE, INSIDE, SELECTING, guide_root, help_merge, render_html
+from kitebase.help import (BESIDE, INSIDE, SELECTING, guide_root, help_manual, help_merge,
+                           render_html, render_manual)
 from kitebase.i18n import use_locale
 from kitebase.outbound import SERVER, policy_of
 from kitebase.plugins import PluginsManager
@@ -263,7 +264,8 @@ def app(tmp_path, monkeypatch):
     (plugin / 'help' / 'en').mkdir(parents=True)
     (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'bench', 'version': '0.0.1'}))
     (plugin / 'model.yaml').write_text(yaml.safe_dump({'types': TYPES, 'tables': TABLES}))
-    (plugin / 'pages.yaml').write_text(yaml.safe_dump({'pages': PAGES, 'menu_items': MENU}))
+    (plugin / 'pages.yaml').write_text(yaml.safe_dump(
+        {'pages': PAGES, 'menus': {'main': {'label': 'Bench'}}, 'menu_items': MENU}))
     (plugin / 'help' / 'en' / 'doc_form.md').write_text(
         'See [[Doc.title|the title]], [[Owner.name]], [[doc_list]] and [[gone_page]].\n\n'
         '<script>alert(1)</script>\n\n`[[doc_list]]` stays code.\n')
@@ -661,7 +663,7 @@ def test_get_help_follows_a_link_of_a_guide(served):
 
 def test_get_help_asks_for_something_to_tell(served):
     assert get_help({})['code'] == 400
-    assert get_help({'stack': []})['code'] == 400
+    assert get_help({'stack': 'doc_list'})['code'] == 400
 
 
 def test_get_help_asks_what_opening_the_page_asks(served):
@@ -687,3 +689,92 @@ def test_the_guide_is_in_the_language_of_the_request(served):
     with use_locale('it'):
         page = get_help({'stack': ['doc_list']})['data']['html']
     assert '<html lang="it">' in page
+
+
+# ── The manual ──────────────────────────────────────────────────────────────
+
+@pytest.fixture
+def written(app, tmp_path):
+    """Texts of the manual: the application's, and a plugin's beside them."""
+    root = tmp_path / 'help' / 'en'
+    (root / 'appendix').mkdir(parents=True)
+    (root / 'index.md').write_text('About this bench. See [[appendix/keys|the keys]].\n')
+    (root / 'appendix' / 'keys.md').write_text('# The keys\n\n| Key | Does |\n|---|---|\n| F1 | help |\n')
+    (root / 'menu.documents.md').write_text('Added by the application.\n')
+    plugin = tmp_path / 'plugins' / 'bench' / 'help' / 'en'
+    (plugin / 'menu.documents.md').write_text('Written by the plugin.\n')
+    return app
+
+
+def test_the_manual_follows_the_menu_with_a_card_for_each_entry(written):
+    manual = help_manual(written)
+    assert [s.title for s in manual.sections] == ['My documents', 'My reports']
+    assert [s.doc.root for s in manual.sections] == ['doc_list', 'report_list']
+    assert manual.intro[0].startswith('About this bench')
+    # A plugin and the application both add to the introduction of an entry
+    assert manual.sections[0].texts == ['Written by the plugin.', 'Added by the application.']
+    assert [a.title for a in manual.appendices] == ['The keys']
+
+
+def test_the_pages_the_cards_lead_to_are_told_at_the_end(written):
+    manual = help_manual(written)
+    # The foreign keys of the documents lead to the owners, which no entry opens
+    assert 'owner_list' in [d.root for d in manual.others]
+
+
+def test_the_manual_is_one_file_its_links_anchors_inside_it(written):
+    page = render_manual(written, help_manual(written), today='2026-11-07').html
+    assert 'id="doc_list-top"' in page and 'id="report_list-top"' in page
+    assert 'id="doc_list-field-Doc.title"' in page
+    assert 'href="#owner_list-top"' in page
+    assert '<a href="#appendix-keys">the keys</a>' in page
+    assert '<table>' in page
+    assert '.html"' not in page
+    assert '2026-11-07' in page
+
+
+def test_a_screen_is_told_once_in_the_manual(written):
+    # A second entry on the same page points to the first card
+    written.pm.data['menu_items']['again'] = {'label': 'Zeta, again', 'action': 'stack_push',
+                                              'panel': 'doc_list'}
+    manual = help_manual(written)
+    again = next(s for s in manual.sections if s.title == 'Zeta, again')
+    assert again.doc is None and again.ref == 'doc_list'
+    # A screen another card tells is a reference, like a page with an entry
+    doc = help_merge(written, 'doc_list', told={'doc_form'})
+    assert 'doc_form' not in doc.screens and doc.see_also == ['doc_form']
+
+
+def test_the_manual_of_a_user_holds_what_they_may_open(written, served):
+    served('Owner.read')
+    manual = help_manual(written, for_user=True)
+    assert [s.title for s in manual.sections] == ['My documents']
+    assert 'owner_list' not in [d.root for d in manual.others]
+    # The appendices are for everyone
+    assert [a.title for a in manual.appendices] == ['The keys']
+
+
+def test_the_home_has_the_head_of_the_manual(written, served):
+    result = get_help({'stack': []})
+    page = result['data']['html']
+    assert result['status'] == 'success'
+    assert 'About this bench.' in page
+    # Each entry leads to its guide, which the client asks for
+    assert 'data-help="doc_list"' in page
+    assert 'id="doc_list-top"' not in page
+
+
+def test_the_manual_downloads_as_one_page(written, served):
+    from kitebase.endpoint_help import help_manual_file
+    result = help_manual_file({})
+    assert result.mime.startswith('text/html') and result.disposition == 'inline'
+    assert b'id="doc_list-top"' in result.content
+
+
+def test_an_application_stylesheet_extends_the_core(written, tmp_path):
+    folder = tmp_path / 'help' / 'templates'
+    folder.mkdir()
+    (folder / 'style.css').write_text('{% include "core/style.css" %}\nh1 { color: red; }\n')
+    written.pm.config['help_templates'] = 'help/templates'
+    page = render_html(written, help_merge(written, 'doc_list')).html
+    assert 'h1 { color: red; }' in page and '--link:' in page

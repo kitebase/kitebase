@@ -658,7 +658,7 @@ examples:
         'help',
         help='Write the guide of a page as a standalone HTML file',
     )
-    p.add_argument('page_id', help='The page of a menu entry (e.g. book_list)')
+    p.add_argument('page_id', help='The page of a menu entry (e.g. book_list), or @manual for all of them')
     p.add_argument('--lang', default='en', metavar='LANG',
                    help='Language of the guide (default: en); what is not translated stays English')
     p.add_argument('-o', '--output', metavar='PATH',
@@ -872,11 +872,14 @@ def run_cli(app: Any, args: argparse.Namespace, output_dir: Path = Path('.')) ->
                output_dir / 'pages' / f'{args.page_id}.yaml')
 
     elif args.command == 'help':
-        from kitebase.help import help_merge, render_html
+        from kitebase.help import help_manual, help_merge, render_html, render_manual
         if args.lang != 'en':
             app.pm.load_all_locales()
         try:
-            rendered = render_html(app, help_merge(app, args.page_id, args.lang))
+            if args.page_id == '@manual':
+                rendered = render_manual(app, help_manual(app, args.lang))
+            else:
+                rendered = render_html(app, help_merge(app, args.page_id, args.lang))
         except ValueError as e:
             print(f'Error: {e}', file=sys.stderr)
             sys.exit(1)
@@ -887,7 +890,8 @@ def run_cli(app: Any, args: argparse.Namespace, output_dir: Path = Path('.')) ->
         if out_arg == '-':
             print(rendered.html)
         else:
-            out_path = Path(out_arg) if out_arg else output_dir / 'help' / f'{args.page_id}.html'
+            name = 'manual' if args.page_id == '@manual' else args.page_id
+            out_path = Path(out_arg) if out_arg else output_dir / 'help' / f'{name}.html'
             out_path.parent.mkdir(parents=True, exist_ok=True)
             out_path.write_text(rendered.html, encoding='utf-8')
             print(f'Written: {out_path}')

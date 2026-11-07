@@ -172,10 +172,12 @@ def _model_of(node: Dict[str, Any]) -> Optional[str]:
 class _Merge:
     """One walk: the screens already seen and the fields already told."""
 
-    def __init__(self, app: Any, root: str, doc: HelpDoc):
+    def __init__(self, app: Any, root: str, doc: HelpDoc, told: Set[str] = frozenset()):
         self.app = app
         self.root = root
         self.doc = doc
+        # Screens another card of the manual already tells
+        self.told = told
         self.menu = _menu_pages(app)
         self.seen_tables: Set[str] = set()
         self.seen_fields: Set[str] = set()
@@ -203,7 +205,7 @@ class _Merge:
         a part of it. `help_compose: false` leaves its written text and nothing else."""
         if page_id in self.doc.screens:
             return
-        if page_id != self.root and page_id in self.menu:
+        if page_id != self.root and (page_id in self.menu or page_id in self.told):
             if page_id not in self.doc.see_also and self.opens(page_id):
                 self.doc.see_also.append(page_id)
             return
@@ -555,7 +557,7 @@ class _Merge:
 
 
 def help_merge(app: Any, page_id: str, lang: str = help_texts.SOURCE,
-               for_user: bool = False) -> HelpDoc:
+               for_user: bool = False, told: Set[str] = frozenset()) -> HelpDoc:
     """The guide of a page, as data. The long texts are read in `lang`; the short
     ones stay English here and are translated by `render_html`.
 
@@ -563,6 +565,9 @@ def help_merge(app: Any, page_id: str, lang: str = help_texts.SOURCE,
     screen: a screen they may not open is skipped, a reference to it is dropped,
     and a link to it stays text. Without it the guide is complete, as the command
     line writes it. The caller checks that the root itself may be opened.
+
+    `told` are the screens other cards of the manual already tell: here they are
+    a reference, like a page with a menu entry of its own.
 
     Raises:
         ValueError: if no page answers to that id
@@ -573,7 +578,7 @@ def help_merge(app: Any, page_id: str, lang: str = help_texts.SOURCE,
     title = _menu_pages(app).get(page_id) or page.get('title') or _humanize(page_id)
     doc = HelpDoc(root=page_id, title=title, lang=lang, for_user=for_user)
     with use_locale(lang):
-        merge = _Merge(app, page_id, doc)
+        merge = _Merge(app, page_id, doc, told)
         merge.screen(page_id)
         merge.grid_columns()
         merge.prune()
@@ -626,22 +631,36 @@ def target_page(app: Any, ref: str) -> Optional[str]:
 
 
 class _Links:
-    """What a link points to: an anchor when the object is in the document, the
-    file beside it otherwise. Every link carries `data-help`, for a client to
-    intercept. A target that does not exist stays text, with a warning; one the
-    user may not open stays text, silently."""
+    """What a link points to: an anchor when the object is told in one of the
+    cards of the page, the file beside it otherwise, and nothing beside a manual,
+    which is one file. Every link carries `data-help`, for a client to intercept.
+    A target that does not exist stays text, with a warning; one the user may not
+    open stays text, silently."""
 
-    def __init__(self, app: Any, doc: HelpDoc):
+    def __init__(self, app: Any, cards: List['_Card'], beside: bool,
+                 appendices: Set[str] = frozenset()):
         self.app = app
-        self.doc = doc
+        self.cards = cards
+        self.beside = beside
+        # The appendices in the page: `[[appendix/<name>]]` leads to them
+        self.appendices = appendices
+        self.for_user = any(c.doc.for_user for c in cards)
         self.warnings: List[str] = []
         self.external: Set[str] = set()
 
+    def inside(self, page_id: str) -> Optional[str]:
+        for card in self.cards:
+            if page_id in card.doc.screens:
+                return f"#{card.prefix}{card.doc.anchors.get(page_id, 'top')}"
+        return None
+
     def resolve(self, ref: str):
-        """(href, default text) of a reference, or None."""
-        told = next((f for f in self.doc.all_fields() if f.key == ref), None)
-        if told is not None:
-            return f'#field-{ref}', _(told.label)
+        """(href, default text) of a reference; href None when it leads nowhere
+        the reader can go; None when nothing answers to it."""
+        for card in self.cards:
+            told = next((f for f in card.doc.all_fields() if f.key == ref), None)
+            if told is not None:
+                return f'#{card.prefix}field-{ref}', _(told.label)
         page_id = target_page(self.app, ref)
         if page_id is None:
             return None
@@ -652,29 +671,33 @@ class _Links:
             label = (column.attributes.get('label') or _humanize(rest)) if column is not None else head
         else:
             label = (load_page(self.app, ref) or {}).get('title') or _humanize(ref)
-        return self.page_href(page_id), _(label)
-
-    def page_href(self, page_id: str) -> str:
-        if page_id in self.doc.screens:
-            return f"#{self.doc.anchors.get(page_id, 'top')}"
-        self.external.add(page_id)
-        return f'{page_id}.html'
+        href = self.inside(page_id)
+        if href is None and self.for_user and not can_open(self.app, page_id):
+            href = None
+        elif href is None and self.beside:
+            self.external.add(page_id)
+            href = f'{page_id}.html'
+        return href, _(label)
 
     def anchor(self, ref: str, text: Optional[str] = None) -> str:
+        if ref.startswith('appendix/'):
+            name = ref.partition('/')[2]
+            if name in self.appendices:
+                return f'<a href="#appendix-{html.escape(name, quote=True)}">{html.escape(text or name)}</a>'
+            return html.escape(text or name)
         target = self.resolve(ref)
         if target is None:
             self.warnings.append(f"Link to '{ref}': no such page, table or column")
             return html.escape(text or ref)
         href, default = target
-        if self.doc.for_user and not href.startswith('#') \
-                and not can_open(self.app, target_page(self.app, ref)):
+        if href is None:
             return html.escape(text or default)
         return (f'<a href="{html.escape(href, quote=True)}" '
                 f'data-help="{html.escape(ref, quote=True)}">{html.escape(text or default)}</a>')
 
 
 def _markdown(links: _Links) -> MarkdownIt:
-    md = MarkdownIt('commonmark', {'html': False})
+    md = MarkdownIt('commonmark', {'html': False}).enable('table')
 
     def rule(state, silent):
         match = _LINK.match(state.src, state.pos)
@@ -729,18 +752,167 @@ def _environment(app: Any) -> Environment:
     return env
 
 
-def render_html(app: Any, doc: HelpDoc) -> RenderedHelp:
-    """The guide as a standalone HTML page, in the language of the document: the
-    texts from the translations of the plugins, the labels like the interface."""
-    with use_locale(doc.lang):
-        catalog = help_texts.catalog(app, doc.lang)
-        # A text no plugin translates may be one of the core, translated like the interface
-        return _render(app, doc, lambda text: catalog.translate(text) or _(text))
+# ── The manual ──────────────────────────────────────────────────────────────
 
 
-def _render(app: Any, doc: HelpDoc, tr: Callable[[str], str]) -> RenderedHelp:
-    links = _Links(app, doc)
-    md = _markdown(links)
+@dataclass
+class ManualSection:
+    """A node of the menu: a group with its introduction, or an entry with the
+    card of its page. An entry whose page another card already tells points to it."""
+    id: str
+    title: str
+    depth: int
+    texts: List[str] = field(default_factory=list)
+    # The page the entry opens
+    page: Optional[str] = None
+    doc: Optional[HelpDoc] = None
+    ref: Optional[str] = None
+
+
+@dataclass
+class Appendix:
+    id: str
+    title: str
+    text: str
+
+
+@dataclass
+class HelpManual:
+    title: str
+    lang: str
+    intro: List[str] = field(default_factory=list)
+    sections: List[ManualSection] = field(default_factory=list)
+    appendices: List[Appendix] = field(default_factory=list)
+    # The cards of the pages the others link to, which no menu entry opens
+    others: List[HelpDoc] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+
+    def docs(self) -> List[HelpDoc]:
+        return [s.doc for s in self.sections if s.doc is not None] + self.others
+
+
+def _texts_of(doc: HelpDoc) -> Iterator[str]:
+    yield from doc.intro
+    for group in doc.groups:
+        yield from group.texts
+        yield from (f.text for f in group.fields)
+        yield from (c.text for c in group.commands)
+    yield from (c.text for c in doc.commands)
+    for items in doc.parts.values():
+        for item in items:
+            if item.text:
+                yield item.text
+            yield from (c.text for c in item.commands)
+    yield from (h.text for h in doc.how)
+
+
+def _targets(app: Any, doc: HelpDoc) -> List[str]:
+    """The pages a card leads to: its references and the links in its texts."""
+    refs = list(doc.see_also)
+    refs += [i.ref for items in doc.parts.values() for i in items if i.ref]
+    refs += [f.link for f in doc.all_fields() if f.link]
+    for text in _texts_of(doc):
+        refs += [m.group(1).partition('|')[0].strip() for m in _LINK.finditer(text)]
+    pages = []
+    for ref in refs:
+        page_id = target_page(app, ref)
+        if page_id and page_id not in pages:
+            pages.append(page_id)
+    return pages
+
+
+def _appendix(app: Any, name: str, lang: str) -> Optional[Appendix]:
+    """An appendix written by hand: its title is its first heading."""
+    text = help_texts.discourse(app, f'appendix/{name}', lang)
+    if not text:
+        return None
+    lines = text.strip().splitlines()
+    title = _humanize(name)
+    if lines and lines[0].startswith('# '):
+        title = lines[0][2:].strip()
+        lines = lines[1:]
+    return Appendix(f'appendix-{name}', title, '\n'.join(lines).strip())
+
+
+def help_manual(app: Any, lang: str = help_texts.SOURCE, for_user: bool = False,
+                root: Optional[str] = None, cards: bool = True) -> HelpManual:
+    """The manual: the tree of the menu with the card of every entry, the texts
+    of the application and of its groups, the appendices, and at the end the cards
+    of the pages the others lead to that no entry opens. A screen is told once, in
+    the first card that reaches it; the others point to it.
+
+    `for_user` keeps what the current user may open, as the guide does; the
+    appendices are for everyone. Without `cards` it is the head of the manual:
+    the texts and the tree, each entry leading to its own guide, for the home.
+    """
+    from kitebase.endpoint_menu import _app_default_root, menu_tree
+
+    config = getattr(app.pm, 'config', None) or {}
+    manual = HelpManual(title=config.get('title') or config.get('name') or '', lang=lang)
+    told: Set[str] = set()
+    with use_locale(lang):
+        tree = menu_tree(app, root or _app_default_root(app), for_user) or {}
+        intro = help_texts.discourse(app, 'index', lang)
+        if intro:
+            manual.intro.append(intro.strip())
+
+        def walk(nodes: List[Dict[str, Any]], depth: int) -> None:
+            for node in nodes:
+                section = ManualSection(id=f"menu-{node['id']}", title=str(node.get('label') or node['id']),
+                                        depth=depth)
+                if isinstance(node.get('help'), str) and node['help'].strip():
+                    section.texts.append(node['help'].strip())
+                section.texts += [t.strip() for t in help_texts.discourses(app, f"menu.{node['id']}", lang)]
+                panel = node.get('panel')
+                if isinstance(panel, str) and load_page(app, panel) is not None:
+                    section.page = panel
+                    if cards and panel in told:
+                        section.ref = panel
+                    elif cards:
+                        section.doc = help_merge(app, panel, lang, for_user, told)
+                        told.update(section.doc.screens)
+                manual.sections.append(section)
+                walk(node.get('children') or [], depth + 1)
+
+        walk(tree.get('items') or [], 1)
+
+    for name in help_texts.appendix_names(app, lang):
+        appendix = _appendix(app, name, lang)
+        if appendix is not None:
+            manual.appendices.append(appendix)
+
+    # What the cards lead to and no entry opens, until nothing new is reached
+    pending = [p for doc in manual.docs() for p in _targets(app, doc)] if cards else []
+    while pending:
+        page_id = pending.pop(0)
+        if page_id in told or (for_user and not can_open(app, page_id)):
+            continue
+        doc = help_merge(app, page_id, lang, for_user, told)
+        told.update(doc.screens)
+        manual.others.append(doc)
+        pending += _targets(app, doc)
+
+    for doc in manual.docs():
+        manual.warnings += doc.warnings
+    return manual
+
+
+# ── Render ──────────────────────────────────────────────────────────────────
+
+
+@dataclass
+class _Card:
+    doc: HelpDoc
+    # Before every id of the card: nothing in a guide, the root in a manual
+    prefix: str
+    # The level of its title; its parts go one below, and so on
+    level: int
+
+
+def _card(card: _Card, links: _Links, md: MarkdownIt, tr: Callable[[str], str],
+          index: bool) -> Dict[str, Any]:
+    """The values of one card for the template, its ids already prefixed."""
+    doc, p = card.doc, card.prefix
 
     def text(value: str) -> str:
         return md.render(tr(value))
@@ -750,11 +922,11 @@ def _render(app: Any, doc: HelpDoc, tr: Callable[[str], str]) -> RenderedHelp:
 
     def group(g: HelpGroup) -> Dict[str, Any]:
         return {
-            'id': g.id,
+            'id': p + g.id,
             'title': _(g.title) if g.title else None,
             'texts': [text(t) for t in g.texts],
             'fields': [{
-                'id': f'field-{f.key}',
+                'id': f'{p}field-{f.key}',
                 'label': links.anchor(f.link, _(f.label)) if f.link else html.escape(_(f.label)),
                 'html': text(f.text) if f.text else '',
                 'limits': f.limits,
@@ -767,40 +939,128 @@ def _render(app: Any, doc: HelpDoc, tr: Callable[[str], str]) -> RenderedHelp:
         if i.ref:
             title = links.anchor(i.ref, label)
         elif i.anchor:
-            title = f'<a href="#{html.escape(i.anchor, quote=True)}">{html.escape(label)}</a>'
+            title = f'<a href="#{html.escape(p + i.anchor, quote=True)}">{html.escape(label)}</a>'
         else:
             title = html.escape(label)
         return {'title': title, 'html': text(i.text) if i.text else '',
                 'commands': commands(i.commands)}
 
-    parts = [{'id': key, 'title': _(title), 'items': [item(i) for i in doc.parts[key]]}
+    parts = [{'id': p + key, 'title': _(title), 'items': [item(i) for i in doc.parts[key]]}
              for key, title in _PART_TITLES.items() if doc.parts.get(key)]
 
-    index: List[Dict[str, Any]] = []
-    if doc.commands:
-        index.append({'id': 'commands', 'title': _('Commands'), 'subs': []})
-    if doc.groups:
-        index.append({'id': 'fields', 'title': _('Fields'),
-                      'subs': [{'id': g.id, 'title': _(g.title)} for g in doc.groups if g.title]})
-    index.extend({'id': p['id'], 'title': p['title'], 'subs': []} for p in parts)
-    if doc.how:
-        index.append({'id': 'filling-in', 'title': _(_HOW_TITLE), 'subs': []})
+    contents: List[Dict[str, Any]] = []
+    if index:
+        if doc.commands:
+            contents.append({'id': p + 'commands', 'title': _('Commands'), 'subs': []})
+        if doc.groups:
+            contents.append({'id': p + 'fields', 'title': _('Fields'),
+                             'subs': [{'id': p + g.id, 'title': _(g.title)} for g in doc.groups if g.title]})
+        contents.extend({'id': part['id'], 'title': part['title'], 'subs': []} for part in parts)
+        if doc.how:
+            contents.append({'id': p + 'filling-in', 'title': _(_HOW_TITLE), 'subs': []})
 
+    menu = _menu_pages(links.app)
+    level = card.level
+    return {
+        'p': p,
+        'h': [min(level + n, 6) for n in range(4)],
+        'title': _(doc.title),
+        'intro': [text(t) for t in doc.intro],
+        'index': contents,
+        'commands': commands(doc.commands),
+        'groups': [group(g) for g in doc.groups],
+        'parts': parts,
+        'how_title': _(_HOW_TITLE),
+        'how': [{'title': _(h.title), 'html': text(h.text)} for h in doc.how],
+        'see_also': [links.anchor(page, _(menu[page]) if menu.get(page) else None)
+                     for page in doc.see_also],
+    }
+
+
+def _page(app: Any, lang: str, title: str, values: Dict[str, Any]) -> str:
     env = _environment(app)
-    menu = _menu_pages(app)
     config = getattr(app.pm, 'config', None) or {}
-    page = env.get_template('skeleton.html').render(
-        lang=doc.lang,
+    return env.get_template('skeleton.html').render(
+        lang=lang,
         app_title=_(config.get('title') or config.get('name') or ''),
-        title=_(doc.title),
-        style=env.loader.get_source(env, 'style.css')[0],
-        intro=[text(t) for t in doc.intro],
-        index=index,
-        commands=commands(doc.commands),
-        groups=[group(g) for g in doc.groups],
-        parts=parts,
-        how_title=_(_HOW_TITLE),
-        how=[{'title': _(h.title), 'html': text(h.text)} for h in doc.how],
-        see_also=[links.anchor(p, _(menu[p]) if menu.get(p) else None) for p in doc.see_also],
+        title=title,
+        style=env.get_template('style.css').render(),
+        **values,
     )
+
+
+def _translator(app: Any, lang: str) -> Callable[[str], str]:
+    catalog = help_texts.catalog(app, lang)
+    # A text no plugin translates may be one of the core, translated like the interface
+    return lambda text: catalog.translate(text) or _(text)
+
+
+def render_html(app: Any, doc: HelpDoc) -> RenderedHelp:
+    """The guide as a standalone HTML page, in the language of the document: the
+    texts from the translations of the plugins, the labels like the interface."""
+    with use_locale(doc.lang):
+        card = _Card(doc, '', 1)
+        links = _Links(app, [card], beside=True)
+        md = _markdown(links)
+        values = _card(card, links, md, _translator(app, doc.lang), index=True)
+        page = _page(app, doc.lang, _(doc.title), {'card': values, 'manual': None})
     return RenderedHelp(page, doc.warnings + links.warnings, sorted(links.external))
+
+
+def render_manual(app: Any, manual: HelpManual, today: Optional[str] = None) -> RenderedHelp:
+    """The manual as one standalone HTML file: every link an anchor inside it.
+    The head of a manual composed without cards leads to the guides instead."""
+    from kitebase.apptime import today as app_today
+
+    with use_locale(manual.lang):
+        tr = _translator(app, manual.lang)
+        cards = [_Card(s.doc, f'{s.doc.root}-', s.depth + 1) for s in manual.sections if s.doc is not None]
+        cards += [_Card(doc, f'{doc.root}-', 2) for doc in manual.others]
+        head = not cards
+        links = _Links(app, cards, beside=head,
+                       appendices={a.id.partition('-')[2] for a in manual.appendices})
+        md = _markdown(links)
+        by_root = {c.doc.root: c for c in cards}
+
+        def text(value: str) -> str:
+            return md.render(tr(value))
+
+        sections = []
+        for s in manual.sections:
+            sections.append({
+                'id': s.id,
+                'h': min(s.depth + 1, 6),
+                'title': _(s.title),
+                'texts': [text(t) for t in s.texts],
+                'card': _card(by_root[s.doc.root], links, md, tr, index=False) if s.doc else None,
+                'ref': links.anchor(s.ref) if s.ref else None,
+                'link': links.anchor(s.page, _(s.title)) if head and s.page else None,
+            })
+
+        def toc(depth: int, start: int) -> List[Dict[str, Any]]:
+            nodes, i = [], start
+            while i < len(manual.sections) and manual.sections[i].depth >= depth:
+                s = manual.sections[i]
+                if s.depth == depth:
+                    anchor = f'{s.doc.root}-top' if s.doc else s.id
+                    nodes.append({'id': anchor, 'title': _(s.title), 'subs': toc(depth + 1, i + 1)})
+                i += 1
+            return nodes
+
+        version = (getattr(app.pm, 'config', None) or {}).get('version')
+        values = {
+            'card': None,
+            'manual': {
+                'head': head,
+                'date': today or app_today().isoformat(),
+                'version': version,
+                'intro': [text(t) for t in manual.intro],
+                'toc': toc(1, 0),
+                'sections': sections,
+                'appendices': [{'id': a.id, 'title': a.title, 'html': text(a.text)}
+                               for a in manual.appendices],
+                'others': [_card(by_root[d.root], links, md, tr, index=False) for d in manual.others],
+            },
+        }
+        page = _page(app, manual.lang, manual.title if head else _('Manual'), values)
+    return RenderedHelp(page, manual.warnings + links.warnings, sorted(links.external))

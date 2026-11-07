@@ -1,0 +1,10 @@
+{# Devtest's guides: the skeleton of the core, with the logo in the header.
+   The two logos are inline, so the page stays one file; the stylesheet shows
+   the one that fits the colour scheme. #}
+{% extends "core/skeleton.html" %}
+{% block header %}<header class="app">
+<span class="logo logo-light" aria-hidden="true">{% include "logo-light.svg" %}</span>
+<span class="logo logo-dark" aria-hidden="true">{% include "logo-dark.svg" %}</span>
+<span class="app-title">{{ app_title }}</span>
+</header>
+{% endblock %}

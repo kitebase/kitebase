@@ -1,0 +1,22 @@
+{# The stylesheet of the core, and a few touches of devtest after it #}
+{% include "core/style.css" %}
+
+/* Devtest: the blue of the logo for links and titles */
+:root { --link: #2563eb; --accent: #2563eb; }
+@media (prefers-color-scheme: dark) {
+  :root { --link: #93c5fd; --accent: #60a5fa; }
+}
+header.app { display: flex; align-items: center; gap: .75rem; }
+header.app .logo svg { display: block; height: 1.75rem; width: auto; }
+header.app .logo-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  header.app .logo-light { display: none; }
+  header.app .logo-dark { display: block; }
+}
+h1 { color: var(--accent); }
+h2 { border-block-end: 2px solid var(--accent); }
+@media print {
+  header.app .logo-dark { display: none; }
+  header.app .logo-light { display: block; }
+  h1 { color: #000; }
+}

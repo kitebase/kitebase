@@ -53,4 +53,8 @@ register_translations('it', {
     'Type the date, or pick it from the calendar.':
         'Scrivi la data, o sceglila dal calendario.',
     'up to {size} MB':                  'fino a {size} MB',
+    'Manual':                           'Manuale',
+    'version':                          'versione',
+    'See':                              'Vedi',
+    'Other pages':                      'Altre pagine',
 })

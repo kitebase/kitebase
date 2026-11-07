@@ -7,62 +7,47 @@
 <style>{{ style | safe }}</style>
 </head>
 <body>
+{% import "card.html" as cards with context %}
 {% block header %}{% if app_title %}<header class="app">{{ app_title }}</header>
 {% endif %}{% endblock %}
 <main>
-<h1 id="top">{{ title }}</h1>
-{% for text in intro %}{{ text | safe }}{% endfor %}
-{% block index %}{% if index | length > 1 %}<nav aria-label="{{ _('Contents') }}">
-<ul>
-{% for s in index %}<li><a href="#{{ s.id }}">{{ s.title }}</a>{% if s.subs %}
-<ul>{% for sub in s.subs %}<li><a href="#{{ sub.id }}">{{ sub.title }}</a></li>{% endfor %}</ul>{% endif %}</li>
-{% endfor %}</ul>
-</nav>
+{% if manual %}
+{% block manual_title %}<h1 id="top">{{ title }}</h1>
+{% if not manual.head %}<p class="meta">{{ manual.date }}{% if manual.version %} - {{ _('version') }} {{ manual.version }}{% endif %} - {{ lang }}</p>
 {% endif %}{% endblock %}
-{% macro command_list(items) %}<dl>
-{% for c in items %}<dt>{{ c.label }}</dt>
-<dd>{{ c.html | safe }}</dd>
-{% endfor %}</dl>
+{% for text in manual.intro %}{{ text | safe }}{% endfor %}
+{% macro toc_list(nodes) %}<ul>
+{% for n in nodes %}<li><a href="#{{ n.id }}">{{ n.title }}</a>{% if n.subs %}
+{{ toc_list(n.subs) }}{% endif %}</li>
+{% endfor %}</ul>
 {% endmacro %}
-{% if commands %}<section id="commands">
-<h2>{{ _('Commands') }}</h2>
-{{ command_list(commands) }}</section>
+{% block toc %}<nav class="toc" aria-label="{{ _('Contents') }}">
+{{ toc_list(manual.toc) }}{% if manual.appendices %}<ul>
+{% for a in manual.appendices %}<li><a href="#{{ a.id }}">{{ a.title }}</a></li>
+{% endfor %}</ul>{% endif %}{% if manual.others %}<ul><li><a href="#others">{{ _('Other pages') }}</a></li></ul>{% endif %}
+</nav>
+{% endblock %}
+{% for s in manual.sections %}
+{% if s.card %}{{ cards.card(s.card, s.texts) }}
+{% else %}<section class="menu-group" id="{{ s.id }}">
+<h{{ s.h }}>{% if s.link %}{{ s.link | safe }}{% else %}{{ s.title }}{% endif %}</h{{ s.h }}>
+{% for text in s.texts %}{{ text | safe }}{% endfor %}
+{% if s.ref %}<p>{{ _('See') }} {{ s.ref | safe }}</p>{% endif %}
+</section>
 {% endif %}
-{% if groups %}<section id="fields">
-<h2>{{ _('Fields') }}</h2>
-{% for g in groups %}<section id="{{ g.id }}">
-{% if g.title %}<h3>{{ g.title }}</h3>
-{% endif %}{% for text in g.texts %}{{ text | safe }}{% endfor %}
-{% if g.fields %}<dl>
-{% for f in g.fields %}<dt id="{{ f.id }}">{{ f.label | safe }}</dt>
-{% if f.html or f.limits %}<dd>{{ f.html | safe }}{% if f.limits %}<p class="limits">{{ f.limits }}</p>{% endif %}</dd>
-{% endif %}{% endfor %}</dl>
-{% endif %}{% if g.commands %}<h4>{{ _('Commands') }}</h4>
-{{ command_list(g.commands) }}{% endif %}</section>
-{% endfor %}</section>
-{% endif %}
-{% for part in parts %}<section id="{{ part.id }}" class="part">
-<h2>{{ part.title }}</h2>
-<dl>
-{% for item in part['items'] %}<dt>{{ item.title | safe }}</dt>
-<dd>{{ item.html | safe }}{% if item.commands %}<div class="local">{{ command_list(item.commands) }}</div>{% endif %}</dd>
-{% endfor %}</dl>
+{% endfor %}
+{% for a in manual.appendices %}<section class="appendix" id="{{ a.id }}">
+<h2>{{ a.title }}</h2>
+{{ a.html | safe }}
 </section>
 {% endfor %}
-{% if how %}<section id="filling-in" class="part">
-<h2>{{ how_title }}</h2>
-<dl>
-{% for h in how %}<dt>{{ h.title }}</dt>
-<dd>{{ h.html | safe }}</dd>
-{% endfor %}</dl>
+{% if manual.others %}<section class="others" id="others">
+<h2>{{ _('Other pages') }}</h2>
+{% for c in manual.others %}{{ cards.card(c) }}{% endfor %}
 </section>
 {% endif %}
-{% if see_also %}<section id="see-also" class="part">
-<h2>{{ _('See also') }}</h2>
-<ul>
-{% for link in see_also %}<li>{{ link | safe }}</li>
-{% endfor %}</ul>
-</section>
+{% else %}
+{{ cards.card(card) }}
 {% endif %}
 </main>
 </body>

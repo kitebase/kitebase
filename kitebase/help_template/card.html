@@ -1,0 +1,62 @@
+{# The card of a page: what it means, its commands, its fields, what depends
+   on it. Every id carries the prefix of the card (`c.p`), empty in a guide;
+   the headings start at `c.h[0]`, the level a manual gives the card. #}
+{% macro command_list(items) %}<dl>
+{% for c in items %}<dt>{{ c.label }}</dt>
+<dd>{{ c.html | safe }}</dd>
+{% endfor %}</dl>
+{% endmacro %}
+
+{% macro card(c, prelude=[]) %}<article class="card">
+<h{{ c.h[0] }} id="{{ c.p }}top">{{ c.title }}</h{{ c.h[0] }}>
+{% for text in prelude %}{{ text | safe }}{% endfor %}
+{% for text in c.intro %}{{ text | safe }}{% endfor %}
+{% if c.index | length > 1 %}<nav aria-label="{{ _('Contents') }}">
+<ul>
+{% for s in c.index %}<li><a href="#{{ s.id }}">{{ s.title }}</a>{% if s.subs %}
+<ul>{% for sub in s.subs %}<li><a href="#{{ sub.id }}">{{ sub.title }}</a></li>{% endfor %}</ul>{% endif %}</li>
+{% endfor %}</ul>
+</nav>
+{% endif %}
+{% if c.commands %}<section id="{{ c.p }}commands">
+<h{{ c.h[1] }}>{{ _('Commands') }}</h{{ c.h[1] }}>
+{{ command_list(c.commands) }}</section>
+{% endif %}
+{% if c.groups %}<section id="{{ c.p }}fields">
+<h{{ c.h[1] }}>{{ _('Fields') }}</h{{ c.h[1] }}>
+{% for g in c.groups %}<section id="{{ g.id }}">
+{% if g.title %}<h{{ c.h[2] }}>{{ g.title }}</h{{ c.h[2] }}>
+{% endif %}{% for text in g.texts %}{{ text | safe }}{% endfor %}
+{% if g.fields %}<dl>
+{% for f in g.fields %}<dt id="{{ f.id }}">{{ f.label | safe }}</dt>
+{% if f.html or f.limits %}<dd>{{ f.html | safe }}{% if f.limits %}<p class="limits">{{ f.limits }}</p>{% endif %}</dd>
+{% endif %}{% endfor %}</dl>
+{% endif %}{% if g.commands %}<h{{ c.h[3] }}>{{ _('Commands') }}</h{{ c.h[3] }}>
+{{ command_list(g.commands) }}{% endif %}</section>
+{% endfor %}</section>
+{% endif %}
+{% for part in c.parts %}<section id="{{ part.id }}" class="part">
+<h{{ c.h[1] }}>{{ part.title }}</h{{ c.h[1] }}>
+<dl>
+{% for item in part['items'] %}<dt>{{ item.title | safe }}</dt>
+<dd>{{ item.html | safe }}{% if item.commands %}<div class="local">{{ command_list(item.commands) }}</div>{% endif %}</dd>
+{% endfor %}</dl>
+</section>
+{% endfor %}
+{% if c.how %}<section id="{{ c.p }}filling-in" class="part">
+<h{{ c.h[1] }}>{{ c.how_title }}</h{{ c.h[1] }}>
+<dl>
+{% for h in c.how %}<dt>{{ h.title }}</dt>
+<dd>{{ h.html | safe }}</dd>
+{% endfor %}</dl>
+</section>
+{% endif %}
+{% if c.see_also %}<section id="{{ c.p }}see-also" class="part">
+<h{{ c.h[1] }}>{{ _('See also') }}</h{{ c.h[1] }}>
+<ul>
+{% for link in c.see_also %}<li>{{ link | safe }}</li>
+{% endfor %}</ul>
+</section>
+{% endif %}
+</article>
+{% endmacro %}
