@@ -5,8 +5,11 @@ import pytest
 import yaml
 
 import kitebase.utils
+from kitebase import access
 from kitebase.db import DB
-from kitebase.help import BESIDE, INSIDE, SELECTING, help_merge, render_html
+from kitebase.endpoint_help import get_help
+from kitebase.help import BESIDE, INSIDE, SELECTING, guide_root, help_merge, render_html
+from kitebase.i18n import use_locale
 from kitebase.outbound import SERVER, policy_of
 from kitebase.plugins import PluginsManager
 
@@ -232,6 +235,13 @@ MENU = {
     'documents': {'label': 'My documents', 'action': 'stack_push', 'panel': 'doc_list'},
     'reports': {'label': 'My reports', 'action': 'stack_push', 'panel': 'report_list'},
 }
+
+
+@pytest.fixture(autouse=True)
+def open_guard():
+    # devtest loads the acl plugin, which registers its guard for good
+    yield
+    access._GUARD = access.OPEN
 
 
 def load(path: Path, monkeypatch) -> DB:
@@ -594,3 +604,86 @@ def test_the_loans_of_a_book_are_a_reference(monkeypatch):
     by_author = help_merge(app, 'author_list')
     assert 'Files' in {h.key for h in by_author.how}
     assert fields(by_author)['Author.documents'].limits.endswith('up to 20 MB')
+
+
+# ── In the application: get_help, the root of a stack, the user's view ──────
+
+class Denying(access.Guard):
+    def __init__(self, denied=()):
+        self.denied = set(denied)
+
+    def allows(self, permission, context):
+        return permission not in self.denied
+
+    def allows_undeclared(self, endpoint, context):
+        return True
+
+
+@pytest.fixture
+def served(app, monkeypatch):
+    monkeypatch.setattr(kitebase.utils, 'get_app', lambda: app)
+
+    def deny(*permissions):
+        access._GUARD = access.OPEN
+        access.set_guard(Denying(permissions))
+    yield deny
+    access._GUARD = access.OPEN
+
+
+def test_the_guide_of_a_stack_is_the_one_that_tells_its_top(app):
+    assert guide_root(app, ['doc_list', 'doc_form']) == 'doc_list'
+    assert guide_root(app, ['doc_faces', 'doc_more']) == 'doc_faces'
+    # A page reached from the record that is not one of its screens
+    assert guide_root(app, ['doc_list', 'owner_detail']) == 'owner_detail'
+    # A page with a menu entry of its own is a reference, not a screen
+    assert guide_root(app, ['with_button', 'report_list']) == 'report_list'
+    assert guide_root(app, ['doc_list', 'nowhere', 'doc_form']) == 'doc_form'
+
+
+def test_get_help_opens_where_the_user_is(served):
+    result = get_help({'stack': ['doc_list', 'doc_form'], 'focus': 'Doc.title'})
+    assert result['status'] == 'success'
+    assert result['data']['root'] == 'doc_list'
+    assert result['data']['title'] == 'My documents'
+    assert result['data']['anchor'] == 'field-Doc.title'
+    assert 'id="field-Doc.title"' in result['data']['html']
+    # Without a focus, the screen on top of the stack
+    assert get_help({'stack': ['doc_list', 'doc_form']})['data']['anchor'] == 'fields'
+
+
+def test_get_help_follows_a_link_of_a_guide(served):
+    result = get_help({'ref': 'Doc.title'})
+    assert result['data']['root'] == 'doc_list'
+    assert result['data']['anchor'] == 'field-Doc.title'
+    assert get_help({'ref': 'report_list'})['data']['root'] == 'report_list'
+    assert get_help({'ref': 'Doc.nothing'})['code'] == 404
+
+
+def test_get_help_asks_for_something_to_tell(served):
+    assert get_help({})['code'] == 400
+    assert get_help({'stack': []})['code'] == 400
+
+
+def test_get_help_asks_what_opening_the_page_asks(served):
+    served('Doc.read')
+    with pytest.raises(access.AccessDenied):
+        get_help({'stack': ['doc_list']})
+
+
+def test_the_guide_of_a_user_leaves_out_what_they_may_not_open(app, served):
+    served('Owner.read')
+    page = get_help({'stack': ['doc_list']})['data']['html']
+    # The foreign key and the page with a menu entry on owners stay text
+    assert 'data-help="owner_list"' not in page
+    # The command line tells everything
+    complete = render_html(app, help_merge(app, 'doc_list')).html
+    assert 'data-help="owner_list"' in complete
+    # A button to a page they may not open is not even mentioned
+    assert 'Open' in items(help_merge(app, 'with_button'), INSIDE)
+    assert not help_merge(app, 'with_button', for_user=True).parts
+
+
+def test_the_guide_is_in_the_language_of_the_request(served):
+    with use_locale('it'):
+        page = get_help({'stack': ['doc_list']})['data']['html']
+    assert '<html lang="it">' in page

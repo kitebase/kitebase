@@ -34,7 +34,8 @@ from markdown_it import MarkdownIt
 from kitebase import help_texts
 from kitebase.i18n import _, _f, use_locale
 from kitebase.media import MediaError, parse_size
-from kitebase.pages import BUTTON, COLLECTION, LIST_TYPES, field_from_column, load_page, lookup_page
+from kitebase.pages import (BUTTON, COLLECTION, LIST_TYPES, can_open, field_from_column, load_page,
+                            lookup_page, restrict, restrict_columns)
 
 _TEMPLATES = Path(__file__).parent / 'help_template'
 
@@ -119,6 +120,8 @@ class HelpDoc:
     root: str
     title: str
     lang: str = help_texts.SOURCE
+    # Composed for the current user: only what they may open, as they see it
+    for_user: bool = False
     intro: List[str] = field(default_factory=list)
     commands: List[HelpCommand] = field(default_factory=list)
     groups: List[HelpGroup] = field(default_factory=list)
@@ -180,6 +183,20 @@ class _Merge:
 
     # ── Screens ─────────────────────────────────────────────────────────────
 
+    def opens(self, page_id: str) -> bool:
+        return not self.doc.for_user or can_open(self.app, page_id)
+
+    def load(self, page_id: str) -> Optional[Dict[str, Any]]:
+        """A page as the reader sees it: for a user, None when they may not open
+        it, and without what `get_page` would take out of it."""
+        if not self.opens(page_id):
+            return None
+        page = load_page(self.app, page_id)
+        if page is not None and self.doc.for_user:
+            restrict(self.app, page)
+            restrict_columns(self.app, page)
+        return page
+
     def screen(self, page_id: str, group: Optional[HelpGroup] = None,
                skip: Optional[str] = None) -> None:
         """Walk a screen: as the record itself, or inside `group` when it only details
@@ -187,10 +204,10 @@ class _Merge:
         if page_id in self.doc.screens:
             return
         if page_id != self.root and page_id in self.menu:
-            if page_id not in self.doc.see_also:
+            if page_id not in self.doc.see_also and self.opens(page_id):
                 self.doc.see_also.append(page_id)
             return
-        page = load_page(self.app, page_id)
+        page = self.load(page_id)
         if page is None:
             return
         self.doc.screens.append(page_id)
@@ -365,7 +382,9 @@ class _Merge:
             self.collection(opens, group, title, text)
         elif isinstance(opens, dict) and isinstance(opens.get('page'), str):
             page_id = opens['page']
-            page = load_page(self.app, page_id) or {}
+            page = self.load(page_id)
+            if page is None:
+                return
             if _model_of(page.get('content') or {}) == model and page_id not in self.menu:
                 face = self.group(title)
                 self.text(face.texts, text)
@@ -423,10 +442,11 @@ class _Merge:
         if not model:
             return None
         for page_id in self.menu:
-            page = load_page(self.app, page_id) or {}
+            page = self.load(page_id) or {}
             if _model_of(page.get('content') or {}) == model:
                 return page_id
-        return f'{model.lower()}_list'
+        generated = f'{model.lower()}_list'
+        return generated if self.opens(generated) else None
 
     def local_commands(self, view: Dict[str, Any]) -> List[HelpCommand]:
         found: List[HelpCommand] = []
@@ -534,9 +554,15 @@ class _Merge:
         self.doc.anchors = {p: a for p, a in self.doc.anchors.items() if a in kept}
 
 
-def help_merge(app: Any, page_id: str, lang: str = help_texts.SOURCE) -> HelpDoc:
+def help_merge(app: Any, page_id: str, lang: str = help_texts.SOURCE,
+               for_user: bool = False) -> HelpDoc:
     """The guide of a page, as data. The long texts are read in `lang`; the short
     ones stay English here and are translated by `render_html`.
+
+    `for_user` composes it for the current user, as `get_page` would show each
+    screen: a screen they may not open is skipped, a reference to it is dropped,
+    and a link to it stays text. Without it the guide is complete, as the command
+    line writes it. The caller checks that the root itself may be opened.
 
     Raises:
         ValueError: if no page answers to that id
@@ -545,13 +571,39 @@ def help_merge(app: Any, page_id: str, lang: str = help_texts.SOURCE) -> HelpDoc
     if page is None:
         raise ValueError(f"No page '{page_id}'")
     title = _menu_pages(app).get(page_id) or page.get('title') or _humanize(page_id)
-    doc = HelpDoc(root=page_id, title=title, lang=lang)
+    doc = HelpDoc(root=page_id, title=title, lang=lang, for_user=for_user)
     with use_locale(lang):
         merge = _Merge(app, page_id, doc)
         merge.screen(page_id)
         merge.grid_columns()
         merge.prune()
     return doc
+
+
+def guide_root(app: Any, stack: List[str]) -> str:
+    """The page whose guide tells the top of a stack of pages, as the user opened
+    them: going down while the page below counts the one above among its screens.
+    The form of a book, a face of it, its rows stay in the guide of the books; the
+    publishers opened from a foreign key have a guide of their own."""
+    root = stack[-1]
+    for below in reversed(stack[:-1]):
+        try:
+            screens = help_merge(app, below, for_user=True).screens
+        except ValueError:
+            break
+        if root not in screens:
+            break
+        root = below
+    return root
+
+
+def focus_anchor(doc: HelpDoc, focus: Optional[str]) -> str:
+    """Where the guide opens: on a field (`Book.title`), on a screen, or at the top."""
+    if focus and any(f.key == focus for f in doc.all_fields()):
+        return f'field-{focus}'
+    if focus and focus in doc.anchors:
+        return doc.anchors[focus]
+    return 'top'
 
 
 # ── Render ──────────────────────────────────────────────────────────────────
@@ -561,10 +613,23 @@ _LINK = re.compile(r'\[\[([^\]\n]+)\]\]')
 _WEB = re.compile(r'https?://', re.IGNORECASE)
 
 
+def target_page(app: Any, ref: str) -> Optional[str]:
+    """The page whose guide tells a reference: the page itself, or the list of a
+    table for `Table` and `Table.column`. None when nothing answers to it."""
+    head, _sep, rest = ref.partition('.')
+    table = app.tables.get(head)
+    if table is not None:
+        if rest and not any(c.name == rest for c in table.effective_columns):
+            return None
+        return f'{head.lower()}_list'
+    return ref if load_page(app, ref) is not None else None
+
+
 class _Links:
     """What a link points to: an anchor when the object is in the document, the
     file beside it otherwise. Every link carries `data-help`, for a client to
-    intercept. A target that does not exist stays text, with a warning."""
+    intercept. A target that does not exist stays text, with a warning; one the
+    user may not open stays text, silently."""
 
     def __init__(self, app: Any, doc: HelpDoc):
         self.app = app
@@ -577,20 +642,17 @@ class _Links:
         told = next((f for f in self.doc.all_fields() if f.key == ref), None)
         if told is not None:
             return f'#field-{ref}', _(told.label)
+        page_id = target_page(self.app, ref)
+        if page_id is None:
+            return None
         head, _sep, rest = ref.partition('.')
         table = self.app.tables.get(head)
         if table is not None:
-            label = head
-            if rest:
-                column = next((c for c in table.effective_columns if c.name == rest), None)
-                if column is None:
-                    return None
-                label = column.attributes.get('label') or _humanize(rest)
-            return self.page_href(f'{head.lower()}_list'), _(label)
-        page = load_page(self.app, ref)
-        if page is None:
-            return None
-        return self.page_href(ref), _(page.get('title') or _humanize(ref))
+            column = next((c for c in table.effective_columns if c.name == rest), None)
+            label = (column.attributes.get('label') or _humanize(rest)) if column is not None else head
+        else:
+            label = (load_page(self.app, ref) or {}).get('title') or _humanize(ref)
+        return self.page_href(page_id), _(label)
 
     def page_href(self, page_id: str) -> str:
         if page_id in self.doc.screens:
@@ -604,6 +666,9 @@ class _Links:
             self.warnings.append(f"Link to '{ref}': no such page, table or column")
             return html.escape(text or ref)
         href, default = target
+        if self.doc.for_user and not href.startswith('#') \
+                and not can_open(self.app, target_page(self.app, ref)):
+            return html.escape(text or default)
         return (f'<a href="{html.escape(href, quote=True)}" '
                 f'data-help="{html.escape(ref, quote=True)}">{html.escape(text or default)}</a>')
 

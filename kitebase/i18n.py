@@ -23,6 +23,11 @@ def set_locale(locale: str) -> None:
     _locale.set(locale or 'en')
 
 
+def current_locale() -> str:
+    """The locale of the current request."""
+    return _locale.get()
+
+
 @contextmanager
 def use_locale(locale: str) -> Iterator[None]:
     """The locale for a block, then the previous one again: for whoever produces
