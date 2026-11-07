@@ -8,7 +8,9 @@ import yaml
 import kitebase.utils
 from kitebase.db import DB
 from kitebase.help import help_merge, render_html
-from kitebase.help_texts import declared_texts, diagnose, read_file, sync_help
+from kitebase.help_texts import catalog, declared_texts, diagnose, read_file, sync_help
+from kitebase.i18n import use_locale
+from kitebase.outbound import to_client
 from kitebase.plugins import PluginsManager
 
 BASE_MODEL = {
@@ -309,3 +311,29 @@ def test_a_file_that_is_not_a_mapping_is_an_error(bench):
     (base / 'help').mkdir()
     (base / 'help' / 'it.yaml').write_text('- just a list\n')
     assert [i['code'] for i in diagnose(reload())] == ['help-file']
+
+
+# ── On the way to the client ────────────────────────────────────────────────
+
+
+def test_the_help_of_a_page_reaches_the_client_translated(bench, monkeypatch):
+    reload, base, _ = bench
+    translate(base, 'tables.Doc.columns.title', 'Di cosa parla.')
+    app = reload()
+    monkeypatch.setattr(kitebase.utils, 'get_app', lambda: app)
+    field = {'name': 'title', 'label': 'Title', 'help': 'What it is about.'}
+    with use_locale('it'):
+        assert to_client(field)['help'] == 'Di cosa parla.'
+        assert to_client({'help': 'Nobody translates this.'})['help'] == 'Nobody translates this.'
+    assert to_client(field)['help'] == 'What it is about.'
+
+
+def test_the_catalog_is_kept_until_a_translation_changes(bench):
+    reload, base, _ = bench
+    translate(base, 'tables.Doc.columns.title', 'Di cosa parla.')
+    app = reload()
+    first = catalog(app, 'it')
+    assert catalog(app, 'it') is first
+    translate(base, 'tables.Doc.columns.title', 'Di che cosa parla.')
+    assert catalog(app, 'it') is not first
+    assert catalog(app, 'it').translate('What it is about.') == 'Di che cosa parla.'

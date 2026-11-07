@@ -733,7 +733,7 @@ def render_html(app: Any, doc: HelpDoc) -> RenderedHelp:
     """The guide as a standalone HTML page, in the language of the document: the
     texts from the translations of the plugins, the labels like the interface."""
     with use_locale(doc.lang):
-        catalog = help_texts.HelpCatalog(app, doc.lang)
+        catalog = help_texts.catalog(app, doc.lang)
         # A text no plugin translates may be one of the core, translated like the interface
         return _render(app, doc, lambda text: catalog.translate(text) or _(text))
 

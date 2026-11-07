@@ -151,6 +151,43 @@ class HelpCatalog:
         return self.by_text.get(normalize(text)) if self.by_text else None
 
 
+# One catalog per language, rebuilt when a translation file changes. The texts of
+# the plugins change only with a new PluginsManager, which a reload creates.
+_catalogs: Dict[str, Tuple[Any, HelpCatalog]] = {}
+
+
+def catalog(app: Any, lang: str) -> HelpCatalog:
+    """The catalog of a language, kept between requests."""
+    files = []
+    for name in app.pm.sorted:
+        path = help_dir(app.pm.plugins[name]) / f'{lang}.yaml'
+        if path.is_file():
+            files.append((str(path), path.stat().st_mtime_ns))
+    signature = (id(app.pm), tuple(files))
+    cached = _catalogs.get(lang)
+    if cached is None or cached[0] != signature:
+        cached = (signature, HelpCatalog(app, lang))
+        _catalogs[lang] = cached
+    return cached[1]
+
+
+def translate(text: str) -> str:
+    """A text for the user in the locale of the request: the `help:` of a page or
+    a field on its way to the client. The English when nothing translates it."""
+    import kitebase.utils
+    from kitebase.i18n import current_locale
+    lang = current_locale()
+    if lang == SOURCE:
+        return text
+    try:
+        app = kitebase.utils.get_app()
+    except AttributeError:      # no application yet
+        return text
+    if getattr(app, 'pm', None) is None:
+        return text
+    return catalog(app, lang).translate(text) or text
+
+
 def discourse(app: Any, page_id: str, lang: str = SOURCE) -> Optional[str]:
     """The long text of a page: the plugin that comes last wins, like a merge, and
     within it the language before the English. A translation from a plugin before

@@ -6,6 +6,8 @@ a table, the view of a dialog) passes it through `to_client`, and one table says
 what happens to each key on the way:
 
     label    translated to the reader's locale with `_()`
+    help     translated with the translations of the guide (kitebase.help_texts),
+             the English when there is none
     data     handed to the data as written, never translated: a column named
              `title` in a filter or a default is a value, and translating it
              would write another one
@@ -24,18 +26,21 @@ a port holding such a map calls `to_client` on each value.
 """
 from typing import Any, Dict
 
+from kitebase import help_texts
 from kitebase.i18n import _
 
 LABEL = 'label'
+HELP = 'help'
 DATA = 'data'
 META = 'meta'
 SERVER = 'server'
-POLICIES = (LABEL, DATA, META, SERVER)
+POLICIES = (LABEL, HELP, DATA, META, SERVER)
 
 _policies: Dict[str, str] = {
     'label': LABEL,
     'title': LABEL,
     'placeholder': LABEL,
+    'help': HELP,
     'source': DATA,
     'domain': DATA,
     'defaults': DATA,
@@ -83,6 +88,8 @@ def to_client(obj: Any) -> Any:
             continue
         if policy == LABEL and isinstance(value, str):
             out[key] = _(value)
+        elif policy == HELP and isinstance(value, str):
+            out[key] = help_texts.translate(value)
         elif policy == DATA:
             out[key] = _as_data(value)
         elif key == 'choices' and isinstance(value, list):
