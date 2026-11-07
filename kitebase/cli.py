@@ -659,8 +659,20 @@ examples:
         help='Write the guide of a page as a standalone HTML file',
     )
     p.add_argument('page_id', help='The page of a menu entry (e.g. book_list)')
+    p.add_argument('--lang', default='en', metavar='LANG',
+                   help='Language of the guide (default: en); what is not translated stays English')
     p.add_argument('-o', '--output', metavar='PATH',
                    help='Output file path (- = stdout; default: <output_dir>/help/<id>.html)')
+
+    # ── sync-help ──────────────────────────────────────────────────────────────
+    p = sub.add_parser(
+        'sync-help',
+        help='Bring the translations of the guide (help/<lang>.yaml) in step with the English',
+    )
+    p.add_argument('--lang', metavar='LANG',
+                   help='Start this language too, in every plugin that has texts')
+    p.add_argument('--plugin', action='append', metavar='NAME',
+                   help='Only this plugin (repeatable)')
 
     # ── dump-table ─────────────────────────────────────────────────────────────
     p = sub.add_parser(
@@ -861,8 +873,10 @@ def run_cli(app: Any, args: argparse.Namespace, output_dir: Path = Path('.')) ->
 
     elif args.command == 'help':
         from kitebase.help import help_merge, render_html
+        if args.lang != 'en':
+            app.pm.load_all_locales()
         try:
-            rendered = render_html(app, help_merge(app, args.page_id))
+            rendered = render_html(app, help_merge(app, args.page_id, args.lang))
         except ValueError as e:
             print(f'Error: {e}', file=sys.stderr)
             sys.exit(1)
@@ -877,6 +891,24 @@ def run_cli(app: Any, args: argparse.Namespace, output_dir: Path = Path('.')) ->
             out_path.parent.mkdir(parents=True, exist_ok=True)
             out_path.write_text(rendered.html, encoding='utf-8')
             print(f'Written: {out_path}')
+
+    elif args.command == 'sync-help':
+        from kitebase.help_texts import sync_help
+        try:
+            results = sync_help(app, args.lang, args.plugin)
+        except ValueError as e:
+            print(f'Error: {e}', file=sys.stderr)
+            sys.exit(1)
+        for r in results:
+            news = []
+            if r.added:
+                news.append(f'{len(r.added)} new')
+            if r.changed:
+                news.append(f'{len(r.changed)} changed in English')
+            state = 'written' if r.written else 'unchanged'
+            print(f"{r.path}: {state}{' (' + ', '.join(news) + ')' if news else ''}")
+        if not results:
+            print('No translation files: start one with --lang')
 
     elif args.command == 'dump-table':
         names = args.table or None

@@ -1,0 +1,51 @@
+# Translations of the guide, kept in step with the English by `kitebase sync-help`.
+# Translate the value under the language; an empty one shows the English.
+# `en_old` is the English the translation was made on: review it, then remove the line.
+
+tables.Author:
+  en: A writer of the catalogue, with the dates and the biography.
+  it: ''
+
+tables.Author.columns.wikidata:
+  en: 'The author''s item on Wikidata, such as Q154756: it is how the biography is found.'
+  it: ''
+
+tables.Author.columns.bio:
+  en: The text the Fetch biography command loads, which you can then change.
+  it: ''
+
+tables.Book:
+  en: A book of the catalogue, one row per title, with the data of this edition.
+  it: ''
+
+tables.Book.columns.original_title:
+  en: The title of the work, when this edition is a translation or carries another.
+  it: ''
+
+tables.Book.columns.first_published:
+  en: The year the work first came out, not the year of this edition.
+  it: ''
+
+tables.Book.columns.publication_date:
+  en: When this edition came out.
+  it: ''
+
+tables.Book.columns.language:
+  en: 'The language of this edition, as a two-letter code: en, it, fr.'
+  it: ''
+
+tables.Book.columns.publisher_id:
+  en: The publisher of this edition.
+  it: ''
+
+tables.Book.columns.tags:
+  en: Tags separated by commas. The first one is the main genre.
+  it: ''
+
+tables.BookAuthor.columns.notes:
+  en: A note on the part of this author in the book, such as translator or editor.
+  it: ''
+
+pages.author_list.content.navigator.commands.fetch_bio:
+  en: Looks up the biography on Wikipedia, through the Wikidata item of the author.
+  it: ''

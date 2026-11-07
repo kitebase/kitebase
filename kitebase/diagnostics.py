@@ -31,7 +31,7 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set
 
-from kitebase import access, media, settings
+from kitebase import access, help_texts, media, settings
 from kitebase.sections import get_section
 
 # Only plain identifiers ('title') and dotted fields ('Publisher.name') are
@@ -116,6 +116,7 @@ def run_checks(app: Any) -> List[Dict[str, Any]]:
     _check_vocabulary(app, issues)
     issues.extend(access.diagnose(app))
     issues.extend(media.diagnose(app))
+    issues.extend(help_texts.diagnose(app))
     issues.extend(settings.diagnose(app, _descriptor_sections(pm)))
     _check_sections(app, issues)
 

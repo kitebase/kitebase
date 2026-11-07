@@ -135,7 +135,8 @@
    "widget": "color",
    "length": 7,
    "label": "Color",
-   "help": "Hex color code (e.g., #FF5733)",
+   "doc": "Stored as a hex code, like #FF5733.",
+   "help_how": "Pick the color, or type its code, like #FF5733.",
    "$plugin": "common"
   },
   "FilePath": {
@@ -143,7 +144,7 @@
    "widget": "filepath",
    "length": 512,
    "label": "File Path",
-   "help": "Path to uploaded file or resource",
+   "doc": "Path to an uploaded file or a resource.",
    "$plugin": "common"
   },
   "Money": {
@@ -259,7 +260,7 @@
      "unique": true,
      "nullable": false,
      "label": "Username",
-     "help": "Unique login username",
+     "help": "The name used to sign in. No two users can have the same.",
      "$plugin": "common"
     },
     {
@@ -574,7 +575,7 @@
   "User": {
    "name": "users",
    "label": "User",
-   "help": "The user table contains the user information\n",
+   "help": "The people who can sign in, with the roles that say what each one can do.",
    "tags": [
     "anag"
    ],

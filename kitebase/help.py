@@ -26,11 +26,13 @@ import html
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Set
+from typing import Any, Callable, Dict, Iterator, List, Optional, Set
 
 from jinja2 import ChoiceLoader, Environment, FileSystemLoader, PrefixLoader, select_autoescape
 from markdown_it import MarkdownIt
 
+from kitebase import help_texts
+from kitebase.i18n import _, _f, use_locale
 from kitebase.media import MediaError, parse_size
 from kitebase.pages import BUTTON, COLLECTION, LIST_TYPES, field_from_column, load_page, lookup_page
 
@@ -116,6 +118,7 @@ class HelpItem:
 class HelpDoc:
     root: str
     title: str
+    lang: str = help_texts.SOURCE
     intro: List[str] = field(default_factory=list)
     commands: List[HelpCommand] = field(default_factory=list)
     groups: List[HelpGroup] = field(default_factory=list)
@@ -147,17 +150,8 @@ def _limits(attrs: Dict[str, Any]) -> str:
     except MediaError:
         size = None
     if size:
-        parts.append(f'up to {size / 1024 / 1024:g} MB')
+        parts.append(_f('up to {size} MB', size=f'{size / 1024 / 1024:g}'))
     return ', '.join(parts)
-
-
-def _discourse(app: Any, page_id: str) -> Optional[str]:
-    """The discursive text of a page: the plugin that comes last wins, like a merge."""
-    for name in reversed(app.pm.sorted):
-        path = Path(app.pm.plugins[name].plugin_dir) / 'help' / 'en' / f'{page_id}.md'
-        if path.is_file():
-            return path.read_text(encoding='utf-8')
-    return None
 
 
 def _menu_pages(app: Any) -> Dict[str, str]:
@@ -209,7 +203,7 @@ class _Merge:
             self.table_text(model, texts)
         before = len(texts)
         self.text(texts, page.get('help'))
-        self.text(texts, _discourse(self.app, page_id))
+        self.text(texts, help_texts.discourse(self.app, page_id, self.doc.lang))
         if by_hand:
             if len(texts) == before:
                 self.doc.warnings.append(
@@ -522,7 +516,7 @@ class _Merge:
                 if not isinstance(expr, str) or column.get('visible') is False:
                     continue
                 name = expr.split(' as ')[0].strip()
-                head, _, rest = name.partition('.')
+                head, _sep, rest = name.partition('.')
                 if rest and head in self.app.tables and head != grid['model']:
                     continue
                 name = rest if rest and head == grid['model'] else head
@@ -540,8 +534,9 @@ class _Merge:
         self.doc.anchors = {p: a for p, a in self.doc.anchors.items() if a in kept}
 
 
-def help_merge(app: Any, page_id: str) -> HelpDoc:
-    """The guide of a page, as data.
+def help_merge(app: Any, page_id: str, lang: str = help_texts.SOURCE) -> HelpDoc:
+    """The guide of a page, as data. The long texts are read in `lang`; the short
+    ones stay English here and are translated by `render_html`.
 
     Raises:
         ValueError: if no page answers to that id
@@ -550,17 +545,20 @@ def help_merge(app: Any, page_id: str) -> HelpDoc:
     if page is None:
         raise ValueError(f"No page '{page_id}'")
     title = _menu_pages(app).get(page_id) or page.get('title') or _humanize(page_id)
-    doc = HelpDoc(root=page_id, title=title)
-    merge = _Merge(app, page_id, doc)
-    merge.screen(page_id)
-    merge.grid_columns()
-    merge.prune()
+    doc = HelpDoc(root=page_id, title=title, lang=lang)
+    with use_locale(lang):
+        merge = _Merge(app, page_id, doc)
+        merge.screen(page_id)
+        merge.grid_columns()
+        merge.prune()
     return doc
 
 
 # ── Render ──────────────────────────────────────────────────────────────────
 
 _LINK = re.compile(r'\[\[([^\]\n]+)\]\]')
+# A page on the web leaves the guide: inside the frame of the app it would take its place
+_WEB = re.compile(r'https?://', re.IGNORECASE)
 
 
 class _Links:
@@ -578,8 +576,8 @@ class _Links:
         """(href, default text) of a reference, or None."""
         told = next((f for f in self.doc.all_fields() if f.key == ref), None)
         if told is not None:
-            return f'#field-{ref}', told.label
-        head, _, rest = ref.partition('.')
+            return f'#field-{ref}', _(told.label)
+        head, _sep, rest = ref.partition('.')
         table = self.app.tables.get(head)
         if table is not None:
             label = head
@@ -588,11 +586,11 @@ class _Links:
                 if column is None:
                     return None
                 label = column.attributes.get('label') or _humanize(rest)
-            return self.page_href(f'{head.lower()}_list'), label
+            return self.page_href(f'{head.lower()}_list'), _(label)
         page = load_page(self.app, ref)
         if page is None:
             return None
-        return self.page_href(ref), page.get('title') or _humanize(ref)
+        return self.page_href(ref), _(page.get('title') or _humanize(ref))
 
     def page_href(self, page_id: str) -> str:
         if page_id in self.doc.screens:
@@ -623,11 +621,18 @@ def _markdown(links: _Links) -> MarkdownIt:
         return True
 
     def render(self, tokens, idx, options, env):
-        ref, _, text = tokens[idx].content.partition('|')
+        ref, _sep, text = tokens[idx].content.partition('|')
         return links.anchor(ref.strip(), text.strip() or None)
+
+    def link_open(self, tokens, idx, options, env):
+        if _WEB.match(tokens[idx].attrGet('href') or ''):
+            tokens[idx].attrSet('target', '_blank')
+            tokens[idx].attrSet('rel', 'noopener noreferrer')
+        return self.renderToken(tokens, idx, options, env)
 
     md.inline.ruler.before('emphasis', 'help_link', rule)
     md.add_render_rule('help_link', render)
+    md.add_render_rule('link_open', link_open)
     return md
 
 
@@ -653,68 +658,84 @@ def _environment(app: Any) -> Environment:
         if not folder.is_dir():
             raise ValueError(f"help_templates: no folder '{folder}'")
         loaders.insert(0, FileSystemLoader(folder))
-    return Environment(loader=ChoiceLoader(loaders), autoescape=select_autoescape(['html']))
+    env = Environment(loader=ChoiceLoader(loaders), autoescape=select_autoescape(['html']))
+    # The words of the skeleton, in the language of the guide
+    env.globals['_'] = _
+    return env
 
 
 def render_html(app: Any, doc: HelpDoc) -> RenderedHelp:
-    """The guide as a standalone HTML page."""
+    """The guide as a standalone HTML page, in the language of the document: the
+    texts from the translations of the plugins, the labels like the interface."""
+    with use_locale(doc.lang):
+        catalog = help_texts.HelpCatalog(app, doc.lang)
+        # A text no plugin translates may be one of the core, translated like the interface
+        return _render(app, doc, lambda text: catalog.translate(text) or _(text))
+
+
+def _render(app: Any, doc: HelpDoc, tr: Callable[[str], str]) -> RenderedHelp:
     links = _Links(app, doc)
     md = _markdown(links)
 
+    def text(value: str) -> str:
+        return md.render(tr(value))
+
     def commands(items: List[HelpCommand]) -> List[Dict[str, str]]:
-        return [{'label': c.label, 'html': md.render(c.text)} for c in items]
+        return [{'label': _(c.label), 'html': text(c.text)} for c in items]
 
     def group(g: HelpGroup) -> Dict[str, Any]:
         return {
             'id': g.id,
-            'title': g.title,
-            'texts': [md.render(t) for t in g.texts],
+            'title': _(g.title) if g.title else None,
+            'texts': [text(t) for t in g.texts],
             'fields': [{
                 'id': f'field-{f.key}',
-                'label': links.anchor(f.link, f.label) if f.link else html.escape(f.label),
-                'html': md.render(f.text) if f.text else '',
+                'label': links.anchor(f.link, _(f.label)) if f.link else html.escape(_(f.label)),
+                'html': text(f.text) if f.text else '',
                 'limits': f.limits,
             } for f in g.fields],
             'commands': commands(g.commands),
         }
 
     def item(i: HelpItem) -> Dict[str, Any]:
+        label = _(i.title)
         if i.ref:
-            title = links.anchor(i.ref, i.title)
+            title = links.anchor(i.ref, label)
         elif i.anchor:
-            title = f'<a href="#{html.escape(i.anchor, quote=True)}">{html.escape(i.title)}</a>'
+            title = f'<a href="#{html.escape(i.anchor, quote=True)}">{html.escape(label)}</a>'
         else:
-            title = html.escape(i.title)
-        return {'title': title, 'html': md.render(i.text) if i.text else '',
+            title = html.escape(label)
+        return {'title': title, 'html': text(i.text) if i.text else '',
                 'commands': commands(i.commands)}
 
-    parts = [{'id': key, 'title': title, 'items': [item(i) for i in doc.parts[key]]}
+    parts = [{'id': key, 'title': _(title), 'items': [item(i) for i in doc.parts[key]]}
              for key, title in _PART_TITLES.items() if doc.parts.get(key)]
 
     index: List[Dict[str, Any]] = []
     if doc.commands:
-        index.append({'id': 'commands', 'title': 'Commands', 'subs': []})
+        index.append({'id': 'commands', 'title': _('Commands'), 'subs': []})
     if doc.groups:
-        index.append({'id': 'fields', 'title': 'Fields',
-                      'subs': [{'id': g.id, 'title': g.title} for g in doc.groups if g.title]})
+        index.append({'id': 'fields', 'title': _('Fields'),
+                      'subs': [{'id': g.id, 'title': _(g.title)} for g in doc.groups if g.title]})
     index.extend({'id': p['id'], 'title': p['title'], 'subs': []} for p in parts)
     if doc.how:
-        index.append({'id': 'filling-in', 'title': _HOW_TITLE, 'subs': []})
+        index.append({'id': 'filling-in', 'title': _(_HOW_TITLE), 'subs': []})
 
     env = _environment(app)
     menu = _menu_pages(app)
     config = getattr(app.pm, 'config', None) or {}
     page = env.get_template('skeleton.html').render(
-        app_title=config.get('title') or config.get('name') or '',
-        title=doc.title,
+        lang=doc.lang,
+        app_title=_(config.get('title') or config.get('name') or ''),
+        title=_(doc.title),
         style=env.loader.get_source(env, 'style.css')[0],
-        intro=[md.render(t) for t in doc.intro],
+        intro=[text(t) for t in doc.intro],
         index=index,
         commands=commands(doc.commands),
         groups=[group(g) for g in doc.groups],
         parts=parts,
-        how_title=_HOW_TITLE,
-        how=[{'title': h.title, 'html': md.render(h.text)} for h in doc.how],
-        see_also=[links.anchor(p, menu.get(p)) for p in doc.see_also],
+        how_title=_(_HOW_TITLE),
+        how=[{'title': _(h.title), 'html': text(h.text)} for h in doc.how],
+        see_also=[links.anchor(p, _(menu[p]) if menu.get(p) else None) for p in doc.see_also],
     )
     return RenderedHelp(page, doc.warnings + links.warnings, sorted(links.external))

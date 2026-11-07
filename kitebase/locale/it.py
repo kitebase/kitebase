@@ -34,4 +34,23 @@ register_translations('it', {
     'Invalid credentials':              'Credenziali non valide',
     'Account is inactive':              'Account non attivo',
     'User not authenticated':           'Utente non autenticato',
+
+    # the guide (help.py)
+    'Contents':                         'Indice',
+    'Commands':                         'Comandi',
+    'Fields':                           'Campi',
+    'See also':                         'Vedi anche',
+    'Inside the form':                  'Dentro la scheda',
+    'When you select a row':            'Quando selezioni una riga',
+    'Beside the list':                  'Accanto alla lista',
+    'Filling in the fields':            'Come si compilano i campi',
+    'Choosing from another table':      "Scegliere da un'altra tabella",
+    'Type to search and pick with the arrow keys and Enter. '
+    '*Search more...*, at the end of the list, opens the whole table.':
+        'Scrivi per cercare e scegli con le frecce e Invio. '
+        "*Cerca altro...*, in fondo all'elenco, apre tutta la tabella.",
+    'Dates':                            'Date',
+    'Type the date, or pick it from the calendar.':
+        'Scrivi la data, o sceglila dal calendario.',
+    'up to {size} MB':                  'fino a {size} MB',
 })

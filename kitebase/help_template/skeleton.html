@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ lang }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,7 +12,7 @@
 <main>
 <h1 id="top">{{ title }}</h1>
 {% for text in intro %}{{ text | safe }}{% endfor %}
-{% block index %}{% if index | length > 1 %}<nav aria-label="Contents">
+{% block index %}{% if index | length > 1 %}<nav aria-label="{{ _('Contents') }}">
 <ul>
 {% for s in index %}<li><a href="#{{ s.id }}">{{ s.title }}</a>{% if s.subs %}
 <ul>{% for sub in s.subs %}<li><a href="#{{ sub.id }}">{{ sub.title }}</a></li>{% endfor %}</ul>{% endif %}</li>
@@ -25,11 +25,11 @@
 {% endfor %}</dl>
 {% endmacro %}
 {% if commands %}<section id="commands">
-<h2>Commands</h2>
+<h2>{{ _('Commands') }}</h2>
 {{ command_list(commands) }}</section>
 {% endif %}
 {% if groups %}<section id="fields">
-<h2>Fields</h2>
+<h2>{{ _('Fields') }}</h2>
 {% for g in groups %}<section id="{{ g.id }}">
 {% if g.title %}<h3>{{ g.title }}</h3>
 {% endif %}{% for text in g.texts %}{{ text | safe }}{% endfor %}
@@ -37,7 +37,7 @@
 {% for f in g.fields %}<dt id="{{ f.id }}">{{ f.label | safe }}</dt>
 {% if f.html or f.limits %}<dd>{{ f.html | safe }}{% if f.limits %}<p class="limits">{{ f.limits }}</p>{% endif %}</dd>
 {% endif %}{% endfor %}</dl>
-{% endif %}{% if g.commands %}<h4>Commands</h4>
+{% endif %}{% if g.commands %}<h4>{{ _('Commands') }}</h4>
 {{ command_list(g.commands) }}{% endif %}</section>
 {% endfor %}</section>
 {% endif %}
@@ -58,7 +58,7 @@
 </section>
 {% endif %}
 {% if see_also %}<section id="see-also" class="part">
-<h2>See also</h2>
+<h2>{{ _('See also') }}</h2>
 <ul>
 {% for link in see_also %}<li>{{ link | safe }}</li>
 {% endfor %}</ul>

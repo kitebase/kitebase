@@ -1,0 +1,39 @@
+# Translations of the guide, kept in step with the English by `kitebase sync-help`.
+# Translate the value under the language; an empty one shows the English.
+# `en_old` is the English the translation was made on: review it, then remove the line.
+
+pages.book_with_reviews:
+  en: The catalogue with what readers did. Click a book to see its detail, its reviews and its loans.
+  it: ''
+
+pages.book_list:
+  en: The catalogue. Open a book to read or change it, or add a new one.
+  it: ''
+
+pages.book_form:
+  en: A book in one screen. What is read less often stays behind the buttons.
+  it: ''
+
+pages.book_form.content.layout.actions.children.loans_col.layout.0:
+  en: Who borrowed this book, and when. The button shows how many loans there are.
+  it: ''
+
+pages.book_form.content.layout.actions.children.stats_col.layout.0:
+  en: Counts the loans of this book. The book must be saved first.
+  it: ''
+
+pages.book_description_form:
+  en: The same book with the fields read less often. Confirm brings them back to the form.
+  it: ''
+
+views.book_list_view.navigator.commands.archive:
+  en: Chooses whether the list shows active, archived or all books, and archives or restores the selected one.
+  it: ''
+
+views.book_list_view.navigator.commands.fetch_description:
+  en: Looks up the description on Open Library by ISBN, and asks before replacing a text.
+  it: ''
+
+views.loan_list_view.navigator.commands.print_ticket:
+  en: Prints the ticket of the selected loan again.
+  it: ''

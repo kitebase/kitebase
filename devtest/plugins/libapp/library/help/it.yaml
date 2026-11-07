@@ -1,0 +1,43 @@
+# Translations of the guide, kept in step with the English by `kitebase sync-help`.
+# Translate the value under the language; an empty one shows the English.
+# `en_old` is the English the translation was made on: review it, then remove the line.
+
+tables.Book.columns.cover:
+  en: The picture of the cover. It can be uploaded before the book is saved.
+  it: ''
+
+tables.Book.columns.sample:
+  en: A chapter to read, as a PDF. It opens in the browser.
+  it: ''
+
+tables.Author.columns.documents:
+  en: What the library keeps about this author, such as contracts and letters.
+  it: ''
+
+tables.LibraryUser.columns.card.help_how:
+  en: 'One picture per field: drag it in or choose it, and it is kept when you save the form. A very large photo can be reduced before it is sent.'
+  it: ''
+
+tables.LibraryUser.columns.phone:
+  en: Contact phone number
+  it: ''
+
+tables.Review:
+  en: What a reader thought of a book.
+  it: ''
+
+tables.Review.columns.rating:
+  en: From one to five stars.
+  it: ''
+
+tables.Loan:
+  en: A book lent to a member, from the day it goes out to the day it comes back.
+  it: ''
+
+tables.Loan.columns.due_date:
+  en: When the book should come back.
+  it: ''
+
+tables.Loan.columns.returned_at:
+  en: Empty while the book is out.
+  it: ''

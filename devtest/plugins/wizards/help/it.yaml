@@ -1,0 +1,11 @@
+# Translations of the guide, kept in step with the English by `kitebase sync-help`.
+# Translate the value under the language; an empty one shows the English.
+# `en_old` is the English the translation was made on: review it, then remove the line.
+
+views.payment_wizard_params_form.layout.0.fields.min_amount:
+  en: Esclude i clienti con saldo inferiore a questo valore
+  it: ''
+
+views.payment_wizard_params_form.layout.0.fields.agent:
+  en: Lascia vuoto per tutti gli agenti
+  it: ''

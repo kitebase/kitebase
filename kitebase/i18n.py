@@ -10,8 +10,9 @@ Usage:
 English is the key — no separate EN file needed.
 Falls back to the key itself if no translation is found.
 """
+from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Dict
+from typing import Dict, Iterator
 
 _locale: ContextVar[str] = ContextVar('locale', default='en')
 _translations: Dict[str, Dict[str, str]] = {}
@@ -20,6 +21,17 @@ _translations: Dict[str, Dict[str, str]] = {}
 def set_locale(locale: str) -> None:
     """Set the locale for the current request context."""
     _locale.set(locale or 'en')
+
+
+@contextmanager
+def use_locale(locale: str) -> Iterator[None]:
+    """The locale for a block, then the previous one again: for whoever produces
+    something in a language other than the request's, like a guide from the CLI."""
+    token = _locale.set(locale or 'en')
+    try:
+        yield
+    finally:
+        _locale.reset(token)
 
 
 def register_translations(locale: str, data: Dict[str, str]) -> None:

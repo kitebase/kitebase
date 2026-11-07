@@ -1,0 +1,78 @@
+# Translations of the guide, kept in step with the English by `kitebase sync-help`.
+# Translate the value under the language; an empty one shows the English.
+# `en_old` is the English the translation was made on: review it, then remove the line.
+
+tables.PurchaseOrder:
+  en: An order to one publisher for the books the library wants to buy.
+  it: Un ordine a un editore per i libri che la biblioteca vuole comprare.
+
+tables.PurchaseOrder.columns.order_date:
+  en: The date of the order. A new order starts from the working date.
+  it: La data dell'ordine. Un ordine nuovo parte dalla data di lavoro.
+
+tables.PurchaseOrder.columns.publisher_id:
+  en: The publisher the books are ordered from.
+  it: L'editore a cui si ordinano i libri.
+
+tables.PurchaseOrder.columns.supplier_reference:
+  en: 'The publisher''s own reference: their quote, or the sheet they sent.'
+  it: ''
+
+tables.PurchaseOrder.columns.expected_delivery:
+  en: When the books should arrive. It cannot come before the date of the order.
+  it: Quando dovrebbero arrivare i libri. Non può venire prima della data dell'ordine.
+
+tables.PurchaseOrder.columns.footer_discount:
+  en: A discount on the whole order, beside the discount of each line.
+  it: ''
+
+tables.PurchaseOrderLine.columns.book_id:
+  en: A book of the order's publisher.
+  it: ''
+
+tables.PurchaseOrderLine.columns.discount:
+  en: The discount on this line. A new line starts from the discount set in the header.
+  it: ''
+
+settings.acquisitions:
+  en: How a new purchase order starts
+  it: ''
+
+settings.acquisitions.items.default_discount:
+  en: 'The discount a new order proposes for its lines: each order may change it'
+  it: ''
+
+pages.purchaseorder_list:
+  en: The orders sent to the publishers, newest first. Open one to read or change it, or add a new one.
+  it: Gli ordini mandati agli editori, i più recenti per primi. Aprine uno per leggerlo o cambiarlo, o aggiungine uno nuovo.
+
+pages.purchaseorder_list.content.navigator.commands.import_sheet:
+  en: |-
+    Creates orders from a spreadsheet with one row per order line. The
+    columns are `order`, `publisher`, `isbn` and `quantity`, with `price`
+    and `discount` if you have them. The sheet is written whole or not at
+    all: if one order is refused, none is created.
+  it: ''
+
+pages.purchaseorder_list.content.navigator.commands.duplicate:
+  en: |-
+    A new order from the selected one, with the same publisher. It asks
+    for the date, proposing a month after the original, and whether to
+    copy the lines. Nothing is written until you save.
+  it: ''
+
+pages.purchaseorder_form:
+  en: An order is written in three steps, and each step is checked before you move on.
+  it: Un ordine si scrive in tre passi, e ogni passo si controlla prima di andare avanti.
+
+pages.purchaseorder_form.content.layout.header.columns.left.fields.default_discount:
+  en: Proposed for the lines you add from now on. It starts from the purchasing settings and is not kept with the order.
+  it: ''
+
+pages.purchaseorder_form.content.layout.relations.pages.lines_tab.layout.lines.view.navigator.commands.discount_lines:
+  en: Sets the same discount on the ticked lines, or on all of them when none is ticked. Nothing is written until you save the order.
+  it: ''
+
+pages.purchaseorder_form.content.layout.relations.pages.lines_tab.layout.lines.view.navigator.commands.sort_by_publication:
+  en: Puts all the lines in the order their books came out, oldest first. A book without a date goes last.
+  it: ''
