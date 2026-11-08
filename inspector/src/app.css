@@ -1,0 +1,58 @@
+:root {
+	color-scheme: light dark;
+	--bg: #f6f7f9;
+	--panel: #ffffff;
+	--text: #1f2933;
+	--muted: #616e7c;
+	--faint: #9aa5b1;
+	--line: #e1e5ea;
+	--accent: #1d5fa8;
+	--accent-text: #ffffff;
+	--code: #f1f3f6;
+	--hit: #fff4c2;
+	--warn: #a15c00;
+	--error: #b42318;
+	font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #12161b;
+		--panel: #1a2027;
+		--text: #e4e7eb;
+		--muted: #9aa5b1;
+		--faint: #616e7c;
+		--line: #2c3640;
+		--accent: #7ab8f5;
+		--accent-text: #12161b;
+		--code: #222a33;
+		--hit: #4a3f12;
+		--warn: #f0b35a;
+		--error: #f08a80;
+	}
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { font: inherit; color: inherit; cursor: pointer; }
+code, pre, .mono { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 12.5px; }
+h1 { font-size: 1.25rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.05rem; margin: 1.5rem 0 .5rem; }
+h3 { font-size: .95rem; margin: 1rem 0 .4rem; }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+.small { font-size: 12px; }
+table.grid { width: 100%; border-collapse: collapse; background: var(--panel); }
+table.grid th { text-align: left; font-weight: 600; font-size: 12px; color: var(--muted); padding: .35rem .5rem; border-bottom: 1px solid var(--line); }
+table.grid td { padding: .3rem .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.grid tr.selected td { background: var(--hit); }
+table.grid tr.clickable { cursor: pointer; }
+table.grid tr.clickable:hover td { background: var(--code); }
+.badge { display: inline-block; padding: 0 .4rem; border-radius: 999px; font-size: 11px; background: var(--code); color: var(--muted); margin-right: .2rem; white-space: nowrap; }
+.badge.accent { background: var(--accent); color: var(--accent-text); }
+.badge.warning { color: var(--warn); }
+.badge.error { color: var(--error); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: .75rem 1rem; }
+input.search { width: 100%; padding: .35rem .5rem; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--text); font: inherit; }
+.linkish { background: none; border: 0; padding: 0; color: var(--accent); }
+.linkish:hover { text-decoration: underline; }

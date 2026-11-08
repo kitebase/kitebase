@@ -27,7 +27,6 @@ Issue format (shared with PluginsManager.add_issue):
   {severity: 'error'|'warning'|'info', code, path, message, plugin}
 """
 
-import inspect
 import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set
@@ -715,22 +714,6 @@ def mask_yaml_text(text: str) -> str:
 
 # ── Full dump ──────────────────────────────────────────────────────────────────
 
-def _catalog_dump(app: Any) -> Dict[str, Any]:
-    """The catalog of the forms, and where the application uses each key."""
-    from kitebase import catalog, vocabulary
-
-    cat = catalog.load()
-    sections = {norm.split('.')[0] for norm in cat.get('roots') or {}}
-    data = {name: app.pm.data[name] for name in sections if name in app.pm.data}
-    return {
-        'roots': cat.get('roots') or {},
-        'forms': catalog.forms(cat),
-        'directives': cat.get('directives') or {},
-        'tokens': catalog.tokens(cat),
-        'uses': catalog.uses(data, vocabulary.load(), cat),
-    }
-
-
 def dump_app(app: Any) -> Dict[str, Any]:
     """
     Build the complete effective-state snapshot of a loaded app.
@@ -738,8 +721,8 @@ def dump_app(app: Any) -> Dict[str, Any]:
     Everything is JSON-serializable (write with json.dumps(..., default=str)
     to be safe with dates or other stray objects).
     """
+    from kitebase import introspect
     from kitebase.cli import _table_dict
-    from kitebase.endpoints import _ENDPOINTS
 
     pm = app.pm
 
@@ -812,15 +795,8 @@ def dump_app(app: Any) -> Dict[str, Any]:
         'tables': {name: _table_dict(t) for name, t in app.tables.items()},
         'types': app.get_type_schema(include_builtin=False),
         **sections,
-        'endpoints': {
-            name: {
-                'module': getattr(fn, '__module__', ''),
-                'doc': (getattr(fn, '__doc__', None) or '').strip().split('\n')[0],
-                'docstring': inspect.cleandoc(getattr(fn, '__doc__', None) or ''),
-            }
-            for name, fn in sorted(_ENDPOINTS.items())
-        },
-        'catalog': _catalog_dump(app),
+        'endpoints': introspect.endpoints(),
+        'catalog': introspect.catalog(app),
         'contested_keys': contested,
         'merge_history': dict(sorted(pm.history.items())),
         'source_files': source_files,

@@ -1,0 +1,199 @@
+"""
+What the inspector asks of a loaded application: provenance of each column,
+plugin by plugin, with the lines of the file; the chain of types; the server
+that answers on localhost only, to the host it is bound to.
+"""
+import json
+import os
+import threading
+import time
+import urllib.error
+import urllib.request
+
+import pytest
+import yaml
+
+from kitebase import inspector, introspect
+
+BASE_MODEL = """\
+types:
+  Code:
+    base: String
+    length: 8
+
+tables:
+  Book:
+    label: Book
+    columns:
+      - name: id
+        type: Integer
+        primary_key: true
+        autoincrement: true
+
+      - name: title
+        type: String
+        length: 80
+
+      # the shelf code, written by the shop
+      - name: code
+        type: Code
+"""
+
+SHOP_MODEL = """\
+tables:
+  Book:
+    columns:
+      - name: title
+        nullable: false
+      - name: token
+        type: String
+        api_key: "key-91f3"
+"""
+
+
+def _app(tmp_path, monkeypatch):
+    import kitebase.utils
+    from kitebase.db import DB
+    from kitebase.plugins import PluginsManager
+
+    for name, deps, model in (('base', [], BASE_MODEL), ('shop', ['base'], SHOP_MODEL)):
+        plugin = tmp_path / 'plugins' / name
+        plugin.mkdir(parents=True)
+        (plugin / 'config.yaml').write_text(yaml.safe_dump(
+            {'name': name, 'version': '0.0.1', 'depends_on': deps}))
+        (plugin / 'model.yaml').write_text(model)
+    cfg = tmp_path / 'config.yaml'
+    cfg.write_text(yaml.safe_dump({'name': 'bench', 'plugins': ['plugins']}))
+    monkeypatch.chdir(tmp_path)
+
+    pm = PluginsManager()
+    pm.load_config(str(cfg))
+    kitebase.utils.register_standard_handlers(pm)
+    pm.load_plugins()
+    db = DB()
+    db.calc_db(pm)
+    monkeypatch.setattr(kitebase.utils, 'get_app', lambda: db)
+    return db
+
+
+def _column(table, name):
+    return next(c for c in table['columns'] if c['name'] == name)
+
+
+def test_a_column_says_which_plugins_write_it_and_where(tmp_path, monkeypatch):
+    book = introspect.table(_app(tmp_path, monkeypatch), 'Book')
+    title = _column(book, 'title')
+    assert [(l['plugin'], l['line'], l['end']) for l in title['layers']] == [
+        ('base', 15, 17), ('shop', 4, 5)]
+    assert title['layers'][1]['text'] == '      - name: title\n        nullable: false\n'
+    assert title['layers'][1]['declared'] == {'name': 'title', 'nullable': False}
+    # As it runs: the merge of the two
+    assert title['attributes']['nullable'] is False and title['attributes']['length'] == 80
+    assert book['plugins'] == ['base', 'shop']
+
+
+def test_a_snippet_stops_where_the_node_ends(tmp_path, monkeypatch):
+    # Neither the blank line nor the comment that introduces the next column
+    title = _column(introspect.table(_app(tmp_path, monkeypatch), 'Book'), 'title')
+    assert title['layers'][0]['text'].rstrip().endswith('length: 80')
+
+
+def test_the_types_a_column_takes_the_rest_from(tmp_path, monkeypatch):
+    code = _column(introspect.table(_app(tmp_path, monkeypatch), 'Book'), 'code')
+    assert [t['name'] for t in code['types']] == ['Code', 'String']
+    assert code['types'][0]['layers'][0]['plugin'] == 'base'
+    assert code['types'][1]['builtin'] is True
+
+
+def test_no_secret_leaves_with_a_layer(tmp_path, monkeypatch):
+    app = _app(tmp_path, monkeypatch)
+    text = json.dumps(introspect.table(app, 'Book'), default=str)
+    assert 'key-91f3' not in text
+    assert 'key-91f3' not in introspect.source(app, 'shop', 'model.yaml')['text']
+
+
+def test_only_the_files_of_a_plugin_are_read(tmp_path, monkeypatch):
+    app = _app(tmp_path, monkeypatch)
+    with pytest.raises(KeyError):
+        introspect.source(app, 'shop', '../../config.yaml')
+
+
+def test_everything_is_plain_json(tmp_path, monkeypatch):
+    app = _app(tmp_path, monkeypatch)
+    for answer in (introspect.app_summary(app), introspect.tables(app),
+                   introspect.table(app, 'Book'), introspect.catalog(app), introspect.endpoints()):
+        json.dumps(answer)
+
+
+# ── The server ─────────────────────────────────────────────────────────────────
+
+@pytest.fixture
+def server(tmp_path, monkeypatch):
+    app = _app(tmp_path, monkeypatch)
+    ui = tmp_path / 'ui'
+    ui.mkdir()
+    (ui / 'index.html').write_text('<!doctype html><title>inspector</title>')
+    srv = inspector.make_server(app, port=0, ui=ui)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    yield srv.server_address[1], app
+    srv.shutdown()
+    srv.server_close()
+
+
+def _get(port, path, host=None):
+    req = urllib.request.Request(f'http://127.0.0.1:{port}{path}',
+                                 headers={'Host': host or f'localhost:{port}'})
+    try:
+        with urllib.request.urlopen(req) as res:
+            return res.status, res.read()
+    except urllib.error.HTTPError as e:
+        return e.code, e.read()
+
+
+def test_the_server_answers_the_questions(server):
+    port, _ = server
+    status, body = _get(port, '/api/table/Book')
+    assert status == 200 and json.loads(body)['name'] == 'Book'
+    assert _get(port, '/api/table/Nope')[0] == 404
+    assert _get(port, '/api/nothing')[0] == 404
+
+
+def test_another_host_is_refused(server):
+    # A page that rebinds its own name to 127.0.0.1 still sends its name
+    port, _ = server
+    assert _get(port, '/api/app', host=f'evil.example:{port}')[0] == 403
+    assert _get(port, '/api/app', host='localhost:1')[0] == 403
+
+
+def test_a_path_out_of_the_page_gets_the_page(server):
+    port, _ = server
+    status, body = _get(port, '/../../config.yaml')
+    assert status == 200 and b'inspector' in body
+
+
+def test_a_changed_file_makes_the_application_old(server):
+    port, app = server
+    assert json.loads(_get(port, '/api/version')[1])['stale'] is False
+    model = app.pm.plugins['shop'].data_files[0]
+    later = time.time() + 5
+    os.utime(model, (later, later))
+    assert json.loads(_get(port, '/api/version')[1])['stale'] is True
+
+
+# ── The compiled page ──────────────────────────────────────────────────────────
+
+def test_the_page_is_compiled_when_missing_or_older_than_its_sources(tmp_path):
+    source, ui = tmp_path / 'inspector', tmp_path / 'ui'
+    (source / 'src').mkdir(parents=True)
+    (source / 'package.json').write_text('{}')
+    (source / 'src' / 'App.svelte').write_text('')
+    assert inspector.build_state(source, ui) == 'missing'
+    ui.mkdir()
+    page = ui / 'index.html'
+    page.write_text('')
+    later = time.time() + 5
+    os.utime(page, (later, later))
+    assert inspector.build_state(source, ui) == 'ok'
+    os.utime(source / 'src' / 'App.svelte', (later + 5, later + 5))
+    assert inspector.build_state(source, ui) == 'stale'
+    assert inspector.build_state(tmp_path / 'none', tmp_path / 'nothing') == 'no-source'

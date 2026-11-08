@@ -634,6 +634,8 @@ examples:
   dev                                   run this app and its client, together
   dev /path/to/app --no-client          just the server, on another app
   build-client                          compile this app's client into clientui/
+  inspector                             the developer's view of this app: http://localhost:8400
+  inspector build                       compile the inspector page (done by itself when needed)
         """,
     )
 
@@ -789,6 +791,19 @@ examples:
     p.add_argument('--no-server', action='store_true', help='Client only')
     p.add_argument('--no-client', action='store_true', help='Server only')
     _engine_option(p)
+
+    # ── inspector ──────────────────────────────────────────────────────────────
+    # Serving needs the application, and is handed to its script like `check`;
+    # `build` and `dev` only start processes.
+    p = sub.add_parser(
+        'inspector',
+        help="Serve the developer's view of the application on localhost",
+    )
+    p.add_argument('action', nargs='?', choices=['build', 'dev'],
+                   help='build: compile the page; dev: develop the inspector itself')
+    p.add_argument('--port', type=int, default=8400, help='Port on 127.0.0.1 (default: 8400)')
+    p.add_argument('--no-build', action='store_true',
+                   help='Do not compile the page, even when missing or old')
 
     # ── build-client ───────────────────────────────────────────────────────────
     p = sub.add_parser(
@@ -949,6 +964,14 @@ def run_cli(app: Any, args: argparse.Namespace, output_dir: Path = Path('.')) ->
         if n_errors:
             sys.exit(1)
 
+    elif args.command == 'inspector':
+        from kitebase import inspector
+        try:
+            inspector.serve(app, args.port, build_page=not args.no_build)
+        except inspector.InspectorError as e:
+            print(f'Error: {e}', file=sys.stderr)
+            sys.exit(1)
+
     elif args.command == 'db-check':
         report, aligned = db_check(app)
         print(report)
@@ -1026,6 +1049,17 @@ def main(argv: Optional[List[str]] = None) -> None:
             sys.exit(1)
         print_next_steps(target, args.name, args.server)
         return
+
+    if args.command == 'inspector' and args.action:
+        from kitebase import inspector
+        try:
+            if args.action == 'build':
+                inspector.build()
+                sys.exit(0)
+            sys.exit(inspector.dev(args.port))
+        except inspector.InspectorError as e:
+            print(f'Error: {e}', file=sys.stderr)
+            sys.exit(1)
 
     if args.command in ('dev', 'build-client'):
         from kitebase import dev

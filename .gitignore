@@ -20,3 +20,7 @@ devtest/*.log
 .venv
 .vscode
 .ipynb*/
+
+# The inspector page, compiled by `kitebase inspector build` from inspector/
+kitebase/inspector_ui/
+inspector/node_modules/
