@@ -1053,6 +1053,29 @@ class DbTable:
         # Remove processed columns from attributes
         self.attributes.pop('columns', None)
 
+    def _declared_columns(self, db: DB) -> Iterator[Dict[str, Any]]:
+        """The column definitions of this table before resolution: its own, then its mixins'.
+
+        A mixin's columns are the type's, unresolved at this point but already
+        merged along the type's own inheritance.
+        """
+        yield from self._columns
+        for mixin_name in self.attributes.get('mixins', []):
+            mixin = db.types.get(mixin_name)
+            yield from (mixin.attributes.get('columns', []) if mixin else [])
+
+    def stored_column(self, name: str) -> Optional['DbColumn']:
+        """A resolved column of this table that the database stores, its own or a mixin's."""
+        for col in self.columns:
+            if col.name == name:
+                return col
+        for mixin_name in self.attributes.get('mixins', []):
+            mixin = self.db.types.get(mixin_name) if self.db else None
+            for col in (mixin.columns if mixin else []):
+                if col.name == name:
+                    return col
+        return None
+
     def _declared_primary_key(self, db: DB) -> Optional[str]:
         """Name of the primary key this table declares, from a column or its type."""
         def is_key(column: Dict[str, Any]) -> bool:
@@ -1061,17 +1084,7 @@ class DbTable:
             declared_type = db.types.get(column.get('type'))
             return bool(declared_type and declared_type.attributes.get('primary_key'))
 
-        for column in self._columns:
-            if is_key(column):
-                return column['name']
-        # A mixin can carry the key too — its columns are the type's, unresolved
-        # at this point but already merged along the type's own inheritance.
-        for mixin_name in self.attributes.get('mixins', []):
-            mixin = db.types.get(mixin_name)
-            for column in (mixin.attributes.get('columns', []) if mixin else []):
-                if is_key(column):
-                    return column['name']
-        return None
+        return next((col['name'] for col in self._declared_columns(db) if is_key(col)), None)
 
     def materialize_junction_key(self, db: DB, pk_name: str = 'id') -> None:
         """
@@ -1151,7 +1164,8 @@ class DbTable:
             raise ValueError(f"Table '{self.name}': many_to_many target table "
                              f"'{target_table}' does not exist")
 
-        key = next((col for col in foreign._columns if col.get('name') == target_key), None)
+        key = next((col for col in foreign._declared_columns(db)
+                    if col.get('name') == target_key), None)
         if key is None or not key.get('type'):
             raise ValueError(f"Table '{self.name}': many_to_many target "
                              f"'{target_table}.{target_key}' does not exist")
@@ -1198,10 +1212,8 @@ class DbTable:
             target['id'] = id
 
             # Find the referenced column type
-            for col in foreign.columns:
-                if id == col.name:
-                    target['db_type'] = col.db_type
-                    break
+            col = foreign.stored_column(id)
+            target['db_type'] = col.db_type if col else None
             if not target['db_type']:
                 raise ValueError(f"Many to Many Column error in table: {self.name}")
 
@@ -1339,10 +1351,9 @@ class DbColumn:
         id = fk['id']
 
         # Find the referenced column type
-        for col in foreign.columns:
-            if id == col.name:
-                self.db_type = col.db_type
-                break
+        col = foreign.stored_column(id)
+        if col:
+            self.db_type = col.db_type
         if not self.db_type:
             raise ValueError(f"Column: {self.name} has invalid foreign reference")
 

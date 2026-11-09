@@ -33,17 +33,18 @@ def fresh_registry():
     Base.metadata.clear()
 
 
-def build(tmp_path, monkeypatch, tables, source=None, config=None):
+def build(tmp_path, monkeypatch, tables, source=None, config=None, types=None):
     """Write a one-plugin app declaring `tables`, and return the resolved schema.
 
     `source` is the plugin's model.py, when the test needs generated classes to
     inherit from a Python class of the same name; `config` adds keys to the app
-    config.yaml.
+    config.yaml; `types` declares the types and mixins the tables use.
     """
     plugin = tmp_path / 'plugins' / 'app'
     plugin.mkdir(parents=True, exist_ok=True)   # a test may generate twice
     (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'app', 'version': '0.0.1'}))
-    (plugin / 'model.yaml').write_text(yaml.safe_dump({'tables': tables}))
+    model = {'tables': tables, **({'types': types} if types else {})}
+    (plugin / 'model.yaml').write_text(yaml.safe_dump(model))
     if source:
         (plugin / 'model.py').write_text(source)
 
@@ -61,9 +62,9 @@ def build(tmp_path, monkeypatch, tables, source=None, config=None):
     return db
 
 
-def generate(tmp_path, monkeypatch, tables, source=None, config=None):
+def generate(tmp_path, monkeypatch, tables, source=None, config=None, types=None):
     """The model source generated for `tables`."""
-    db = build(tmp_path, monkeypatch, tables, source, config)
+    db = build(tmp_path, monkeypatch, tables, source, config, types)
     out = tmp_path / 'generated_model.py'
     Generator(db).generate(filename=str(out))
     return out.read_text()
@@ -660,6 +661,50 @@ def test_the_target_column_takes_the_base_type_of_the_key_it_points_at(tmp_path,
     assert 'String(length=8)' in author_fk
     assert 'primary_key' not in author_fk
     assert "ForeignKey('authors.code')" in author_fk
+    load(tmp_path, source)
+
+
+# A vocabulary whose key comes from a mixin: the table declares no column at all.
+CODED = {'Coded': {'columns': [
+    {'name': 'code', 'type': 'String', 'length': 8, 'primary_key': True},
+    {'name': 'name', 'type': 'String', 'length': 60},
+]}}
+
+
+def test_a_junction_may_point_at_a_key_a_mixin_carries(tmp_path, monkeypatch):
+    """The key is found where the table's own key would be: among the mixin's columns."""
+    source = generate(tmp_path, monkeypatch, {
+        'Tag': {'name': 'tags', 'mixins': ['Coded']},
+        'Book': table(name='books'),
+        'BookTag': junction('books_tags', other='Tag', column='tag_code',
+                            target1={'collection': 'tags'}, target2={'table': 'Tag.code'}),
+    }, types=CODED)
+
+    tag_fk = line(source, 'tag_code', 'BookTag')
+    assert 'String(length=8)' in tag_fk
+    assert "ForeignKey('tags.code')" in tag_fk
+    module = load(tmp_path, source)
+
+    engine = create_engine('sqlite://')
+    Base.metadata.create_all(engine)
+    with Session(engine) as session:
+        book, tag = module.Book(), module.Tag(code='PEACH', name='Peach')
+        session.add_all([book, tag])
+        session.flush()
+        session.add(module.BookTag(book_id=book.id, tag_code='PEACH'))
+        session.commit()
+        session.refresh(book)
+        assert [t.code for t in book.tags] == ['PEACH']
+
+
+def test_a_foreign_key_may_point_at_a_key_a_mixin_carries(tmp_path, monkeypatch):
+    source = generate(tmp_path, monkeypatch, {
+        'Tag': {'name': 'tags', 'mixins': ['Coded']},
+        'Book': table({'name': 'tag_code', 'type': 'String', 'length': 8,
+                       'foreign_key': {'target': 'Tag.code'}}, name='books'),
+    }, types=CODED)
+
+    assert "ForeignKey('tags.code')" in line(source, 'tag_code', 'Book')
     load(tmp_path, source)
 
 
