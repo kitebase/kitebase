@@ -1506,6 +1506,54 @@ of its ends:
         owned: false        # the rows survive the author
 ```
 
+#### A junction read as a field: `field: true`
+
+A junction whose rows say nothing beyond the pair is not a collection of
+records to edit: it is a **set of references**, a value of one of its ends.
+`field: true` on that end says so:
+
+```yaml
+  BookTag:
+    name: book_tags
+    mixins: [TagVocabulary]        # the vocabulary: id and name (commons `tags`)
+
+  BookTagLink:
+    name: book_tag_links
+    many_to_many:
+      target1: { table: Book.id, column: book_id, collection: tags, field: true }
+      target2: { table: BookTag.id, column: tag_id }
+```
+
+`Book` gets a field `tags` of type `RefSet`: the keys of the other end, in the
+order the links were written (`[3, 12]`). The generated model does not change;
+the junction rows never leave the server.
+
+- **Read** with the record by `db get` and `load_tree`, and by `query` when the
+  `select` names it (records format only). One query per RefSet for a whole
+  page of rows.
+- **Written** as the whole list by `db create`/`update` and `save_tree`: the
+  server removes the links that are gone and adds the new ones after the ones
+  that stay. A key that does not exist is refused on the field.
+- **Filtered** with `any_of`, `all_of` and `none_of`, which the querybuilder
+  applies to any collection of the main table (`{tags: [all_of, [3, 7]]}`), as
+  an EXISTS on the keys of the target's primary key.
+- **Access**: the links are part of the record's value. Reading or filtering
+  them asks for the record's read permission, writing them for its update; the
+  vocabulary keeps its own (filtering by tags reads `BookTag`).
+- A list may contain more than keys when a **resolver** is registered for the
+  target (`kitebase.refsets.register_resolver`, with `applies_to(target_class)`
+  and `resolve(session, target_class, ref, values)`); `creates = True` on it tells
+  the client that a missing entry can be added by name. The `tags` plugin of the
+  commons registers one that turns names into tags.
+- The client shows the field as badges, in forms (`refset` widget) and in lists
+  (a click on a badge filters the list), and offers the three operators in the
+  rule editor.
+
+Refused at startup: `field: true` without a `collection:`, which is the field's
+name, and on a junction whose rows carry a column without a `default` (`notes`
+above), which a list of keys would lose on every write. The other end gets no
+field unless it declares its own.
+
 ### 4.7 Indexes
 
 Compound indexes are declared at table level under `indexes`. Each index item
