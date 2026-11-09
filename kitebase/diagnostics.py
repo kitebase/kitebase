@@ -219,7 +219,9 @@ def _check_view(app: Any, view: Dict[str, Any], path: str,
             _check_tone(col, f'{path}.columns[{field}]', plugin, issues)
 
     _check_card(view, keys, path, plugin, issues)
-    _check_fields(view.get('fields') or [], colnames, model,
+    # A form also edits the junctions the table reads as a field (RefSet); a
+    # list does not query them, so `columns` above stays on the stored ones.
+    _check_fields(view.get('fields') or [], colnames | set(table.ref_sets), model,
                   f'{path}.fields', plugin, issues)
 
 

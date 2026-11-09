@@ -17,9 +17,10 @@ class FakeCol:
 
 
 class FakeTable:
-    def __init__(self, *cols):
+    def __init__(self, *cols, ref_sets=()):
         self.effective_columns = [FakeCol(c) for c in cols]
         self.attributes = {}
+        self.ref_sets = {name: object() for name in ref_sets}
 
 
 class FakeApp:
@@ -52,6 +53,7 @@ def app():
                     {'field': 'Publisher.ghost'},
                     {'field': '$props.computed'},
                     {'field': "COUNT(DISTINCT Author.id) as n_authors"},
+                    {'field': 'tags'},
                 ],
                 'actions': {'row': [
                     {'id': 'edit', 'action': 'stack_push', 'panel': 'missing_page'},
@@ -68,6 +70,7 @@ def app():
                 'source': {'model': 'Book'},
                 'fields': [
                     {'name': 'title'},
+                    {'name': 'tags'},
                     {'group': 'Extra', 'fields': [{'name': 'phantom'}]},
                 ],
             },
@@ -75,7 +78,7 @@ def app():
     }, 'testplugin')
 
     tables = {
-        'Book': FakeTable('id', 'title'),
+        'Book': FakeTable('id', 'title', ref_sets=['tags']),
         'Publisher': FakeTable('id', 'name'),
     }
     return FakeApp(pm, tables)
@@ -113,6 +116,9 @@ def test_field_unknown(app):
     assert not any('[title]' in p or '[Publisher.name]' in p or '$props' in p
                    or 'COUNT' in p
                    for p in paths)
+    # A RefSet is a field of the form, but not a column a list can query
+    assert 'views.form_view.fields[tags]' not in paths
+    assert 'views.book_list_view.columns[tags]' in paths
 
 
 def test_panel_missing(app):

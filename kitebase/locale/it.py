@@ -13,6 +13,9 @@ register_translations('it', {
     'Some values are not valid':        'Alcuni valori non sono validi',
     'A value is required':              'Valore obbligatorio',
     'Not a valid email address':        'Non è un indirizzo email valido',
+    # RefSet fields (kitebase.refsets)
+    'A list is expected':               'È attesa una lista',
+    'Not found: {keys}':                'Non trovati: {keys}',
     'Record updated successfully':      'Record aggiornato con successo',
     'Record ID is required for deletion':'ID record obbligatorio per l\'eliminazione',
     'Record deleted successfully':      'Record eliminato con successo',
