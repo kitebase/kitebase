@@ -6,19 +6,27 @@
 
 	// A node of the merged tree, as it runs and as each plugin writes it: its
 	// children to go down, the lines of every file that writes it beside them.
+	// A page or a view also as the client receives it, resolved, and, through
+	// a subject of the guard (a role, with acl), with what it would not get
+	// taken out. The subject is in the address, so that view is a link too.
 
-	let { path }: { path: string } = $props();
+	let { path, subject }: { path: string; subject?: string } = $props();
 
 	let node = $state<NodeInfo | null>(null);
 	let error = $state('');
 	let whole = $state(false);
 
 	onMount(() => {
-		api.node(path).then((n) => (node = n)).catch((e) => (error = e.message));
+		api.node(path, subject).then((n) => (node = n)).catch((e) => (error = e.message));
 	});
 
 	// A table has a view of its own, with the types of its columns
 	const table = $derived(node?.path.match(/^tables\.([^.[]+)/)?.[1] ?? null);
+
+	function choose(e: Event) {
+		const value = (e.currentTarget as HTMLSelectElement).value;
+		location.hash = value ? href('tree', path, value) : href('tree', path);
+	}
 
 	function summary(c: NodeChild): string {
 		if (c.kind === 'map') return `{ ${c.summary} }`;
@@ -66,6 +74,30 @@
 				<h2><button class="linkish" onclick={() => (whole = !whole)}>{whole ? 'Hide' : 'Show'} the node as it runs</button></h2>
 				{#if whole}<pre class="value">{JSON.stringify(node.value, null, 2)}</pre>{/if}
 			{/if}
+
+			{#if node.resolved}
+				{@const r = node.resolved}
+				<h2>As the client receives it</h2>
+				{#if r.subjects.length}
+					<p class="small">
+						<label>Seen by
+							<select value={r.subject ?? ''} onchange={choose}>
+								<option value="">nobody in particular: nothing taken out</option>
+								{#each r.subjects as s (s)}<option value={s}>{s}</option>{/each}
+							</select>
+						</label>
+					</p>
+				{/if}
+				{#if r.error}
+					<p class="small muted">{r.error}</p>
+				{:else}
+					{#if r.refused?.length}
+						<p class="small refused">It does not open for {r.subject}: refused {r.refused.join(', ')}. Below, what it would receive if it did.</p>
+					{/if}
+					<p class="small muted">The <code>$ref</code>s resolved{#if r.subject}, and what {r.subject} cannot use taken out, as <code>get_page</code> does{/if}.</p>
+					<pre class="value">{JSON.stringify(r.value, null, 2)}</pre>
+				{/if}
+			{/if}
 		</div>
 
 		<div class="side detail">
@@ -84,5 +116,6 @@
 	.split { display: flex; gap: 1.5rem; align-items: flex-start; }
 	.side { flex: 1 1 50%; min-width: 0; }
 	.detail { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
+	.refused { padding: .3rem .5rem; border-radius: 4px; background: var(--hit); }
 	.value { margin: 0; padding: .5rem .75rem; background: var(--code); border-radius: 4px; overflow-x: auto; }
 </style>

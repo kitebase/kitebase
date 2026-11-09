@@ -400,11 +400,13 @@ def roots(app: Any) -> List[Dict[str, Any]]:
     } for name, value in app.pm.data.items() if not str(name).startswith('$')]
 
 
-def node(app: Any, path: str) -> Dict[str, Any]:
+def node(app: Any, path: str, subject: Optional[str] = None) -> Dict[str, Any]:
     """A node of the merged tree as it runs, its children, and where it is written.
 
     The layers are those of the node itself, or, under a list without identity,
     of the nearest node above it that a file can be searched for (`layers_of`).
+    A page or a view also comes resolved (`resolved`), and, for a `subject` of
+    the guard, as that subject would receive it.
     """
     data = app.pm.data
     steps = parse_path(data, path)
@@ -422,7 +424,51 @@ def node(app: Any, path: str) -> Dict[str, Any]:
         'children': _children(app, steps, value),
         'layers': find_layers(app, located) if located else [],
         'layers_of': path_text(located),
+        'resolved': _resolved(app, steps, subject),
     }
+
+
+# The descriptors the client receives resolved: a page by `get_page`, a view
+# inside the pages that take it
+_RESOLVED = ('pages', 'views')
+
+
+def _resolved(app: Any, steps: Sequence[Step], subject: Optional[str]) -> Optional[Dict[str, Any]]:
+    """A page or a view with its `$ref`s resolved, as `load_page` makes it.
+
+    With a subject of the guard (`access.subjects`: a role, for `acl`), what
+    `get_page` would take out for it is taken out (`pages.restrict_page`), and a
+    page says the permissions it would be refused at the door. Without one
+    nothing is taken out: there is no user here to judge.
+    """
+    import copy
+    from kitebase import access
+    from kitebase.pages import load_page, page_permissions, restrict_page
+
+    if len(steps) != 2 or steps[0] not in _RESOLVED or not isinstance(steps[1], str):
+        return None
+    root, ident = steps
+    subjects = access.subjects(app)
+    holds = None
+    if subject:
+        holds = subjects.get(subject)
+        if holds is None:
+            raise KeyError(subject)
+    out: Dict[str, Any] = {'subjects': list(subjects), 'subject': subject or None}
+    try:
+        if root == 'pages':
+            obj = load_page(app, ident)
+        else:
+            obj = app.pm.resolve_refs(copy.deepcopy(app.pm.data[root][ident]))
+    except ValueError as e:
+        return {**out, 'error': str(e)}
+    if holds is not None:
+        if root == 'pages':
+            out['refused'] = [p for p in page_permissions(app, ident) or [] if not holds(p)]
+        with access.holding(holds):
+            restrict_page(app, obj)
+    out['value'] = _masked(_drop_plugin(obj))
+    return out
 
 
 def _drop_plugin(value: Any) -> Any:

@@ -91,7 +91,7 @@
 		{:else if section === 'tables'}
 			<Tables />
 		{:else if section === 'tree' && router.parts[1]}
-			{#key router.parts[1]}<NodeView path={router.parts[1]} />{/key}
+			{#key router.parts.slice(1).join('/')}<NodeView path={router.parts[1]} subject={router.parts[2]} />{/key}
 		{:else if section === 'tree'}
 			<Tree />
 		{:else if section === 'vocabulary'}

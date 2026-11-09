@@ -176,6 +176,17 @@ def test_a_path_is_read_along_the_tree(tmp_path, monkeypatch):
             introspect.node(app, wrong)
 
 
+def test_a_page_comes_resolved_and_no_subject_without_a_policy(tmp_path, monkeypatch):
+    app = _app(tmp_path, monkeypatch)
+    resolved = introspect.node(app, 'pages.book_detail')['resolved']
+    # No guard registered: nobody to see it through, nothing taken out
+    assert resolved['subjects'] == [] and resolved['subject'] is None
+    assert [p['id'] for p in resolved['value']['panels']] == ['authors', 'notes']
+    assert introspect.node(app, 'pages.book_detail.panels')['resolved'] is None
+    with pytest.raises(KeyError):
+        introspect.node(app, 'pages.book_detail', 'shop.desk')
+
+
 def test_no_secret_leaves_with_a_node(tmp_path, monkeypatch):
     app = _app(tmp_path, monkeypatch)
     text = json.dumps(introspect.node(app, 'tables.Book.columns[token]'), default=str)

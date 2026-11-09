@@ -110,6 +110,13 @@ class Guard:
         the list of what is left to cover before production."""
         return []
 
+    def subjects(self, app: Any) -> Dict[str, Callable[[str], bool]]:
+        """The sets of permissions the policy is made of, by name (a role, a
+        group), each as whether it holds a permission: what `check` judges and
+        what the inspector shows the application through, with `holding()`.
+        Empty for a policy without such sets."""
+        return {}
+
     def allows_endpoint(self, endpoint: str, access: Optional[str],
                         context: Optional[Dict[str, Any]]) -> bool:
         if access in (PER_TABLE, AUTHENTICATED):
@@ -184,6 +191,11 @@ def holding(holds: Callable[[str], bool]) -> Iterator[None]:
         yield
     finally:
         _HOLDING.reset(token)
+
+
+def subjects(app: Any) -> Dict[str, Callable[[str], bool]]:
+    """The guard's named sets of permissions (`Guard.subjects`)."""
+    return _GUARD.subjects(app)
 
 
 def _guard() -> Guard:

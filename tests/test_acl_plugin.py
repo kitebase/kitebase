@@ -478,6 +478,19 @@ def test_check_judges_a_page_as_the_role_receives_it(app):
     assert 'loan_list' in pages
 
 
+def test_the_roles_are_the_subjects_of_the_guard(app):
+    from kitebase import introspect
+    subjects = access.subjects(app)
+    assert 'library.archive' in subjects and subjects['library.archive']('Loan.read')
+    assert not subjects['library.archive']('Book.read')
+    # The inspector shows the page as the role receives it
+    seen = introspect.node(app, 'pages.loan_detail', 'library.archive')['resolved']
+    assert seen['refused'] == []
+    assert not seen['value'].get('panels')
+    assert introspect.node(app, 'pages.loan_detail')['resolved']['value']['panels'][0]['id'] == 'book'
+    assert introspect.node(app, 'pages.loan_detail', 'library.office')['resolved']['refused'] == ['Loan.read']
+
+
 # ── Refresh: what the token says is read again ───────────────────────────────
 
 def _stale(token):

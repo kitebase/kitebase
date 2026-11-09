@@ -128,6 +128,14 @@ export interface NodeInfo {
 	children: NodeChild[];
 	layers: Layer[];
 	layers_of: string;
+	/** A page or a view resolved, and as a subject of the guard receives it. */
+	resolved: {
+		subjects: string[];
+		subject: string | null;
+		refused?: string[];
+		value?: unknown;
+		error?: string;
+	} | null;
 }
 
 export interface SourceFile {
@@ -149,7 +157,8 @@ export const api = {
 	catalog: () => get<Catalog>('catalog'),
 	endpoints: () => get<Record<string, EndpointInfo>>('endpoints'),
 	roots: () => get<RootSummary[]>('roots'),
-	node: (path: string) => get<NodeInfo>(`node?path=${encodeURIComponent(path)}`),
+	node: (path: string, subject?: string) =>
+		get<NodeInfo>(`node?path=${encodeURIComponent(path)}${subject ? `&subject=${encodeURIComponent(subject)}` : ''}`),
 	tables: () => get<TableSummary[]>('tables'),
 	table: (name: string) => get<TableInfo>(`table/${encodeURIComponent(name)}`),
 	source: (plugin: string, file: string) =>
