@@ -371,6 +371,8 @@ views:
         align: center
         formatter: price_color
       - field: status
+      # The tags as badges: a click on one keeps the books holding it
+      - field: tags
       # The cover again, larger, for the cards: an alias carries its own
       # variant, and the grid does not show it.
       - field: cover as card_cover

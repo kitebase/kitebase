@@ -3317,6 +3317,10 @@
      "$plugin": "panels"
     },
     {
+     "field": "tags",
+     "$plugin": "panels"
+    },
+    {
      "field": "cover as card_cover",
      "variant": "medium",
      "visible": false,
