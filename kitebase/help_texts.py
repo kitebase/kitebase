@@ -33,14 +33,13 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import yaml
 
+from kitebase.utils import IDENTITY_KEYS
+
 # The attributes whose text reaches the user. `doc:` is for whoever develops.
 TEXT_ATTRS = ('help', 'help_how')
 
 SOURCE = 'en'
 OLD = 'en_old'
-
-# How the merge names a list item (PluginsManager._IDENTITY_KEYS)
-_IDENTITY_KEYS = ('id', 'name', 'field', 'group')
 
 _SPACES = re.compile(r'\s+')
 
@@ -58,7 +57,7 @@ def normalize(text: str) -> str:
 
 def _segment(item: Any, index: int) -> str:
     if isinstance(item, dict):
-        for key in _IDENTITY_KEYS:
+        for key in IDENTITY_KEYS:
             if isinstance(item.get(key), (str, int)):
                 return str(item[key])
     return str(index)

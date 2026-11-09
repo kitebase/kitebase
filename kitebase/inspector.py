@@ -138,6 +138,8 @@ def routes(app: Any) -> Dict[str, Callable[..., Any]]:
         'issues': lambda: introspect.issues(app),
         'catalog': lambda: introspect.catalog(app),
         'endpoints': introspect.endpoints,
+        'roots': lambda: introspect.roots(app),
+        'node': lambda path='': introspect.node(app, path),
         'tables': lambda: introspect.tables(app),
         'table': lambda name: introspect.table(app, name),
         'source': lambda plugin, file: introspect.source(app, plugin, file),

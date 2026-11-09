@@ -6,6 +6,8 @@
 	import Issues from './views/Issues.svelte';
 	import Tables from './views/Tables.svelte';
 	import TableView from './views/TableView.svelte';
+	import Tree from './views/Tree.svelte';
+	import NodeView from './views/NodeView.svelte';
 	import Vocabulary from './views/Vocabulary.svelte';
 	import Endpoints from './views/Endpoints.svelte';
 
@@ -16,6 +18,7 @@
 		{ id: '', label: 'Overview' },
 		{ id: 'issues', label: 'Issues' },
 		{ id: 'tables', label: 'Tables' },
+		{ id: 'tree', label: 'Tree' },
 		{ id: 'vocabulary', label: 'Vocabulary' },
 		{ id: 'endpoints', label: 'Endpoints' }
 	];
@@ -87,6 +90,10 @@
 			{#key router.parts[1]}<TableView name={router.parts[1]} column={router.parts[2]} />{/key}
 		{:else if section === 'tables'}
 			<Tables />
+		{:else if section === 'tree' && router.parts[1]}
+			{#key router.parts[1]}<NodeView path={router.parts[1]} />{/key}
+		{:else if section === 'tree'}
+			<Tree />
 		{:else if section === 'vocabulary'}
 			<Vocabulary />
 		{:else if section === 'endpoints'}

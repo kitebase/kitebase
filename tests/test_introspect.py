@@ -37,6 +37,20 @@ tables:
       # the shelf code, written by the shop
       - name: code
         type: Code
+
+pages:
+  book_detail:
+    title: Book
+    panels:
+      - id: authors
+        pos: right
+      - id: notes
+        pos: bottom
+
+roles:
+  shop.desk:
+    label: Desk
+    grants: [Book.read, Loan.read]
 """
 
 SHOP_MODEL = """\
@@ -48,6 +62,12 @@ tables:
       - name: token
         type: String
         api_key: "key-91f3"
+
+pages:
+  book_detail:
+    panels:
+      - id: authors
+        width: 320
 """
 
 
@@ -120,9 +140,46 @@ def test_only_the_files_of_a_plugin_are_read(tmp_path, monkeypatch):
 
 def test_everything_is_plain_json(tmp_path, monkeypatch):
     app = _app(tmp_path, monkeypatch)
-    for answer in (introspect.app_summary(app), introspect.tables(app),
+    for answer in (introspect.roots(app), introspect.node(app, 'tables.Book'),
+                   introspect.app_summary(app), introspect.tables(app),
                    introspect.table(app, 'Book'), introspect.catalog(app), introspect.endpoints()):
         json.dumps(answer)
+
+
+# ── The merged tree ──────────────────────────────────────────────────────────
+
+def test_a_node_of_any_root_says_who_writes_it(tmp_path, monkeypatch):
+    app = _app(tmp_path, monkeypatch)
+    node = introspect.node(app, 'pages.book_detail.panels[authors]')
+    assert [(l['plugin'], l['line']) for l in node['layers']] == [('base', 27), ('shop', 13)]
+    assert node['value'] == {'id': 'authors', 'pos': 'right', 'width': 320}
+    panels = introspect.node(app, 'pages.book_detail.panels')
+    assert [(c['key'], c['plugins']) for c in panels['children']] == [
+        ('authors', ['base', 'shop']), ('notes', ['base'])]
+    roots = {r['name']: r for r in introspect.roots(app)}
+    assert roots['pages']['plugins'] == ['base', 'shop'] and roots['roles']['count'] == 1
+
+
+def test_a_path_is_read_along_the_tree(tmp_path, monkeypatch):
+    app = _app(tmp_path, monkeypatch)
+    # a key with dots in it
+    desk = introspect.node(app, 'roles.shop.desk')
+    assert [t['key'] for t in desk['trail']] == ['roles', 'shop.desk']
+    # a position names the item when its list has an identity
+    assert introspect.node(app, 'tables.Book.columns[1]')['path'] == 'tables.Book.columns[title]'
+    # a list of values: the lines are those of the node that holds it
+    grant = introspect.node(app, 'roles.shop.desk.grants[1]')
+    assert grant['value'] == 'Loan.read' and grant['layers_of'] == 'roles.shop.desk.grants'
+    assert [l['plugin'] for l in grant['layers']] == ['base']
+    for wrong in ('pages.nope', 'roles.shop', 'tables.Book.columns[9]'):
+        with pytest.raises(KeyError):
+            introspect.node(app, wrong)
+
+
+def test_no_secret_leaves_with_a_node(tmp_path, monkeypatch):
+    app = _app(tmp_path, monkeypatch)
+    text = json.dumps(introspect.node(app, 'tables.Book.columns[token]'), default=str)
+    assert 'key-91f3' not in text
 
 
 # ── The server ─────────────────────────────────────────────────────────────────
@@ -156,6 +213,9 @@ def test_the_server_answers_the_questions(server):
     assert status == 200 and json.loads(body)['name'] == 'Book'
     assert _get(port, '/api/table/Nope')[0] == 404
     assert _get(port, '/api/nothing')[0] == 404
+    status, body = _get(port, '/api/node?path=roles.shop.desk')
+    assert status == 200 and json.loads(body)['path'] == 'roles.shop.desk'
+    assert _get(port, '/api/node?path=pages.nope')[0] == 404
 
 
 def test_another_host_is_refused(server):

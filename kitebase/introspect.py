@@ -178,6 +178,10 @@ def find_layers(app: Any, steps: Sequence[Step]) -> List[Dict[str, Any]]:
 
 def _get(data: Any, steps: Sequence[Step]) -> Any:
     for step in steps:
+        if isinstance(step, int):
+            # A list without identity: its positions change in the merge, and
+            # what a file holds at one is not what the application holds there
+            return None
         if isinstance(step, dict):
             (key, value), = step.items()
             if not isinstance(data, list):
@@ -268,6 +272,167 @@ def endpoints() -> Dict[str, Dict[str, Any]]:
             pass
         out[name] = entry
     return out
+
+
+# ── The merged tree ────────────────────────────────────────────────────────────
+#
+# Every root of the merge (`tables`, `pages`, `menu_items`, `roles`...) shown in
+# one way: a node of the tree as it runs, the plugins that write it, and their
+# lines. A node is named by a path, `pages.book_detail.panels[authors]`: keys
+# joined by dots, the item of a list by the value of its identity key (the one
+# the merge goes by, `utils.identity_key`), or by its position when the list has
+# none. Keys may hold dots themselves (`roles.library.desk`): the path is read
+# along the tree, the longest key that fits first.
+
+def parse_path(data: Any, text: str) -> List[Step]:
+    """The steps of `text` in `data`; KeyError where the tree has no such node."""
+    from kitebase.utils import identity_key
+
+    steps: List[Step] = []
+    node, rest = data, text.strip()
+    while rest:
+        if rest.startswith('['):
+            close = rest.find(']')
+            if close < 0 or not isinstance(node, list):
+                raise KeyError(text)
+            token, rest = rest[1:close], rest[close + 1:].removeprefix('.')
+            key = identity_key(node)
+            match = next((i for i in node if isinstance(i, dict) and key
+                          and str(i.get(key)) == token), None)
+            if match is not None:
+                steps.append({key: match[key]})
+                node = match
+            elif token.isdigit() and int(token) < len(node):
+                # A position, as the paths of `check` say it: the item by its
+                # name when it has one
+                node = node[int(token)]
+                named = key and isinstance(node, dict) and node.get(key) is not None
+                steps.append({key: node[key]} if named else int(token))
+            else:
+                raise KeyError(text)
+            continue
+        if not isinstance(node, dict):
+            raise KeyError(text)
+        fits = [k for k in node if isinstance(k, str) and (
+            rest == k or rest.startswith(k + '.') or rest.startswith(k + '['))]
+        if not fits:
+            raise KeyError(text)
+        key = max(fits, key=len)
+        steps.append(key)
+        node, rest = node[key], rest[len(key):].removeprefix('.')
+    return steps
+
+
+def path_text(steps: Sequence[Step]) -> str:
+    out = ''
+    for step in steps:
+        if isinstance(step, dict):
+            out += f'[{next(iter(step.values()))}]'
+        elif isinstance(step, int):
+            out += f'[{step}]'
+        else:
+            out += f'.{step}' if out else str(step)
+    return out
+
+
+def _at(data: Any, steps: Sequence[Step]) -> Any:
+    for step in steps:
+        if isinstance(step, int):
+            data = data[step]
+        elif isinstance(step, dict):
+            (key, value), = step.items()
+            data = next(i for i in data if isinstance(i, dict) and i.get(key) == value)
+        else:
+            data = data[step]
+    return data
+
+
+def writers(app: Any, steps: Sequence[Step]) -> List[str]:
+    """The plugins whose files write the node, from what they parsed: cheap
+    enough for every child of a node, where `find_layers` reads the files."""
+    return list(dict.fromkeys(plugin for plugin, _, parsed in plugin_files(app)
+                              if _get(parsed, steps) is not None))
+
+
+def _kind(value: Any) -> str:
+    return 'map' if isinstance(value, dict) else 'list' if isinstance(value, list) else 'value'
+
+
+def _summary(value: Any) -> Any:
+    if isinstance(value, dict):
+        return len([k for k in value if not str(k).startswith('$')])
+    if isinstance(value, list):
+        return len(value)
+    return value
+
+
+def _children(app: Any, steps: List[Step], value: Any) -> List[Dict[str, Any]]:
+    # `value` comes masked: the summaries of its values are shown as they are
+    from kitebase.utils import identity_key
+
+    if isinstance(value, dict):
+        entries = [(k, [*steps, k], v) for k, v in value.items()]
+    elif isinstance(value, list):
+        key = identity_key(value)
+        entries = []
+        for n, item in enumerate(value):
+            named = key and isinstance(item, dict) and item.get(key) is not None
+            step = {key: item[key]} if named else n
+            entries.append((item[key] if named else n, [*steps, step], item))
+    else:
+        return []
+    return [{
+        'key': str(k),
+        'path': path_text(s),
+        'kind': _kind(v),
+        'summary': _summary(v),
+        'plugins': writers(app, s),
+    } for k, s, v in entries]
+
+
+def roots(app: Any) -> List[Dict[str, Any]]:
+    """The roots of the merge, with how many entries and who writes them."""
+    return [{
+        'name': name,
+        'kind': _kind(value),
+        'count': _summary(value),
+        'plugins': writers(app, [name]),
+    } for name, value in app.pm.data.items() if not str(name).startswith('$')]
+
+
+def node(app: Any, path: str) -> Dict[str, Any]:
+    """A node of the merged tree as it runs, its children, and where it is written.
+
+    The layers are those of the node itself, or, under a list without identity,
+    of the nearest node above it that a file can be searched for (`layers_of`).
+    """
+    data = app.pm.data
+    steps = parse_path(data, path)
+    # Masked from its root down: whether a value is secret is said by the key
+    # that holds it, which the value alone no longer has
+    value = _at(_masked({steps[0]: _drop_plugin(data[steps[0]])}), steps)
+    located = steps[:next((i for i, s in enumerate(steps) if isinstance(s, int)), len(steps))]
+    return {
+        'path': path_text(steps),
+        'trail': [{'key': str(s if not isinstance(s, dict) else next(iter(s.values()))),
+                   'path': path_text(steps[:i + 1])} for i, s in enumerate(steps)],
+        'kind': _kind(value),
+        'value': value,
+        'plugin': _at(data, steps).get('$plugin') if isinstance(value, dict) else None,
+        'children': _children(app, steps, value),
+        'layers': find_layers(app, located) if located else [],
+        'layers_of': path_text(located),
+    }
+
+
+def _drop_plugin(value: Any) -> Any:
+    # `$plugin` is the merge's bookkeeping, told by the layers; the other `$`
+    # keys are the author's (`$ref`) and stay
+    if isinstance(value, dict):
+        return {k: _drop_plugin(v) for k, v in value.items() if k != '$plugin'}
+    if isinstance(value, list):
+        return [_drop_plugin(v) for v in value]
+    return value
 
 
 # ── Tables ─────────────────────────────────────────────────────────────────────

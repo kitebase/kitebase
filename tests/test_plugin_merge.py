@@ -1,5 +1,5 @@
 """Golden / characterization tests for PluginsManager's config-merge machinery:
-merge_dicts / _recursive_merge / _merge_lists / _detect_identity_key.
+merge_dicts / _recursive_merge / _merge_lists / identity_key.
 
 This is the RICH merge used to compose plugin YAML: it returns a new dict, tracks
 key provenance via `$plugin` tags and a history map, and merges lists with
@@ -12,6 +12,7 @@ failure means the merge semantics changed — decide intentionally.
 import pytest
 
 from kitebase.plugins import PluginsManager
+from kitebase.utils import identity_key
 
 
 @pytest.fixture
@@ -20,7 +21,7 @@ def pm():
 
 
 # --------------------------------------------------------------------------- #
-# _detect_identity_key
+# identity_key
 # --------------------------------------------------------------------------- #
 
 @pytest.mark.parametrize("items, expected", [
@@ -35,8 +36,8 @@ def pm():
     ([], None),                                 # empty list
     ([42, {"id": 1}], "id"),                    # first *dict* item decides
 ])
-def test_detect_identity_key(pm, items, expected):
-    assert pm._detect_identity_key(items) == expected
+def test_identity_key(items, expected):
+    assert identity_key(items) == expected
 
 
 # --------------------------------------------------------------------------- #

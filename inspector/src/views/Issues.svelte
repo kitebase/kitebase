@@ -1,15 +1,22 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api, type Issue, type Severity } from '../lib/api';
+	import { href } from '../lib/router.svelte';
 
 	let issues = $state<Issue[] | null>(null);
 	let error = $state('');
 	let query = $state('');
 	let shown = $state<Record<Severity, boolean>>({ error: true, warning: true, info: false });
 
+	// The roots of the tree: a path under one of them opens its node
+	let roots = $state<Set<string>>(new Set());
+
 	onMount(() => {
 		api.issues().then((i) => (issues = i)).catch((e) => (error = e.message));
+		api.roots().then((r) => (roots = new Set(r.map((x) => x.name)))).catch(() => {});
 	});
+
+	const inTree = (path: string) => roots.has(path.split(/[.[]/)[0]);
 
 	const count = (s: Severity) => issues?.filter((i) => i.severity === s).length ?? 0;
 
@@ -41,7 +48,7 @@
 				<tr>
 					<td><span class="badge {i.severity}">{i.severity}</span></td>
 					<td class="mono small">{i.code}</td>
-					<td class="mono small">{i.path}</td>
+					<td class="mono small">{#if inTree(i.path)}<a href={href('tree', i.path)}>{i.path}</a>{:else}{i.path}{/if}</td>
 					<td class="small">{i.message}</td>
 					<td>{#if i.plugin}<span class="badge">{i.plugin}</span>{/if}</td>
 				</tr>

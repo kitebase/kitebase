@@ -25,6 +25,20 @@ def autoimport(file: str, package: str) -> None:
         globals()[module_name] = module
 
 
+# The keys that name an item of a list, in order of priority: the merge refines
+# the item with the same value instead of appending a second one.
+IDENTITY_KEYS = ('id', 'name', 'field', 'group')
+
+
+def identity_key(items: list) -> Optional[str]:
+    """The key that names the items of a list, or None for a list of values or
+    of mappings without one. The first mapping of the list decides."""
+    for item in items:
+        if isinstance(item, dict):
+            return next((k for k in IDENTITY_KEYS if k in item), None)
+    return None
+
+
 def deep_merge(a: Dict[str, Any], b: Dict[str, Any], path: Optional[List[str]] = None) -> None:
     """
     Merge dictionary b into dictionary a recursively.

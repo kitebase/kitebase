@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Union, Any
 import yaml
 from kitebase import apptime, secrets
-from kitebase.utils import deep_merge
+from kitebase.utils import IDENTITY_KEYS, deep_merge, identity_key
 
 # Merge directives. They belong to the YAML protocol, not to a single function:
 # every one of them is consumed while merging and never reaches a consumer.
@@ -758,26 +758,6 @@ class PluginsManager:
 
         return result
 
-    # Identity keys checked in priority order to find how a list item is identified.
-    _IDENTITY_KEYS = ('id', 'name', 'field', 'group')
-
-
-    def _detect_identity_key(self, items: list) -> Optional[str]:
-        """
-        Return the identity key for a list of dicts, or None for scalar/unkeyed lists.
-
-        Scans the first dict item for the first key in _IDENTITY_KEYS.
-        Pure string lists and dicts without a recognised identity key are treated
-        as plain sequences (append semantics, unchanged from previous behaviour).
-        """
-        for item in items:
-            if isinstance(item, dict):
-                for k in self._IDENTITY_KEYS:
-                    if k in item:
-                        return k
-                return None  # dict items without a recognised identity key
-        return None  # all items are scalars
-
     def _merge_lists(self, base: list, new: list, plugin: str, key_path: str) -> list:
         """
         Merge two lists using identity-aware semantics when possible, plain append otherwise.
@@ -794,7 +774,7 @@ class PluginsManager:
         Plain-append fallback (string lists, unkeyed dicts):
           result = base + [item for item in new if item not in base]
         """
-        id_key = self._detect_identity_key(base) or self._detect_identity_key(new)
+        id_key = identity_key(base) or identity_key(new)
 
         if id_key is None:
             # Plain sequence: extend without duplicates (original behaviour).
@@ -809,7 +789,7 @@ class PluginsManager:
                 self.add_issue(
                     'warning', 'merge-unkeyed-list', key_path,
                     f"'{plugin}' contributes to a list whose items carry no identity "
-                    f"({', '.join(self._IDENTITY_KEYS)}): the items are appended and cannot "
+                    f"({', '.join(IDENTITY_KEYS)}): the items are appended and cannot "
                     f"refine the ones already there. Give them an 'id' to make them addressable.",
                     plugin)
             merged = base + [item for item in new if item not in base]

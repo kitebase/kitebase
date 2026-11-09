@@ -102,6 +102,34 @@ export interface Catalog {
 	uses: Record<string, { path: string; plugin: string | null; value: unknown }[]>;
 }
 
+/** A root of the merge: `tables`, `pages`, `roles`... */
+export interface RootSummary {
+	name: string;
+	kind: 'map' | 'list' | 'value';
+	count: number;
+	plugins: string[];
+}
+
+export interface NodeChild {
+	key: string;
+	path: string;
+	kind: 'map' | 'list' | 'value';
+	summary: unknown;
+	plugins: string[];
+}
+
+/** A node of the merged tree as it runs, and the plugins that write it. */
+export interface NodeInfo {
+	path: string;
+	trail: { key: string; path: string }[];
+	kind: 'map' | 'list' | 'value';
+	value: unknown;
+	plugin: string | null;
+	children: NodeChild[];
+	layers: Layer[];
+	layers_of: string;
+}
+
 export interface SourceFile {
 	plugin: string;
 	file: string;
@@ -120,6 +148,8 @@ export const api = {
 	issues: () => get<Issue[]>('issues'),
 	catalog: () => get<Catalog>('catalog'),
 	endpoints: () => get<Record<string, EndpointInfo>>('endpoints'),
+	roots: () => get<RootSummary[]>('roots'),
+	node: (path: string) => get<NodeInfo>(`node?path=${encodeURIComponent(path)}`),
 	tables: () => get<TableSummary[]>('tables'),
 	table: (name: string) => get<TableInfo>(`table/${encodeURIComponent(name)}`),
 	source: (plugin: string, file: string) =>
