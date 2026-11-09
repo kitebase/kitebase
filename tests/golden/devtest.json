@@ -45,6 +45,11 @@
    "index": true,
    "$plugin": "common"
   },
+  "ShortSet": {
+   "base": "CodeSet",
+   "length": 255,
+   "$plugin": "common"
+  },
   "Description": {
    "base": "String",
    "nullable": false,
