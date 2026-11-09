@@ -119,7 +119,7 @@ def ensure_built() -> None:
 def sources_signature(app: Any) -> Tuple[int, float]:
     """How many files the application is read from, and the newest of them."""
     pm = app.pm
-    files = [pm.config_file]
+    files = list(getattr(pm, 'config_files', [pm.config_file]))   # a variant and its base
     for name in pm.sorted:
         d = pm.plugins[name].plugin_dir
         files += [f for f in d.rglob('*') if f.suffix in ('.yaml', '.yml', '.py', '.md')

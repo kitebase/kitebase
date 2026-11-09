@@ -586,6 +586,37 @@ class _ChooseEngine(argparse.Action):
         setattr(namespace, self.dest, values)
 
 
+class _ChooseConfig(argparse.Action):
+    """`--config FILE` is KITEBASE_CONFIG=FILE for this process: a variant of
+    config.yaml beside it, which the application loads instead (and any
+    process it starts, the server and the client of `dev`)."""
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        import os
+        os.environ['KITEBASE_CONFIG'] = values
+        setattr(namespace, self.dest, values)
+
+
+def _config_option(p: argparse.ArgumentParser) -> None:
+    # SUPPRESS: given before the command or after it, neither erases the other
+    p.add_argument('--config', metavar='FILE', action=_ChooseConfig, default=argparse.SUPPRESS,
+                   help='Load FILE, a variant beside config.yaml (`extends: config.yaml`), '
+                        'instead of config.yaml')
+
+
+def _take_config(argv: List[str]) -> List[str]:
+    """A leading `--config FILE`, applied and taken out: what follows may be a
+    command the application adds, which this parser does not know."""
+    import os
+    if argv[:1] == ['--config'] and len(argv) > 1:
+        os.environ['KITEBASE_CONFIG'] = argv[1]
+        return argv[2:]
+    if argv and argv[0].startswith('--config='):
+        os.environ['KITEBASE_CONFIG'] = argv[0].split('=', 1)[1]
+        return argv[1:]
+    return argv
+
+
 def _engine_option(p: argparse.ArgumentParser) -> None:
     p.add_argument('--engine', metavar='NAME', action=_ChooseEngine,
                    help='Use the engine NAME of secrets/engines.yaml instead of '
@@ -631,6 +662,7 @@ examples:
   db-copy --to pg                       every row into the engine 'pg', empty and aligned
   db-copy --from pg --to test --dry-run the order and the counts, nothing written
   dev --engine pg                       server and client, the server on 'pg'
+  dev --config config.pg.yaml           the same app, as the variant config.pg.yaml says
   dev                                   run this app and its client, together
   dev /path/to/app --no-client          just the server, on another app
   build-client                          compile this app's client into clientui/
@@ -639,6 +671,7 @@ examples:
         """,
     )
 
+    _config_option(parser)
     sub = parser.add_subparsers(dest='command', metavar='command')
     parser.commands = sub
 
@@ -814,6 +847,11 @@ examples:
                    help='Application directory (default: the current one)')
     p.add_argument('--ui', metavar='PATH',
                    help='Client checkout (default: $KITEBASE_UI, or the workspace layout)')
+
+    # Every command that loads the application takes a variant of its config
+    for name, command in sub.choices.items():
+        if name != 'new':
+            _config_option(command)
 
     return parser
 
@@ -1024,7 +1062,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     environment (`cli:` in config.yaml names it, when it is not `kite.py`).
     """
     parser = make_parser()
-    argv = sys.argv[1:] if argv is None else list(argv)
+    argv = _take_config(sys.argv[1:] if argv is None else list(argv))
 
     # A command this parser does not know may be one the application adds to
     # its own (`parser.commands.add_parser` in kite.py): the script decides.

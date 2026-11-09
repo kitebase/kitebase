@@ -167,6 +167,28 @@ Optional sections (`schema`, `dataview`, `password_policy`, `locale`, ...) have
 sane defaults; add them only to override. A name provided by two plugin roots is
 refused: the scaffold's own `users` excludes the one in the shared plugins.
 
+### Variants
+
+A trial that should not touch `config.yaml` (another database, another locale,
+a bigger page size) is a variant beside it, which writes only what it changes:
+
+```yaml
+# config.pg.yaml
+extends: config.yaml
+db_engine: pg              # a name of secrets/engines.yaml
+dataview:
+  page_size: 1000
+```
+
+`kitebase dev --config config.pg.yaml` loads it instead of `config.yaml`, and so
+does any command (`check --config ...`, `inspector --config ...`); the option is
+`KITEBASE_CONFIG` for the process and the ones it starts, the server and the
+client included, which read the same port and plugin roots. The variant is
+merged over its base: a mapping key by key, any other value, a list too,
+replaced. One level only: the base extends nothing. A variant that changes
+`db_engine` chooses it as `--engine` does, by name, so its media live apart
+(`media.engines_dir`); the default engine stays the base's.
+
 ---
 
 ## The servers

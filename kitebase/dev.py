@@ -165,8 +165,10 @@ def pick_server(app: Path, framework: Optional[str] = None) -> Path:
 
 
 def read_config(app: Path) -> dict:
-    """The application's config.yaml, as a mapping."""
-    return yaml.safe_load((app / "config.yaml").read_text(encoding="utf-8")) or {}
+    """The application's configuration, as a mapping: config.yaml, or the
+    variant KITEBASE_CONFIG names, over its base (`plugins.compose_config`)."""
+    from kitebase.plugins import chosen_config, compose_config
+    return compose_config(chosen_config(app / "config.yaml"))[0]
 
 
 def find_cli(app: Path) -> Path:

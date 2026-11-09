@@ -10,3 +10,12 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _no_config_variant(monkeypatch):
+    """A variant chosen in the shell (KITEBASE_CONFIG) is not the tests' own."""
+    monkeypatch.delenv('KITEBASE_CONFIG', raising=False)

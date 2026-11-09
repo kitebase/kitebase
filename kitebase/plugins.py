@@ -118,6 +118,54 @@ _WINDOWS_RESERVED = {'con', 'prn', 'aux', 'nul',
                      *(f'com{i}' for i in range(1, 10)), *(f'lpt{i}' for i in range(1, 10))}
 
 
+# The configuration a process loads instead of config.yaml (the CLI's --config)
+CONFIG_ENV = 'KITEBASE_CONFIG'
+
+
+def _read_yaml(path: Path) -> Dict[str, Any]:
+    with open(path, encoding='utf-8') as f:
+        return yaml.safe_load(f) or {}
+
+
+def chosen_config(config: Union[str, Path] = "config.yaml") -> Path:
+    """The configuration file this process loads: `config`, or the file of the
+    same directory KITEBASE_CONFIG names."""
+    base = Path(config).resolve()
+    name = os.environ.get(CONFIG_ENV)
+    if not name:
+        return base
+    chosen = (base.parent / name).resolve()
+    if chosen.parent != base.parent:
+        raise ValueError(f"{CONFIG_ENV}={name}: a configuration sits beside {base.name}, "
+                         f"in {base.parent}, where its relative paths are read from")
+    if not chosen.is_file():
+        raise FileNotFoundError(f"{CONFIG_ENV}={name}: no such file in {base.parent}")
+    return chosen
+
+
+def compose_config(path: Union[str, Path]) -> Tuple[Dict[str, Any], List[Path]]:
+    """
+    A configuration file as the application reads it, and the files it comes
+    from. A variant writes `extends: config.yaml` and only what it changes,
+    merged over the base by `deep_merge`: a mapping key by key, any other value
+    (a list too) replaced. One level: the base extends nothing.
+    """
+    path = Path(path).resolve()
+    data = _read_yaml(path)
+    extends = data.pop('extends', None)
+    if extends is None:
+        return data, [path]
+    base_path = (path.parent / extends).resolve()
+    if not base_path.is_file():
+        raise FileNotFoundError(f"{path.name} extends {extends}: no such file in {path.parent}")
+    base = _read_yaml(base_path)
+    if 'extends' in base:
+        raise ValueError(f"{path.name} extends {extends}, which extends another: "
+                         f"one level only, the variant over its base")
+    deep_merge(base, data)
+    return base, [base_path, path]
+
+
 def check_engine_name(name: str) -> str:
     """An engine name is also a folder name: lowercase, digits, `_`, on any OS."""
     if not _ENGINE_NAME.match(name) or name in _WINDOWS_RESERVED:
@@ -224,6 +272,10 @@ class PluginsManager:
         """
         Load global configuration from YAML file.
 
+        KITEBASE_CONFIG (the CLI's --config) names another file of the same
+        directory to load instead, for this process: a variant that writes
+        `extends: config.yaml` and only what it changes (`compose_config`).
+
         Args:
             config: Path to configuration file
         """
@@ -238,32 +290,46 @@ class PluginsManager:
             "timezone": "",
         }
         self.app_root = Path(config).resolve().parent
-        self.config_file = Path(config).resolve()
-
-        with open(config) as f:
-            data = yaml.safe_load(f)
+        self.config_file = chosen_config(config)
+        data, self.config_files = compose_config(self.config_file)
         deep_merge(self.config, data)
+        if self.config_file != Path(config).resolve():
+            via = f' extends {self.config_files[0].name}' if len(self.config_files) > 1 else ''
+            self.logger.info(f"Configuration: {self.config_file.name}{via} ({CONFIG_ENV})")
 
         # The engine: a URL, or the name of an entry in secrets/engines.yaml.
         # KITEBASE_ENGINE picks another one for this process (the CLI's
         # --engine sets it); a name is resolved only when the engine opens.
         # Another engine is chosen by name, because its name places its media
         # (media_base): two databases never write files into the same folder.
+        # A variant that changes the engine chooses it as --engine does, by
+        # name: the default stays the base's, and so does its media folder.
         secrets.set_app_root(self.app_root)
-        self.db_engine_source = 'config.yaml'
+        self.db_engine_source = self.config_files[0].name
         self.default_engine = self.config['db_engine']
         self.engine_name: Optional[str] = None
+        if len(self.config_files) > 1:
+            self.default_engine = _read_yaml(self.config_files[0]).get('db_engine') or ''
         if self.default_engine and '://' not in self.default_engine:
             check_engine_name(self.default_engine)
+        variant = self.config['db_engine']
+        if variant != self.default_engine:
+            if '://' in variant:
+                raise ValueError(
+                    f"{self.config_file.name} changes db_engine to a URL: a variant chooses "
+                    f"the engine by name, of secrets/engines.yaml, which keeps its media apart")
+            check_engine_name(variant)
+            self.engine_name = variant
+            self.db_engine_source = self.config_file.name
         chosen = os.environ.get('KITEBASE_ENGINE')
-        if chosen and chosen != self.default_engine:
+        if chosen and chosen != self.config['db_engine']:
             if '://' in chosen:
                 raise ValueError(
                     "KITEBASE_ENGINE (or --engine) takes a name of secrets/engines.yaml, "
                     "not a URL: the name is what keeps that database's media apart")
             check_engine_name(chosen)
             self.config['db_engine'] = chosen
-            self.engine_name = chosen
+            self.engine_name = None if chosen == self.default_engine else chosen
             self.db_engine_source = 'KITEBASE_ENGINE'
 
         # The timezone the stored naive datetimes are written in. Declaring it

@@ -31,6 +31,11 @@ help_templates: help/templates
 # db engine for sqlalchemy
 db_engine: "sqlite:///devtest.sqlite"
 
+# Variants of this file, beside it, for a trial that does not touch it:
+#   kitebase dev --config config.pg.yaml
+# A variant writes `extends: config.yaml` and only what it changes. They stay
+# out of git (config.*.yaml), but for config.pg.yaml, kept as an example.
+
 # Where uploaded files live (kitebase.media). A column names its root, and
 # stores `root:path`; the bytes stay here, out of the database.
 media:
@@ -92,15 +97,16 @@ dataview:
   reload_all_threshold: 5000   # on refresh: silent restore if rowCount ≤ threshold, banner if above
 
 # Application locale (default 'en' = no translation)
-locale: it
+locale: en
 
 # The timezone the stored naive datetimes are written in — the organisation's,
 # not the machine's. Declaring it is what asks for the guarantee: `$now` and
 # op_date are read through it, and a process whose own clock disagrees refuses
 # to start rather than write timestamps that are silently off by an offset.
-# Declare nothing and the process clock is used, unchecked, as before.
+# Declare nothing and the process clock is used, unchecked, as here: the bench
+# starts on any machine. config.it.yaml declares one.
 # In Docker: `environment: TZ=Europe/Rome` on the service.
-timezone: Europe/Rome
+# timezone: Europe/Rome
 
 # Menu — default placement (cascade: item → plugin config → app config).
 # Items without an explicit `root` surface in this root. See docs/pending/menu.md §4.

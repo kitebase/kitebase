@@ -14,6 +14,9 @@ devtest/media/
 devtest/clientui/
 devtest/model*.py
 devtest/*.log
+# trial variants of config.yaml: personal, but the PostgreSQL example
+devtest/config.*.yaml
+!devtest/config.pg.yaml
 *.sqlite
 
 # Virtual environments and ide

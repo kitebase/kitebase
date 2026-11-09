@@ -1,0 +1,9 @@
+# The bench on PostgreSQL: `kitebase dev --config config.pg.yaml`.
+# The engine `pg` of secrets/engines.yaml (see secrets.example), chosen by name
+# as --engine does: its media are in data/engines/pg/, apart from SQLite's.
+extends: config.yaml
+
+db_engine: pg
+
+dataview:
+  page_size: 1000
