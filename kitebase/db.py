@@ -63,6 +63,75 @@ class CaseString(sqlalchemy.types.TypeDecorator):
         return value.upper() if self.case == 'upper' else value.lower()
 
 
+# The character that wraps every code of a CodeSet, on both sides.
+CODESET_DELIMITER = ','
+
+
+class CodeSet(sqlalchemy.types.TypeDecorator):
+    """A set of codes from a small vocabulary: a list in Python, a delimited
+    string in the database.
+
+    `["C", "S"]` is stored as `",C,S,"`. The delimiters on both sides are what
+    make "contains" one LIKE that is the same on every engine (`%,C,%`), and
+    they keep `,C,` from ever matching inside `,CO,`, which packed characters
+    would not. An empty list is stored as NULL and read back as an empty list.
+
+    The vocabulary is not here: what a code means, and which codes exist, is
+    the business of the plugin that declares the column (a table of roles, a
+    list in YAML). A code cannot contain the delimiter, and cannot be empty.
+
+    A string passes through as it is: it is how a LIKE pattern reaches the
+    column, and how a value already in the stored form is written back. The
+    list read from a row is a plain list, so a change in place goes unseen by
+    the ORM: assign a new list instead.
+    """
+
+    impl = sqlalchemy.types.String
+    cache_ok = True
+    # What tells the querybuilder this column answers `has`
+    delimiter = CODESET_DELIMITER
+
+    @property
+    def python_type(self) -> type:
+        return list
+
+    def process_bind_param(self, value: Any, dialect: Any) -> Any:
+        if value is None or isinstance(value, str):
+            return value
+        return codeset_text(value)
+
+    def process_result_value(self, value: Any, dialect: Any) -> Any:
+        return codeset_codes(value)
+
+
+def codeset_text(codes: Any) -> Optional[str]:
+    """The stored form of a list of codes: `",C,S,"`, or None when empty.
+
+    Duplicates are dropped and the order kept, so the same set is always
+    written the same way.
+    """
+    if isinstance(codes, str) or not isinstance(codes, (list, tuple, set, frozenset)):
+        raise ValueError(f"A code set is a list of codes, not {codes!r}")
+    out: List[str] = []
+    for code in codes:
+        if not isinstance(code, str) or not code or CODESET_DELIMITER in code:
+            raise ValueError(
+                f"A code of a code set is a non-empty string without "
+                f"'{CODESET_DELIMITER}': {code!r}")
+        if code not in out:
+            out.append(code)
+    if not out:
+        return None
+    return CODESET_DELIMITER + CODESET_DELIMITER.join(out) + CODESET_DELIMITER
+
+
+def codeset_codes(text: Optional[str]) -> List[str]:
+    """The list of codes of a stored `",C,S,"`; an empty list for NULL."""
+    if not text:
+        return []
+    return [c for c in text.split(CODESET_DELIMITER) if c]
+
+
 # Attributes that describe ONE column and cannot be shared by the parts of a
 # composite: its identity, its storage, and the words that name it. Everything
 # else a composite column declares — `editable`, and whatever an application
@@ -207,6 +276,8 @@ class DB:
             except Exception:
                 # Skip types that don't have a python_type equivalent
                 continue
+        # The types of the core itself, declared like the built-in ones
+        self.types['CodeSet'] = DbType('CodeSet', "", python_type=list)
 
         # Process plugin-defined types
         for name in self.pm.sorted:
@@ -460,7 +531,7 @@ class DB:
                 col_dict = {'name': col.name}
                 for attr in ('type', 'label', 'virtual', 'editable', 'nullable', 'secret',
                              'default', 'deferred', 'index', 'unique', 'query_rank',
-                             'granularity'):
+                             'granularity', 'choices_endpoint'):
                     if attr in col.attributes:
                         col_dict[attr] = col.attributes[attr]
                     elif hasattr(col, 'db_type') and col.db_type and attr == 'type':

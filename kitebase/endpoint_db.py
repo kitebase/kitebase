@@ -6,7 +6,7 @@ from kitebase import flow
 from kitebase import access
 from kitebase.access import AccessDenied
 from kitebase.endpoints import endpoint
-from kitebase.querybuilder import DynamicQueryBuilder, coerce_temporal, temporal_condition
+from kitebase.querybuilder import DynamicQueryBuilder, codeset_has, coerce_temporal, temporal_condition
 from kitebase.i18n import _, _f
 from typing import Dict, Any, Optional
 from sqlalchemy import and_, or_, desc, asc
@@ -273,6 +273,59 @@ def require_columns(model_class, values: Dict[str, Any]) -> None:
         raise kitebase.transforms.ValidationError(errors)
 
 
+def typed_key(model_class) -> list:
+    """The primary key columns of a table whose key is typed, not assigned.
+
+    Empty when the database assigns the key (an autoincrement): only a key
+    someone types can collide with one already there, or be changed by mistake.
+    """
+    table = getattr(model_class, '__table__', None)
+    if table is None or table.autoincrement_column is not None:
+        return []
+    return list(table.primary_key.columns)
+
+
+def refuse_duplicate_key(session, model_class, values: Dict[str, Any]) -> None:
+    """Refuse a new row whose typed key is already taken, said on the key's fields.
+
+    The database would refuse it too, quoting the statement; here the message
+    names the value, and says when the row holding it is archived, which is
+    the case where whoever types the code sees no row with it.
+
+    Raises:
+        ValidationError: the key fields, as {field: message}
+    """
+    cols = typed_key(model_class)
+    if not cols or any(values.get(c.key) is None for c in cols):
+        return
+    key = tuple(values[c.key] for c in cols)
+    existing = session.get(model_class, key if len(key) > 1 else key[0])
+    if existing is None:
+        return
+    shown = ', '.join(str(v) for v in key)
+    message = (_f('{value} already exists, archived', value=shown)
+               if getattr(existing, 'is_archived', False) is True
+               else _f('{value} already exists', value=shown))
+    raise kitebase.transforms.ValidationError({c.key: message for c in cols})
+
+
+def refuse_key_change(record, model_class, changes: Dict[str, Any]) -> None:
+    """Refuse an update that would change a typed key.
+
+    Other rows, and other tables, refer to the row by its key: renaming it
+    would leave them pointing at nothing. The form locks the field once the
+    record exists; this holds for whoever calls the endpoint directly.
+
+    Raises:
+        ValidationError: the key fields the update tries to change
+    """
+    errors = {c.key: _('The key cannot be changed once the record exists')
+              for c in typed_key(model_class)
+              if c.key in changes and changes[c.key] != getattr(record, c.key)}
+    if errors:
+        raise kitebase.transforms.ValidationError(errors)
+
+
 def _invalid(error) -> Dict[str, Any]:
     """A write refused by a column's rule: the errors go back by field."""
     return {"status": "error", "code": 400, "message": _('Some values are not valid'),
@@ -300,6 +353,7 @@ def handle_create(app, model_class, params: Dict[str, Any], db_table=None) -> Di
         new_record = model_class(**ctx.record)
 
         with app.get_session() as session:
+            refuse_duplicate_key(session, model_class, ctx.record)
             session.add(new_record)
             # The row as inserted, defaults included, must be one the user may create
             session.flush()
@@ -352,6 +406,10 @@ def handle_update(app, model_class, params: Dict[str, Any], db_table=None) -> Di
 
         changes = {k: coerce_value(model_class, k, v) for k, v in record_data.items()
                    if hasattr(record, k)}
+        try:
+            refuse_key_change(record, model_class, changes)
+        except kitebase.transforms.ValidationError as e:
+            return _invalid(e)
         original = flow.row_values(record)
         ctx, refusal = flow.judge(model_class.__name__, 'update', {**original, **changes},
                                   original, params.get('answers'))
@@ -430,6 +488,7 @@ def build_filters(model_class, query_filters: Dict[str, Any]) -> Optional[Any]:
       - like: LIKE pattern
       - ilike: Case-insensitive LIKE
       - in: IN a list of values
+      - has: a code set holds the code, or any of a list of codes
       - between: Between two values (provide [min, max] list)
     - Logical OR:  {"$or":  [{condition1}, {condition2}, ...]}
     - Logical AND: {"$and": [{group1}, {group2}, ...]}
@@ -514,6 +573,8 @@ def build_filters(model_class, query_filters: Dict[str, Any]) -> Optional[Any]:
             conditions.append(column.ilike(value))
         elif operator == 'in':
             conditions.append(column.in_(value))
+        elif operator == 'has':
+            conditions.append(codeset_has(column, value))
         elif operator == 'between':
             # Value should be a list/tuple with exactly 2 elements [min, max]
             if isinstance(value, (list, tuple)) and len(value) == 2:

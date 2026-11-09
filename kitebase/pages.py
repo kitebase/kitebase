@@ -260,9 +260,14 @@ def field_from_column(col: Any) -> Dict[str, Any]:
         elif isinstance(v, _JSON_SCALARS) or isinstance(v, (list, dict)):
             entry[k] = v
 
-    # Derived client hints not present in raw attributes
+    # Derived client hints not present in raw attributes. A key the database
+    # assigns is never typed; one that is typed is required, and the form
+    # locks it once the record exists.
     if attrs.get('primary_key'):
-        entry['readonly'] = True
+        if attrs.get('autoincrement'):
+            entry['readonly'] = True
+        else:
+            entry['required'] = True
     if attrs.get('nullable') is False and attrs.get('default') is None:
         entry['required'] = True
     return entry
@@ -273,7 +278,8 @@ def auto_form_page(table_name: str, table: Any) -> Dict[str, Any]:
     Auto-generate a form page descriptor for a table.
 
     Convention: '{table_name}_form' (e.g. 'book_form').
-    PK columns are included as read-only. Secret, hidden and virtual columns
+    PK columns are included: read-only when the database assigns them, typed
+    on insert otherwise. Secret, hidden and virtual columns
     are skipped, save a Files column: it has no value in the row, but a widget
     that lists its folder.
     All column attributes are forwarded to the client (which applies what it knows).

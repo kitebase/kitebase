@@ -79,6 +79,7 @@ forms:
       editable: { type: bool, doc: "False: generated forms show it read only." }
       hidden: { type: bool, doc: "Travels with the record but is never shown as a column or field." }
       widget: { type: str, ref: widget, doc: "The widget of forms, over the one the type implies." }
+      choices_endpoint: { type: str, ref: endpoint, doc: "On a CodeSet, the endpoint serving the codes it picks from: the form and the filters both ask it." }
       searchable: { type: bool, doc: "Adds the column to what a text search matches." }
       query_rank: { values: [top, normal, low, more, none], doc: "Where the query editor offers the column; normal by default." }
       duplicate: { type: bool, doc: "Whether duplicating a record copies it; by default every column but key, virtual and unique ones." }

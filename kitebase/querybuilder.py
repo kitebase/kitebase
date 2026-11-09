@@ -72,6 +72,28 @@ else:
 LIKE_ESCAPE = '\\'
 
 
+def codeset_has(column, value):
+    """
+    The rows whose code set holds a code, or any of a list of codes.
+
+    A code set is a column whose type stores a list as a delimited string
+    (`CodeSet`: `",C,S,"`) and says so with its `delimiter`: holding `C` is
+    then a LIKE on `%,C,%`, the same on every engine, which a JSON list could
+    not be. On any other column the operator is refused, since a LIKE there
+    would match codes inside other words and answer something plausible.
+    """
+    kind = getattr(column, 'type', None)
+    delimiter = getattr(kind, 'delimiter', None)
+    if not delimiter:
+        raise ValueError(f"The 'has' operator applies to a code set, not to '{getattr(column, 'key', column)}'")
+    codes = value if isinstance(value, list) else [value]
+    if not codes or not all(isinstance(c, str) and c and delimiter not in c for c in codes):
+        raise ValueError(f"The 'has' operator wants one or more codes, got {value!r}")
+
+    return or_(*(column.like(f'%{delimiter}{_escape_like(c)}{delimiter}%', escape=LIKE_ESCAPE)
+                 for c in codes))
+
+
 _TEMPORAL_PARSERS = (
     (sqltypes.DateTime, datetime.datetime.fromisoformat),
     (sqltypes.Date, lambda s: datetime.date.fromisoformat(s[:10])),
@@ -2070,6 +2092,8 @@ class FilterBuilder:
             if not isinstance(value, list) or len(value) != 2:
                 raise ValueError("The 'between' operator requires two values")
             return column.between(value[0], value[1])
+        elif op == 'has':
+            return codeset_has(column, value)
         else:
             raise ValueError(f"Unsupported filter operator: {op}")
 

@@ -704,6 +704,57 @@ Use it for identifiers whose alphabet is upper case anyway — tax codes, VAT
 numbers, ISO codes — and knowing the case is fixed is what lets the code around
 them stop converting.
 
+
+### 3.3.2 Sets of Codes
+
+`CodeSet` is a type of the core: a set of codes from a small vocabulary, a list
+in Python and on the wire, stored as a delimited string. Like the SQLAlchemy
+types, it is the base a plugin's type stands on, and columns name that type:
+
+```yaml
+types:
+  ShortSet:
+    base: CodeSet
+    length: 255
+
+tables:
+  Partner:
+    columns:
+      - name: roles
+        type: ShortSet
+        choices_endpoint: partner_roles   # where the codes come from
+```
+
+`["C", "S"]` is stored as `",C,S,"`, an empty list as NULL. The delimiters on
+both sides are what make "holds a code" a single LIKE that reads the same on
+every engine, and keep `C` from ever matching inside `CO`. A query asks for it
+with `has`:
+
+```yaml
+domain: [{roles: [has, C]}]        # holds C
+domain: [{roles: [has, C, S]}]     # holds C or S
+defaults: {roles: [C]}             # a record added here is born with C
+```
+
+The vocabulary is not in the type: which codes exist and what they mean is the
+plugin's, a table of roles or a list in YAML, and a validator on the column
+names a code nobody declared. A code cannot be empty or contain a comma. The
+column says where the codes come from with `choices_endpoint`, an endpoint
+answering `[{value, label}]` (a form field may give `choices` instead).
+
+- **Form**: the `codeset` widget, a popup with a check per choice, filtered by
+  what is typed; the field shows the codes alone, `C, S`. A short vocabulary
+  may ask for `widget: checklist`, every choice on show as a checkbox.
+- **List**: the codes comma separated.
+- **Filters**: the query editor offers the column with *has any of* (`has`),
+  *is empty* and *is not empty*, the value picked with the same popup. It is
+  not offered for ordering: the stored form sorts by nothing a reader knows.
+
+Use it when a mechanism computes on the codes (roles that give permissions or
+behaviours). Labels users make up and share are tags, a vocabulary table and a
+junction, filtered through the relation.
+
+
 ### 3.4 Composite Types (Mixins)
 
 A type that declares a `columns` list is a **composite type** (mixin).
@@ -1132,6 +1183,7 @@ hybrid carries an SQL expression. A table that declares nothing searchable
 | `label` | string | UI label (overrides type-level label) |
 | `help` | string | What the field is for: shown on request in a form, by the `?` beside the label or F1 on the field |
 | `widget` | string | UI widget override |
+| `choices_endpoint` | string | On a `CodeSet`: the endpoint serving the codes, read by the form widget and by the query editor (§ 3.3.2) |
 | `searchable` | bool | Adds the column to what a text search matches (§ 4.3) |
 | `query_rank` | string | Where the column stands when a query is built — the query editor's fields and its order combo: `top`, `normal` (default), `low`, `more` (behind "Show more"), `none` (never offered). Within a rank the declaration order holds, so a derived plugin moves a field by ranking it, without reordering the base's columns. A value off the scale is an error in `check` |
 | `prefix` | string | Column name prefix when expanding a composite type |
@@ -1741,9 +1793,16 @@ Resolution order in `get_page`:
 
 An auto-generated page is built from `effective_columns` and nothing else.
 **Secret** columns are left out of both (§ 3.6); a form also skips **virtual**
-ones, shows the key read-only, marks a column `required` when it is
-`nullable: false` with no default, and forwards every other column attribute
-to the client, which applies the ones it knows (widget, label, `foreign_key`).
+ones, marks a column `required` when it is `nullable: false` with no default,
+and forwards every other column attribute to the client, which applies the ones
+it knows (widget, label, `foreign_key`).
+
+The key is read-only when the database assigns it (`autoincrement`). A key
+someone types, a code like `ShortID`, is required and typed on insert; once the
+record exists the form locks it, since other rows refer to it. The `db`
+endpoint holds the same two rules for any caller: a create on a key already
+taken is refused on the key's field ("C already exists", and "archived" when
+the row holding it is), and an update cannot change the key.
 
 Collections (§ 4.5) are never derived: a collection is not a column, and asking
 which tables hold a foreign key to this one would pull `BookAuthor`, `Loan` and

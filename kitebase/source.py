@@ -5,6 +5,9 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Any, Tuple
 from kitebase.db import DB, DbColumn, DbTable
 
+# Column types the core defines itself: imported from kitebase.db, not sqlalchemy
+KITEBASE_TYPES = {'CodeSet'}
+
 
 class ModelImportManager:
     """
@@ -566,6 +569,8 @@ class ColumnGenerator:
             self.imports.kitebase_imports.add('CaseString')
             sa_type = 'CaseString'
             type_args.append(f"case='{case}'")
+        elif sa_type in KITEBASE_TYPES:
+            self.imports.kitebase_imports.add(sa_type)
         else:
             self.imports.column_imports.add(sa_type)
 
