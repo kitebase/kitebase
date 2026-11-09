@@ -300,6 +300,35 @@
    "$plugin": "common"
   },
   "$plugin": "common",
+  "TagVocabulary": {
+   "label": "Tag",
+   "columns": [
+    {
+     "name": "id",
+     "type": "ID",
+     "$plugin": "tags"
+    },
+    {
+     "name": "name",
+     "type": "String",
+     "length": 60,
+     "nullable": false,
+     "label": "Name",
+     "$plugin": "tags"
+    },
+    {
+     "name": "name_key",
+     "type": "String",
+     "length": 60,
+     "nullable": true,
+     "unique": true,
+     "editable": false,
+     "hidden": true,
+     "$plugin": "tags"
+    }
+   ],
+   "$plugin": "tags"
+  },
   "SKU": {
    "base": "ShortStr",
    "nullable": false,
@@ -933,15 +962,6 @@
      "$plugin": "books"
     },
     {
-     "name": "tags",
-     "type": "String",
-     "length": 200,
-     "nullable": true,
-     "description": "Comma-separated tags (first = primary genre)",
-     "help": "Tags separated by commas. The first one is the main genre.",
-     "$plugin": "books"
-    },
-    {
      "name": "status",
      "type": "String",
      "length": 1,
@@ -988,6 +1008,32 @@
      "$plugin": "books"
     }
    ],
+   "$plugin": "books"
+  },
+  "BookTag": {
+   "name": "book_tags",
+   "mixins": [
+    "TagVocabulary"
+   ],
+   "$plugin": "books"
+  },
+  "BookTagLink": {
+   "name": "book_tag_links",
+   "many_to_many": {
+    "target1": {
+     "table": "Book.id",
+     "column": "book_id",
+     "collection": "tags",
+     "field": true,
+     "$plugin": "books"
+    },
+    "target2": {
+     "table": "BookTag.id",
+     "column": "tag_id",
+     "$plugin": "books"
+    },
+    "$plugin": "books"
+   },
    "$plugin": "books"
   },
   "BookAuthor": {
@@ -4644,6 +4690,7 @@
     "Author.*",
     "Publisher.*",
     "BookAuthor.*",
+    "BookTag.*",
     "Review.read",
     "*.label"
    ],

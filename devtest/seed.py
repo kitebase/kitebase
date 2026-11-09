@@ -107,20 +107,29 @@ def seed_catalogue(session, model, rng=None) -> int:
     session.add_all(publishers + authors)
     session.flush()
 
-    books, links = [], []
+    from tags.model import name_key as tag_key    # one tag per name, as the plugin decides
+    books, links, tags, tagged = [], [], {}, []
     for r in _rows('books.csv'):
         books.append(model.Book(
             id=int(r['id']), title=r['title'], original_title=r['original_title'] or None,
             isbn=r['isbn'], publication_date=_date(r['publication_date']),
             first_published=_int(r['first_published']), price=Decimal(r['price']),
             language=r['language'], pages=_int(r['pages']),
-            publisher_id=_int(r['publisher_id']), tags=r['tags'], status='A'))
+            publisher_id=_int(r['publisher_id']), status='A'))
         links += [model.BookAuthor(book_id=int(r['id']), author_id=int(a))
                   for a in r['authors'].split()]
-    session.add_all(books)
+        # The first tag is the main genre: links keep the order they are written in
+        names = [name.strip() for name in r['tags'].split(',') if name.strip()]
+        for name in names:
+            if tag_key(name) not in tags:
+                tags[tag_key(name)] = model.BookTag(name=name)
+        tagged.append((int(r['id']), [tag_key(name) for name in names]))
+    session.add_all(books + list(tags.values()))
     session.flush()
     session.add_all(links)
-    return len(publishers) + len(authors) + len(books)
+    session.add_all(model.BookTagLink(book_id=book_id, tag_id=tags[name].id)
+                    for book_id, names in tagged for name in names)
+    return len(publishers) + len(authors) + len(books) + len(tags)
 
 
 def seed_covers(session, model, rng=None) -> int:

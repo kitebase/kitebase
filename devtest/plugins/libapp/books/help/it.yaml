@@ -38,10 +38,6 @@ tables.Book.columns.publisher_id:
   en: The publisher of this edition.
   it: ''
 
-tables.Book.columns.tags:
-  en: Tags separated by commas. The first one is the main genre.
-  it: ''
-
 tables.BookAuthor.columns.notes:
   en: A note on the part of this author in the book, such as translator or editor.
   it: ''

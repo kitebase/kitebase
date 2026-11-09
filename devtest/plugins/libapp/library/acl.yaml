@@ -25,6 +25,7 @@ roles:
       - Author.*
       - Publisher.*
       - BookAuthor.*
+      - BookTag.*
       - Review.read
       - '*.label'
 

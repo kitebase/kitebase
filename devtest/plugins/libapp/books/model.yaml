@@ -150,12 +150,6 @@ tables:
         type: Text
         nullable: true
 
-      - name: tags
-        type: String
-        length: 200
-        nullable: true
-        description: "Comma-separated tags (first = primary genre)"
-        help: Tags separated by commas. The first one is the main genre.
 
     # Compound indexes
     indexes:
@@ -167,6 +161,19 @@ tables:
       - name: idx_book_title_date
         columns: [title, publication_date]
         description: "Search books by title and year"
+
+  # Tags: the vocabulary takes the mixin, the junction declares the field on
+  # the book's end. `Book.tags` reads and writes as a list of tag ids, and a
+  # name in the list is the tag of that name, created when missing.
+  BookTag:
+    name: book_tags
+    mixins: [TagVocabulary]
+
+  BookTagLink:
+    name: book_tag_links
+    many_to_many:
+      target1: { table: Book.id, column: book_id, collection: tags, field: true }
+      target2: { table: BookTag.id, column: tag_id }
 
   BookAuthor:
     name: books_authors
