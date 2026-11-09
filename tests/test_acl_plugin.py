@@ -84,6 +84,12 @@ PAGES = {
         'type': 'table', 'source': {'model': 'Loan'},
         'columns': [{'field': 'id'}, {'field': 'Book.title as title'}],
     }},
+    # the side panel goes to whoever cannot read Book: the loan alone is read
+    'loan_detail': {
+        'content': {'type': 'form', 'source': {'model': 'Loan'}, 'layout': [{'name': 'state'}]},
+        'panels': [{'id': 'book', 'type': 'table', 'source': {'model': 'Book'},
+                    'columns': [{'field': 'Book.title'}]}],
+    },
 }
 
 
@@ -459,6 +465,17 @@ def test_check_names_a_page_a_role_opens_and_cannot_read(app):
     found = acl_issues(app, 'acl-page-unreadable')
     assert list(found) == ['pages.loan_list']
     assert "'library.archive'" in found['pages.loan_list']
+
+
+def test_check_judges_a_page_as_the_role_receives_it(app):
+    # library.archive opens loan_detail without Book.read: get_page takes the
+    # panel on Book out, so nothing of the page answers 403
+    guard = sys.modules['acl.guard']
+    archive = guard.GUARD.roles['library.archive']
+    assert not guard.granted('Book.read', archive)
+    pages = [p['page'] for p in guard.unreadable_pages(app, lambda p: guard.granted(p, archive))]
+    assert 'loan_detail' not in pages
+    assert 'loan_list' in pages
 
 
 # ── Refresh: what the token says is read again ───────────────────────────────

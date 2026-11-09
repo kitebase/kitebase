@@ -51,7 +51,7 @@ collection follow their root, as they do for the table permissions.
 """
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Any, Dict, FrozenSet, Iterable, Iterator, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Set, Tuple
 
 # What an endpoint declares with `@endpoint(name, access=...)`, besides a
 # permission code. `$` marks them as framework values, never a permission.
@@ -157,8 +157,37 @@ def diagnose(app: Any) -> List[Dict[str, Any]]:
     return _GUARD.diagnose(app)
 
 
+class _Holding(Guard):
+    """The answers of `holding()`: a set of permissions, with no user behind it."""
+
+    def __init__(self, holds: Callable[[str], bool]) -> None:
+        self.holds = holds
+
+    def allows(self, permission: str, context: Optional[Dict[str, Any]]) -> bool:
+        return self.holds(permission)
+
+    def allows_undeclared(self, endpoint: str, context: Optional[Dict[str, Any]]) -> bool:
+        # The guard judges such an endpoint on a user, which there is not here
+        return False
+
+
+_HOLDING: ContextVar[Optional[Guard]] = ContextVar('kitebase_access_holding', default=None)
+
+
+@contextmanager
+def holding(holds: Callable[[str], bool]) -> Iterator[None]:
+    """Answer `can()` and the functions built on it from `holds`, not from the
+    user of the context: what a role or a user would get, asked by `check` and
+    by the access form. An endpoint that declared no access is refused."""
+    token = _HOLDING.set(_Holding(holds))
+    try:
+        yield
+    finally:
+        _HOLDING.reset(token)
+
+
 def _guard() -> Guard:
-    return _GUARD
+    return _HOLDING.get() or _GUARD
 
 
 def _context() -> Optional[Dict[str, Any]]:

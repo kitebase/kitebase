@@ -3,7 +3,7 @@ import kitebase.utils
 from kitebase import access, settings
 from kitebase.endpoints import endpoint
 from kitebase.outbound import to_client
-from kitebase.pages import load_page, page_permissions, restrict, restrict_columns
+from kitebase.pages import load_page, page_permissions, restrict_page
 # Note: context is set globally via BaseApp.set_context() before each call —
 # endpoint functions receive only (data).
 
@@ -21,7 +21,7 @@ def get_page(data: Dict[str, Any]) -> Dict[str, Any]:
 
     Opening a page asks `<Model>.read` on the model it shows and the page's own
     `access:`; a refusal is a 403 naming the permission. What the user cannot
-    use inside it is taken out (`pages.restrict`).
+    use inside it is taken out (`pages.restrict_page`).
 
     Resolution order:
       1. Explicit pages dict (YAML plugin pages)
@@ -50,8 +50,7 @@ def get_page(data: Dict[str, Any]) -> Dict[str, Any]:
 
     for permission in page_permissions(app, page_id) or []:
         access.check(permission)
-    restrict(app, page)
-    restrict_columns(app, page)
+    restrict_page(app, page)
     settings.resolve_tokens(page)
 
     return {'status': 'success', 'data': to_client(page), 'code': 200}

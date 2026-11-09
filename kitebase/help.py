@@ -35,7 +35,7 @@ from kitebase import help_texts
 from kitebase.i18n import _, _f, use_locale
 from kitebase.media import MediaError, parse_size
 from kitebase.pages import (BUTTON, COLLECTION, LIST_TYPES, can_open, field_from_column, load_page,
-                            lookup_page, restrict, restrict_columns)
+                            lookup_page, restrict_page)
 
 _TEMPLATES = Path(__file__).parent / 'help_template'
 
@@ -195,8 +195,7 @@ class _Merge:
             return None
         page = load_page(self.app, page_id)
         if page is not None and self.doc.for_user:
-            restrict(self.app, page)
-            restrict_columns(self.app, page)
+            restrict_page(self.app, page)
         return page
 
     def screen(self, page_id: str, group: Optional[HelpGroup] = None,

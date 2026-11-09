@@ -629,6 +629,16 @@ def lookup_page(field: Dict[str, Any]) -> Optional[str]:
     return f"{str(fk['target']).lower()}_list"
 
 
+def restrict_page(app: Any, page: Any) -> Any:
+    """A resolved page as the current user receives it, in place: what they
+    cannot use taken out (`restrict`), then the columns they cannot read
+    (`restrict_columns`). Under `access.holding()`, as that set of permissions
+    would receive it."""
+    restrict(app, page)
+    restrict_columns(app, page)
+    return page
+
+
 def restrict(app: Any, obj: Any, in_collection: bool = False) -> None:
     """Take out of a resolved page what the current user cannot use. In place,
     on the copy `get_page` is about to send:
