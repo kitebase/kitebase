@@ -40,6 +40,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import kitebase.utils
 import kitebase.media
+import kitebase.refsets
 from kitebase import access, flow
 from kitebase.access import AccessDenied
 from kitebase.endpoints import endpoint
@@ -127,7 +128,9 @@ def _select(app, session, model_name: str, conditions: List[Any],
         query_def['filters'] = {'conditions': conditions}
     if order_by:
         query_def['order_by'] = order_by
-    return builder.execute_query(query_def, result_format='records')
+    rows = builder.execute_query(query_def, result_format='records')
+    kitebase.refsets.attach(app, session, app.tables.get(model_name), rows)
+    return rows
 
 
 def _load_level(app, session, parent_model: str, collections: Dict[str, Collection],
@@ -370,7 +373,7 @@ def _save_node(app, session, node_def, node: Dict[str, Any],
         _save_children(app, session, node_def, node, None, id_map, deletes, depth)
         return None
 
-    values = dict(node.get('values') or {})
+    values, sets = kitebase.refsets.split(db_table, dict(node.get('values') or {}))
 
     # Defaults fill what the row leaves unsaid: they are the other half of the
     # domain, and a row created under a filter must satisfy it.
@@ -434,6 +437,7 @@ def _save_node(app, session, node_def, node: Dict[str, Any],
         session.flush()
         real_id = node_id
 
+    kitebase.refsets.write(app, session, db_table, obj, sets)
     _save_children(app, session, node_def, node, obj, id_map, deletes, depth)
     return real_id
 

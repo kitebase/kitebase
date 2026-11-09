@@ -2,6 +2,7 @@ import kitebase
 import kitebase.server_utils as server_utils
 import kitebase.transforms
 import kitebase.media
+import kitebase.refsets
 from kitebase import flow
 from kitebase import access
 from kitebase.access import AccessDenied
@@ -169,11 +170,9 @@ def handle_get(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[
             if not record or not access.row_visible(session, model_class, record_id):
                 return {"status": "error", "message": _f('Record with id {id} not found', id=record_id), "code": 404}
 
-            return {
-                "status": "success",
-                "data": kitebase.utils.serialize_model(record, db_table=db_table),
-                "code": 200
-            }
+            data = kitebase.utils.serialize_model(record, db_table=db_table)
+            kitebase.refsets.attach(app, session, db_table, [data])
+            return {"status": "success", "data": data, "code": 200}
         else:
             # List records with filtering and pagination
             query = session.query(model_class)
@@ -341,6 +340,7 @@ def handle_create(app, model_class, params: Dict[str, Any], db_table=None) -> Di
 
     # Create new instance
     try:
+        record_data, sets = kitebase.refsets.split(db_table, record_data)
         record_data = write_values(db_table, record_data)
         coerced = {k: coerce_value(model_class, k, v) for k, v in record_data.items()}
         require_columns(model_class, coerced)
@@ -359,6 +359,7 @@ def handle_create(app, model_class, params: Dict[str, Any], db_table=None) -> Di
             session.flush()
             access.check_row(session, model_class,
                              sa_inspect(new_record).identity[0], 'create')
+            kitebase.refsets.write(app, session, db_table, new_record, sets)
             flow.commit(ctx, session, new_record)
             session.commit()
 
@@ -366,6 +367,7 @@ def handle_create(app, model_class, params: Dict[str, Any], db_table=None) -> Di
             session.refresh(new_record)
 
             saved = kitebase.utils.serialize_model(new_record, db_table=db_table)
+            kitebase.refsets.attach(app, session, db_table, [saved])
             result = {
                 "status": "success",
                 "data": saved,
@@ -392,6 +394,7 @@ def handle_update(app, model_class, params: Dict[str, Any], db_table=None) -> Di
         return {"status": "error", "message": _('No data provided for update'), "code": 400}
 
     try:
+        record_data, sets = kitebase.refsets.split(db_table, record_data)
         record_data = write_values(db_table, record_data)
     except kitebase.transforms.ValidationError as e:
         return _invalid(e)
@@ -426,9 +429,15 @@ def handle_update(app, model_class, params: Dict[str, Any], db_table=None) -> Di
                     pass
 
         try:
+            session.flush()
+            kitebase.refsets.write(app, session, db_table, record, sets)
             flow.commit(ctx, session, record)
             session.commit()
             saved = kitebase.utils.serialize_model(record, db_table=db_table)
+            kitebase.refsets.attach(app, session, db_table, [saved])
+        except kitebase.transforms.ValidationError as e:
+            session.rollback()
+            return _invalid(e)
         except Exception as e:
             session.rollback()
             return {"status": "error", "message": f"Update failed: {str(e)}", "code": 400}

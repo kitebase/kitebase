@@ -24,6 +24,7 @@ class StubColumn:
 class StubTable:
     def __init__(self, columns):
         self.effective_columns = columns
+        self.ref_sets = {}
 
 
 def people():
