@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional, Union, Iterator
 from types import ModuleType
 from contextlib import contextmanager, ExitStack
+from dataclasses import dataclass
 import sqlalchemy.types
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session, Session
@@ -234,6 +235,7 @@ class DB:
         self._calc_tables()
         self._calc_junctions()
         self._calc_columns()
+        self._calc_ref_sets()
         self.media = kitebase.media.Media(self.pm.config.get('media'), self.pm.resolve_media_path)
         self._warn_missing_media_base()
         self._calc_endpoints()
@@ -403,6 +405,44 @@ class DB:
                 col.resolve_foreign(f"table: {table_name}")
             self.tables[table_name].resolve_m2m(self)
 
+    def _calc_ref_sets(self) -> None:
+        """Give each junction end that declares `field: true` its RefSet.
+
+        The one place that decides whether a junction can be read as a value: a
+        column of its own that nothing fills by itself (one without a `default`,
+        such as a note on the pair) would be dropped by every write of the field,
+        so it is refused here, at startup, rather than lost later.
+        """
+        for junction in self.tables.values():
+            m2m = junction.attributes.get('many_to_many')
+            if not m2m:
+                continue
+            for this_key, other_key in (('target1', 'target2'), ('target2', 'target1')):
+                this, other = m2m[this_key], m2m[other_key]
+                if not this.get('field'):
+                    continue
+                where = f"Table '{junction.name}': many_to_many {this_key}"
+                name = this.get('collection')
+                if not name:
+                    raise ValueError(f"{where} declares `field: true` without a `collection:`, "
+                                     f"which is the name the field takes")
+                pair = {this['column'], other['column']}
+                carried = [col.name for col in junction.effective_columns
+                           if col.name not in pair
+                           and not col.attributes.get('primary_key')
+                           and not col.attributes.get('virtual')
+                           and 'default' not in col.attributes]
+                if carried:
+                    raise ValueError(
+                        f"{where} declares `field: true`, but the junction rows carry "
+                        f"{', '.join(carried)}: writing the field as a list of keys would "
+                        f"lose them. Edit the rows as a collection instead")
+                owner = this['table']
+                owner.ref_sets[name] = RefSet(
+                    name=name, owner=owner, owner_key=this['id'], junction=junction,
+                    owner_column=this['column'], target_column=other['column'],
+                    target=other['table'], target_key=other['id'])
+
     def _calc_endpoints(self) -> None:
         """
         Resolve all endpoints coming from plugins and the ones defined in package
@@ -542,6 +582,9 @@ class DB:
                 if col.attributes.get('media'):
                     col_dict.update(kitebase.media.column_schema(self.media, col.attributes))
                 cols.append(col_dict)
+            for ref in table.ref_sets.values():
+                cols.append({'name': ref.name, 'type': 'RefSet',
+                             'ref_set': {'target': ref.target.name, 'field': ref.target_key}})
 
             # The key is read from the columns that declare it — junctions
             # included, since a junction declares one like everyone else.
@@ -851,6 +894,26 @@ class DbType:
         return result
 
 
+@dataclass(frozen=True)
+class RefSet:
+    """A junction seen from one of its ends as a value: the keys of the other end.
+
+    Declared with `field: true` on a junction target, it gives that end a field
+    holding the list of keys it is linked to, read and written as one value of the
+    record (`Book.tags == [3, 5, 12]`). The junction rows stay a detail of the
+    server. Only a junction whose rows say nothing beyond the pair can be one:
+    anything else they carried would be lost on the first write.
+    """
+    name: str               # the field on `owner`, which is the collection's name
+    owner: 'DbTable'        # the end that holds the field
+    owner_key: str          # its column the junction points at
+    junction: 'DbTable'
+    owner_column: str       # the junction column pointing at `owner`
+    target_column: str      # the junction column pointing at `target`
+    target: 'DbTable'
+    target_key: str         # the column of `target` whose values the field holds
+
+
 class DbTable:
     """
     Represents a database table with support for:
@@ -877,6 +940,8 @@ class DbTable:
         self._columns: List[Dict[str, Any]] = []  # Temporary variable used to build columns
         self.columns: List[DbColumn] = []
         self.virtual_columns: List[DbColumn] = []
+        # The junctions this table sees as a field (`field: true` on its end)
+        self.ref_sets: Dict[str, RefSet] = {}
         self._effective_columns: Optional[List['DbColumn']] = None
         self._secret_columns: Optional[frozenset] = None
         self._column_groups: Optional[Dict[str, str]] = None

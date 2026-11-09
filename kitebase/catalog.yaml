@@ -140,6 +140,7 @@ forms:
       relation: { type: str, doc: "The attribute of the junction leading to the end." }
       backref: { type: str, doc: "The collection of junction rows on the end." }
       collection: { type: str, doc: "The shortcut past the junction, on the end." }
+      field: { type: bool, doc: "The collection is also a field of the end: the list of keys it is linked to, read and written as one value. Needs `collection:`; refused when the junction rows carry columns of their own." }
       owned: { type: bool, doc: "False: the junction rows survive this end." }
       id: { type: str, derived: true, doc: "The referenced column, resolved from `table`." }
       db_type: { type: str, derived: true, doc: "The type of the referenced column." }
