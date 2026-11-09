@@ -198,7 +198,8 @@ def _check_view(app: Any, view: Dict[str, Any], path: str,
             f"table '{model}' is not defined", plugin))
         return
 
-    colnames = {c.name for c in table.effective_columns}
+    # A RefSet is read with the record: a list column or a form field may name it
+    colnames = {c.name for c in table.effective_columns} | set(table.ref_sets)
 
     keys: Dict[str, str] = {}
     for col in view.get('columns') or []:
@@ -219,9 +220,7 @@ def _check_view(app: Any, view: Dict[str, Any], path: str,
             _check_tone(col, f'{path}.columns[{field}]', plugin, issues)
 
     _check_card(view, keys, path, plugin, issues)
-    # A form also edits the junctions the table reads as a field (RefSet); a
-    # list does not query them, so `columns` above stays on the stored ones.
-    _check_fields(view.get('fields') or [], colnames | set(table.ref_sets), model,
+    _check_fields(view.get('fields') or [], colnames, model,
                   f'{path}.fields', plugin, issues)
 
 

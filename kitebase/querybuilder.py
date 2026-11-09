@@ -17,7 +17,7 @@ import decimal
 from uuid import UUID
 from typing import Any, Callable, Dict, List, Set, Tuple, Union, Optional, Type
 
-from sqlalchemy import and_, or_, desc, asc, false, select, func, text, TextClause, literal_column, inspect, String
+from sqlalchemy import and_, or_, not_, true, desc, asc, false, select, func, text, TextClause, literal_column, inspect, String
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import Session
@@ -70,6 +70,10 @@ else:
 # backslash this way; stating it makes every backend agree, and makes the
 # escaping a caller does to a user's own '%' actually take effect.
 LIKE_ESCAPE = '\\'
+
+
+# Operators on a collection of the main table, compared with keys of its target
+SET_OPERATORS = ('any_of', 'all_of', 'none_of')
 
 
 def codeset_has(column, value):
@@ -1816,6 +1820,9 @@ class FilterBuilder:
         op = condition['op'].lower()
         value = condition.get('value')
 
+        if op in SET_OPERATORS and table_name is None:
+            return self._build_set_filter(column_name, op, value)
+
         # A path is only a path when it is not already qualified by a table
         if table_name is None:
             relation = self._build_relation_filter(column_name, op, value)
@@ -1863,6 +1870,9 @@ class FilterBuilder:
         # Normalize the operator
         if op in self.operator_map:
             op = self.operator_map[op]
+
+        if op in SET_OPERATORS:
+            return self._build_set_filter(column_expr, op, value)
 
         # A relationship path is not a column: it is a predicate on another table
         relation = self._build_relation_filter(column_expr, op, value)
@@ -2013,6 +2023,35 @@ class FilterBuilder:
             raise ValueError(f"'{model.__name__}' has no column '{column_name}' in path '{expr}'")
 
         return chain, model, column_name
+
+    def _build_set_filter(self, expr: str, op: str, value: Any) -> ClauseElement:
+        """
+        Compare a collection of the main table with a list of keys of its target.
+
+        `any_of` holds when the row is linked to at least one of them, `all_of`
+        when to every one, `none_of` when to none. Each is an EXISTS on the
+        collection, as any step towards many is (`_build_relation_filter`): the
+        row is asked about, never multiplied. An empty list asks nothing of
+        `all_of` and `none_of`, and nothing satisfies an empty `any_of`.
+        """
+        model = self.models.get(self.main_table)
+        relationships = inspect(model).relationships if model is not None else {}
+        if expr not in relationships or not relationships[expr].uselist:
+            raise ValueError(f"The '{op}' operator applies to a collection of "
+                             f"{self.main_table}, not to '{expr}'")
+        target = relationships[expr].mapper
+        if len(target.primary_key) != 1:
+            raise ValueError(f"The '{op}' operator needs a target with a single key, "
+                             f"which {target.class_.__name__} has not")
+        key = target.primary_key[0]
+        keys = list(value) if isinstance(value, (list, tuple)) else [value]
+        collection = getattr(model, expr)
+
+        if op == 'any_of':
+            return collection.any(key.in_(keys)) if keys else false()
+        if op == 'all_of':
+            return and_(*[collection.any(key == k) for k in keys]) if keys else true()
+        return not_(collection.any(key.in_(keys))) if keys else true()
 
     def _build_relation_filter(self, expr: str, op: str, value: Any) -> Optional[ClauseElement]:
         """

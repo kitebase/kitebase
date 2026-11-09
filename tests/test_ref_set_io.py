@@ -232,3 +232,72 @@ def test_a_resolver_that_creates_says_so_to_the_widget(app, monkeypatch):
     kitebase.refsets.register_resolver(type('Creating', (Names,), {'creates': True}))
     tags = next(c for c in app.get_table_schema()['Book']['columns'] if c['name'] == 'tags')
     assert tags['ref_set']['create'] is True
+
+
+# ── Lists and filters ─────────────────────────────────────────────────────────
+
+def query(app, **query_def):
+    from kitebase.endpoint_db import db_query
+    return db_query({'format': 'records', 'query': {'table': 'Book', **query_def}})
+
+
+def test_a_list_reads_the_field_it_names(app, shelf):
+    rows = ok(query(app, select=['id', 'title', 'tags'], order_by=['id']))
+    assert [(r['title'], r['tags']) for r in rows] == \
+        [('Tagged', [shelf['plum'], shelf['peach']]), ('Bare', [])]
+
+
+def test_the_key_it_is_read_by_is_selected_when_left_out(app, shelf):
+    rows = ok(query(app, select=['title', 'Book.tags'], order_by=['id']))
+    assert rows[0]['tags'] == [shelf['plum'], shelf['peach']] and 'id' in rows[0]
+
+
+def test_a_list_that_does_not_name_it_does_not_read_it(app, shelf):
+    assert 'tags' not in ok(query(app, select=['id', 'title']))[0]
+
+
+def test_another_format_is_refused(app, shelf):
+    from kitebase.endpoint_db import db_query
+    result = db_query({'format': 'tuples', 'query': {'table': 'Book', 'select': ['id', 'tags']}})
+    assert result['status'] == 'error' and 'tags' in result['message']
+
+
+def titles(app, op, keys):
+    return [r['title'] for r in ok(query(app, select=['title'], order_by=['id'],
+                                         filters={'conditions': [{'tags': [op, keys]}]}))]
+
+
+def test_any_of_all_of_none_of(app, shelf):
+    peach, plum, mango = shelf['peach'], shelf['plum'], shelf['mango']
+    assert titles(app, 'any_of', [peach, mango]) == ['Tagged']
+    assert titles(app, 'all_of', [peach, plum]) == ['Tagged']
+    assert titles(app, 'all_of', [peach, mango]) == []
+    assert titles(app, 'none_of', [peach]) == ['Bare']
+
+
+def test_an_empty_list_asks_nothing_but_of_any_of(app, shelf):
+    assert titles(app, 'any_of', []) == []
+    assert titles(app, 'all_of', []) == ['Tagged', 'Bare']
+    assert titles(app, 'none_of', []) == ['Tagged', 'Bare']
+
+
+def test_the_verbose_form_says_the_same(app, shelf):
+    rows = ok(query(app, select=['title'], filters={'conditions': [
+        {'column': 'tags', 'op': 'none_of', 'value': [shelf['plum']]}]}))
+    assert [r['title'] for r in rows] == ['Bare']
+
+
+def test_a_set_operator_wants_a_collection(app, shelf):
+    result = query(app, select=['title'], filters={'conditions': [{'title': ['any_of', ['x']]}]})
+    assert result['status'] == 'error' and 'collection' in result['message']
+
+
+def test_filtering_asks_for_the_record_and_the_vocabulary_not_the_junction(app, shelf):
+    """The links are part of the book's value; the tags they point at are not."""
+    from kitebase import access
+    filtered = {'select': ['title'], 'filters': {'conditions': [{'tags': ['any_of', [shelf['plum']]]}]}}
+    with access.holding(lambda p: p in {'Book.read', 'BookTag.read'}):
+        assert [r['title'] for r in ok(query(app, **filtered))] == ['Tagged']
+    with access.holding(lambda p: p == 'Book.read'):
+        with pytest.raises(access.AccessDenied, match='BookTag'):
+            query(app, **filtered)

@@ -16,6 +16,7 @@ register_translations('it', {
     # RefSet fields (kitebase.refsets)
     'A list is expected':               'È attesa una lista',
     'Not found: {keys}':                'Non trovati: {keys}',
+    '{fields} can be read in the records format only': '{fields} si legge solo nel formato records',
     'Record updated successfully':      'Record aggiornato con successo',
     'Record ID is required for deletion':'ID record obbligatorio per l\'eliminazione',
     'Record deleted successfully':      'Record eliminato con successo',

@@ -625,11 +625,20 @@ def db_query(data: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         app = kitebase.utils.get_app()
+        # A RefSet named in the select is read apart, as a list per record
+        main_table = app.tables.get(query_def.get('table')) if isinstance(query_def, dict) else None
+        query_def, sets = kitebase.refsets.from_select(main_table, query_def)
+        if sets and fmt != 'records':
+            return {"status": "error", "code": 400,
+                    "message": _f("{fields} can be read in the records format only",
+                                  fields=', '.join(sets))}
         with app.get_session() as session:
             builder = DynamicQueryBuilder(
-                session, app.models,
+                session, app.models, covered=kitebase.refsets.junctions(main_table),
                 value_transform=kitebase.media.query_transform(app, data.get('variants')))
             records = builder.execute_query(query_def, result_format=fmt)
+            if sets:
+                kitebase.refsets.attach(app, session, main_table, records, sets)
 
             if want_count:
                 total = builder.count_query(query_def)

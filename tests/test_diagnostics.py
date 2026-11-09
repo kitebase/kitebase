@@ -123,9 +123,9 @@ def test_field_unknown(app):
     assert not any('[title]' in p or '[Publisher.name]' in p or '$props' in p
                    or 'COUNT' in p
                    for p in paths)
-    # A RefSet is a field of the form, but not a column a list can query
+    # A RefSet is read with the record: a field of a form, a column of a list
     assert 'views.form_view.fields[tags]' not in paths
-    assert 'views.book_list_view.columns[tags]' in paths
+    assert 'views.book_list_view.columns[tags]' not in paths
 
 
 def test_panel_missing(app):

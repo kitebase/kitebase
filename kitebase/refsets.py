@@ -5,7 +5,7 @@ A table holds a RefSet for each junction end that declares `field: true`
 the links were written. The junction rows never leave the server.
 """
 from collections import defaultdict
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import select
 
@@ -19,15 +19,19 @@ def _junction_key(ref) -> str:
                 if col.attributes.get('primary_key'))
 
 
-def attach(app: Any, session: Any, db_table: Any, rows: List[Dict[str, Any]]) -> None:
-    """Add every RefSet of `db_table` to `rows`, records as dicts, in place.
+def attach(app: Any, session: Any, db_table: Any, rows: List[Dict[str, Any]],
+           names: Optional[List[str]] = None) -> None:
+    """Add the RefSets of `db_table` to `rows`, records as dicts, in place.
 
-    One query per RefSet for all the rows: a list of a hundred books asks the
-    junction once, not a hundred times. A row with no links gets an empty list.
+    All of them, or the ones `names` lists. One query per RefSet for all the
+    rows: a list of a hundred books asks the junction once, not a hundred
+    times. A row with no links gets an empty list.
     """
     if db_table is None or not rows:
         return
     for ref in db_table.ref_sets.values():
+        if names is not None and ref.name not in names:
+            continue
         keys = {row.get(ref.owner_key) for row in rows} - {None}
         linked: Dict[Any, List[Any]] = defaultdict(list)
         if keys:
@@ -40,6 +44,43 @@ def attach(app: Any, session: Any, db_table: Any, rows: List[Dict[str, Any]]) ->
                 linked[owner_value].append(target_value)
         for row in rows:
             row[ref.name] = list(linked.get(row.get(ref.owner_key), []))
+
+
+def junctions(db_table: Any) -> List[str]:
+    """The junctions of `db_table`'s RefSets: read with the record, not on their own.
+
+    A link is part of the record's value, so whoever reads the record reads it,
+    to show it or to filter by it; the vocabulary it points at keeps its own
+    permission.
+    """
+    return [ref.junction.name for ref in db_table.ref_sets.values()] if db_table is not None else []
+
+
+def from_select(db_table: Any, query_def: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
+    """The RefSets a query's `select` names, and the query without them.
+
+    The querybuilder knows nothing of RefSets: they are taken out before it
+    runs and attached to its records after (`attach`). The key each one is
+    read by stays selected, added when the select left it out.
+    """
+    select = query_def.get('select')
+    if db_table is None or not db_table.ref_sets or not isinstance(select, list):
+        return query_def, []
+    prefix = f'{db_table.name}.'
+
+    def ref_name(item: Any) -> Optional[str]:
+        name = item.removeprefix(prefix) if isinstance(item, str) else None
+        return name if name in db_table.ref_sets else None
+
+    names = [ref_name(item) for item in select if ref_name(item)]
+    if not names:
+        return query_def, []
+    kept = [item for item in select if not ref_name(item)]
+    for name in names:
+        key = db_table.ref_sets[name].owner_key
+        if key not in kept and prefix + key not in kept:
+            kept.append(key)
+    return {**query_def, 'select': kept}, names
 
 
 # ── Write ─────────────────────────────────────────────────────────────────────
