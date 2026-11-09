@@ -118,6 +118,20 @@ export interface NodeChild {
 	plugins: string[];
 }
 
+/** A cell of a block: a text, or one with a link to a node, a tone, a hint. */
+export type Cell =
+	| string
+	| { text: string; path?: string; subject?: string; tone?: 'ok' | 'cond' | 'no' | 'faint'; title?: string };
+
+/** What a plugin adds to the nodes of its root: links, or a table. */
+export interface Block {
+	title: string;
+	doc?: string;
+	links?: Cell[];
+	columns?: string[];
+	rows?: Cell[][];
+}
+
 /** A node of the merged tree as it runs, and the plugins that write it. */
 export interface NodeInfo {
 	path: string;
@@ -136,6 +150,8 @@ export interface NodeInfo {
 		value?: unknown;
 		error?: string;
 	} | null;
+	/** What the plugin of the root adds, when it does (introspect.add_detail). */
+	detail: Block[] | null;
 }
 
 export interface SourceFile {

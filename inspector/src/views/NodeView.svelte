@@ -3,6 +3,7 @@
 	import { api, type NodeChild, type NodeInfo } from '../lib/api';
 	import { href } from '../lib/router.svelte';
 	import Snippet from './Snippet.svelte';
+	import Blocks from './Blocks.svelte';
 
 	// A node of the merged tree, as it runs and as each plugin writes it: its
 	// children to go down, the lines of every file that writes it beside them.
@@ -74,6 +75,8 @@
 				<h2><button class="linkish" onclick={() => (whole = !whole)}>{whole ? 'Hide' : 'Show'} the node as it runs</button></h2>
 				{#if whole}<pre class="value">{JSON.stringify(node.value, null, 2)}</pre>{/if}
 			{/if}
+
+			{#if node.detail}<Blocks blocks={node.detail} />{/if}
 
 			{#if node.resolved}
 				{@const r = node.resolved}

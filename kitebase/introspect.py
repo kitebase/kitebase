@@ -18,7 +18,7 @@ the data as a whole goes through `mask_secrets`.
 """
 import inspect
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import yaml
 
@@ -425,7 +425,33 @@ def node(app: Any, path: str, subject: Optional[str] = None) -> Dict[str, Any]:
         'layers': find_layers(app, located) if located else [],
         'layers_of': path_text(located),
         'resolved': _resolved(app, steps, subject),
+        'detail': _detail(app, steps),
     }
+
+
+# What a plugin adds to the nodes of its own root, which the core cannot know:
+# `roles.<code>` of acl, its closure and what it gives. `fn(app, key)` returns
+# blocks the page draws without knowing what they mean:
+#
+#   {'title': str, 'doc': str?, 'links': [cell, ...]}
+#   {'title': str, 'doc': str?, 'columns': [str, ...], 'rows': [[cell, ...], ...]}
+#
+# A cell is a text, or {'text', 'path'?, 'subject'?, 'tone'?, 'title'?}: `path`
+# opens that node (seen by `subject`), `tone` is ok, cond, no or faint, and
+# `title` is what the cell says when pointed at.
+_DETAILS: Dict[str, Callable[[Any, str], List[Dict[str, Any]]]] = {}
+
+
+def add_detail(root: str, fn: Callable[[Any, str], List[Dict[str, Any]]]) -> None:
+    """Register what the nodes `<root>.<key>` show beyond the tree: one per root."""
+    if _DETAILS.get(root, fn) is not fn:
+        raise ValueError(f"The nodes of '{root}' already have a detail")
+    _DETAILS[root] = fn
+
+
+def _detail(app: Any, steps: Sequence[Step]) -> Optional[List[Dict[str, Any]]]:
+    fn = _DETAILS.get(steps[0]) if len(steps) == 2 and isinstance(steps[1], str) else None
+    return _masked(fn(app, steps[1])) if fn else None
 
 
 # The descriptors the client receives resolved: a page by `get_page`, a view

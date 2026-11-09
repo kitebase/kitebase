@@ -491,6 +491,38 @@ def test_the_roles_are_the_subjects_of_the_guard(app):
     assert introspect.node(app, 'pages.loan_detail', 'library.office')['resolved']['refused'] == ['Loan.read']
 
 
+def _block(blocks, title):
+    return next(b for b in blocks if b['title'] == title)
+
+
+def _cell(block, row, column):
+    line = next(r for r in block['rows'] if r[0]['text'] == row)
+    return line[block['columns'].index(column)]
+
+
+def test_the_inspector_shows_what_a_role_implies_and_gives(app):
+    from kitebase import introspect
+    librarian = introspect.node(app, 'roles.library.librarian')['detail']
+    assert [l['text'] for l in _block(librarian, 'Implies')['links']] == ['library.member']
+    assert [l['text'] for l in _block(introspect.node(app, 'roles.library.member')['detail'],
+                                      'Implied by')['links']] == ['library.librarian']
+    tables = _block(librarian, 'Tables')
+    # each answer names the roles of the closure whose own grants give it
+    assert _cell(tables, 'Book', 'read')['title'] == 'by library.member'
+    assert _cell(tables, 'Book', 'update')['title'] == 'by library.librarian'
+    assert _cell(tables, 'Book', 'delete') == ''
+    reader = _block(introspect.node(app, 'roles.library.reader')['detail'], 'Tables')
+    assert _cell(reader, 'Loan', 'update')['tone'] == 'cond'
+    desk = introspect.node(app, 'roles.library.desk')['detail']
+    assert _cell(_block(desk, 'Tables'), 'User', 'label')['tone'] == 'no'
+    renew = _block(librarian, 'Other permissions')
+    assert _cell(renew, 'library.renew', 'Held')['tone'] == 'ok'
+    opens = _block(librarian, 'Pages it opens')['links']
+    assert {'text': 'loan_list', 'path': 'pages.loan_list', 'subject': 'library.librarian'} in opens
+    archive = introspect.node(app, 'roles.library.archive')['detail']
+    assert [r[0]['text'] for r in _block(archive, 'Pages it opens and cannot read')['rows']] == ['loan_list']
+
+
 # ── Refresh: what the token says is read again ───────────────────────────────
 
 def _stale(token):
