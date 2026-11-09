@@ -44,7 +44,7 @@ def test_the_client_sees_it_as_a_column_of_its_own_type(tmp_path, monkeypatch):
 
     tags = next(col for col in schema['Book']['columns'] if col['name'] == 'tags')
     assert tags == {'name': 'tags', 'type': 'RefSet',
-                    'ref_set': {'target': 'BookTag', 'field': 'id'}}
+                    'ref_set': {'target': 'BookTag', 'field': 'id', 'create': False}}
     assert 'books' not in [col['name'] for col in schema['BookTag']['columns']]
 
 

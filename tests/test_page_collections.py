@@ -356,6 +356,7 @@ class _Col:
 class _Table:
     def __init__(self, *cols):
         self.effective_columns = list(cols)
+        self.ref_sets = {}
 
 
 def titled_app(pages):

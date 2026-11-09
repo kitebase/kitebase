@@ -44,6 +44,9 @@ TABLES = {
 
 PAGES = {
     'book_form': {'content': {'type': 'form', 'source': {'model': 'Book'}, 'layout': []}},
+    'book_tags_form': {'content': {'type': 'form', 'source': {'model': 'Book'},
+                                   'fields': [{'name': 'title'},
+                                              {'name': 'tags', 'label': 'Labels'}]}},
 }
 
 
@@ -206,3 +209,26 @@ def test_a_registered_resolver_turns_values_into_keys(app, shelf, monkeypatch):
     data = ok(db_operations({'table': 'Book', 'method': 'update', 'id': shelf['bare'],
                              'data': {'tags': ['Mango', shelf['plum']]}}))
     assert data['tags'] == [shelf['mango'], shelf['plum']]
+
+
+# ── What the client is told ───────────────────────────────────────────────────
+
+def test_a_written_form_gets_the_field_underneath_what_it_says(app):
+    from kitebase.pages import load_page
+    fields = load_page(app, 'book_tags_form')['content']['fields']
+    tags = next(f for f in fields if f['name'] == 'tags')
+    assert tags['type'] == 'RefSet' and tags['label'] == 'Labels'
+    assert tags['ref_set'] == {'target': 'BookTag', 'field': 'id', 'create': False}
+
+
+def test_a_generated_form_carries_the_field_after_the_columns(app):
+    from kitebase.pages import auto_form_page
+    fields = auto_form_page('Book', app.tables['Book'], app)['content']['fields']
+    assert [f['name'] for f in fields] == ['id', 'title', 'tags']
+
+
+def test_a_resolver_that_creates_says_so_to_the_widget(app, monkeypatch):
+    monkeypatch.setattr(kitebase.refsets, '_RESOLVERS', [])
+    kitebase.refsets.register_resolver(type('Creating', (Names,), {'creates': True}))
+    tags = next(c for c in app.get_table_schema()['Book']['columns'] if c['name'] == 'tags')
+    assert tags['ref_set']['create'] is True

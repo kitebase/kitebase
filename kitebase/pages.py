@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from kitebase import access
+import kitebase.refsets
 from kitebase.utils import deep_merge
 
 _JSON_SCALARS = (str, int, float, bool, type(None))
@@ -273,7 +274,7 @@ def field_from_column(col: Any) -> Dict[str, Any]:
     return entry
 
 
-def auto_form_page(table_name: str, table: Any) -> Dict[str, Any]:
+def auto_form_page(table_name: str, table: Any, app: Any = None) -> Dict[str, Any]:
     """
     Auto-generate a form page descriptor for a table.
 
@@ -293,6 +294,8 @@ def auto_form_page(table_name: str, table: Any) -> Dict[str, Any]:
     fields = [field_from_column(col) for col in table.effective_columns
               if not col.attributes.get('secret') and not col.attributes.get('hidden')
               and (not col.attributes.get('virtual') or col.attributes.get('media') == 'files')]
+    # A junction the table reads as a field is edited where its columns are
+    fields += [kitebase.refsets.field(app, ref) for ref in table.ref_sets.values()]
 
     return {
         'title': table_name,
@@ -325,7 +328,7 @@ def resolve_auto_page(app: Any, page_id: str) -> Optional[Dict[str, Any]]:
                 if t_name.lower() == base.lower():
                     if suffix == '_list':
                         return auto_list_page(t_name, t_obj, getattr(app, 'media', None))
-                    return auto_form_page(t_name, t_obj)
+                    return auto_form_page(t_name, t_obj, app)
     return None
 
 
@@ -468,10 +471,15 @@ def _fill_fields(app: Any, obj: Any, model: Optional[str] = None) -> None:
     table = app.tables.get(model) if model else None
     if isinstance(name, str) and table is not None and 'filler' not in obj:
         col = next((c for c in table.effective_columns if c.name == name), None)
+        underneath = None
         if col is not None and not col.attributes.get('secret'):
+            underneath = field_from_column(col)
+        elif name in table.ref_sets:
+            underneath = kitebase.refsets.field(app, table.ref_sets[name])
+        if underneath is not None:
             declared = dict(obj)
             obj.clear()
-            obj.update(field_from_column(col))
+            obj.update(underneath)
             obj.update(declared)
             return
     for value in obj.values():

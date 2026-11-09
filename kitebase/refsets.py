@@ -52,6 +52,8 @@ def attach(app: Any, session: Any, db_table: Any, rows: List[Dict[str, Any]]) ->
 #
 #   applies_to(target_class) -> bool
 #   resolve(session, target_class, ref, values) -> list of keys
+#   creates = True       optional: a value may become a new row of the target,
+#                        so the widget offers to add what it does not find
 #
 # Without a resolver the values must be keys of the target, and exist.
 
@@ -62,6 +64,24 @@ def register_resolver(resolver: Any) -> None:
     """Register a resolver for the RefSets whose target it applies to."""
     if resolver not in _RESOLVERS:
         _RESOLVERS.append(resolver)
+
+
+def _resolver_for(target_class: Any) -> Any:
+    return next((r for r in _RESOLVERS if r.applies_to(target_class)), None)
+
+
+def field(app: Any, ref: Any) -> Dict[str, Any]:
+    """A RefSet as the client sees it: a field of its own type, with its vocabulary.
+
+    The same description in the table schema, in a written form and in a
+    generated one. `create` says whether a value the vocabulary lacks can be
+    added, which only the resolver knows.
+    """
+    target_class = app.find_model_class(ref.target.name) if app is not None else None
+    resolver = _resolver_for(target_class) if target_class is not None else None
+    return {'name': ref.name, 'type': 'RefSet',
+            'ref_set': {'target': ref.target.name, 'field': ref.target_key,
+                        'create': bool(getattr(resolver, 'creates', False))}}
 
 
 def split(db_table: Any, values: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
@@ -77,7 +97,7 @@ def _keys(session: Any, target_class: Any, ref: Any, values: Any) -> List[Any]:
         values = []
     if not isinstance(values, list):
         raise ValidationError({ref.name: _('A list is expected')})
-    resolver = next((r for r in _RESOLVERS if r.applies_to(target_class)), None)
+    resolver = _resolver_for(target_class)
     if resolver is not None:
         values = resolver.resolve(session, target_class, ref, values)
     keys = list(dict.fromkeys(values))

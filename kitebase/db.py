@@ -11,6 +11,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session, Session
 import kitebase.access
 import kitebase.media
+import kitebase.refsets
 from kitebase.plugins import PluginsManager, Plugin
 from kitebase.endpoints import CommandProcessor
 from kitebase.utils import deep_merge
@@ -582,9 +583,7 @@ class DB:
                 if col.attributes.get('media'):
                     col_dict.update(kitebase.media.column_schema(self.media, col.attributes))
                 cols.append(col_dict)
-            for ref in table.ref_sets.values():
-                cols.append({'name': ref.name, 'type': 'RefSet',
-                             'ref_set': {'target': ref.target.name, 'field': ref.target_key}})
+            cols.extend(kitebase.refsets.field(self, ref) for ref in table.ref_sets.values())
 
             # The key is read from the columns that declare it — junctions
             # included, since a junction declares one like everyone else.

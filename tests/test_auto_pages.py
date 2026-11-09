@@ -20,6 +20,7 @@ class FakeColumn:
 class FakeTable:
     def __init__(self, *columns):
         self.effective_columns = list(columns)
+        self.ref_sets = {}
 
 
 class FakeApp:

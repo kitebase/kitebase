@@ -4,6 +4,8 @@ Uses a PluginsManager populated via merge_dicts (so $plugin attribution is
 real) and stub tables exposing only what the checks read: effective_columns
 with .name, and .attributes.
 """
+from types import SimpleNamespace
+
 import pytest
 
 from kitebase.plugins import PluginsManager
@@ -20,13 +22,18 @@ class FakeTable:
     def __init__(self, *cols, ref_sets=()):
         self.effective_columns = [FakeCol(c) for c in cols]
         self.attributes = {}
-        self.ref_sets = {name: object() for name in ref_sets}
+        self.ref_sets = {name: SimpleNamespace(name=name, target_key='id',
+                                               target=SimpleNamespace(name='Tag'))
+                         for name in ref_sets}
 
 
 class FakeApp:
     def __init__(self, pm, tables):
         self.pm = pm
         self.tables = tables
+
+    def find_model_class(self, name):
+        return None
 
 
 @pytest.fixture
