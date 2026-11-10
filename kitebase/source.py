@@ -85,12 +85,8 @@ class ModelImportManager:
         if self.orm_imports:
             import_statements.append(f"from sqlalchemy.orm import {', '.join(sorted(self.orm_imports))}")
 
-        # Add declared_attr for dynamic __tablename__
-        import_statements.append('from sqlalchemy.ext.declarative import declared_attr')
-
         # Add Base import and kitebase utilities
         import_statements.append(f"from kitebase.db import {', '.join(sorted(self.kitebase_imports))}")
-        import_statements.append('from kitebase.utils import resolve_table_name')
         import_statements.append('import kitebase')
 
         return '\n'.join(import_statements)
@@ -793,12 +789,7 @@ class Generator:
         # Generate class declaration
         class_declaration = f"class {name}({', '.join(base_classes)}):\n"
 
-        # Generate tablename declaration with declared_attr for dynamic resolution
-        tablename_code = (
-            "    @declared_attr\n"
-            "    def __tablename__(cls):\n"
-            f"        return resolve_table_name('{name}', '{table.table_name}')\n"
-        )
+        tablename_code = f"    __tablename__ = '{table.table_name}'\n"
         code = [class_declaration, tablename_code]
 
         # A junction's own columns are written by the loop below like all the
@@ -935,7 +926,6 @@ class Generator:
         # Build body parts FIRST: mixin generation registers the imports of its
         # base classes (e.g. `import common.model` for Archivable), so it must run
         # before import statements are rendered — otherwise those imports are lost.
-        helper_code = self._generate_helper_functions()
         mixin_code = self._generate_mixin_classes()
 
         source_parts = []
@@ -948,12 +938,6 @@ class Generator:
         source_parts.append(self.imports.generate_import_statements())
         source_parts.append("")
         source_parts.append("")
-
-        # Add helper functions if any (currently empty - resolve_table_name moved to utils)
-        if helper_code:
-            source_parts.append(helper_code)
-            source_parts.append("")
-            source_parts.append("")
 
         # Add mixins
         if mixin_code:
@@ -991,12 +975,3 @@ class Generator:
 #
 # Generator: kitebase.source.Generator
 # ============================================================================'''
-
-    def _generate_helper_functions(self) -> str:
-        """
-        Generate helper functions for model code.
-
-        Returns:
-            String with helper functions (empty now - resolve_table_name moved to kitebase.utils)
-        """
-        return ""

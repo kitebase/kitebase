@@ -186,8 +186,6 @@ class DB:
         - self.models: Dictionary of all db models
         - self.engine: The instanced db engine
         - self.db_type: Database type: "sqlite", "postgresql", "mysql" and so on
-        - self.multi_tenant_config: Multi-tenancy configuration
-        - self.shared_tables: Set of tables that are shared (no tenant prefix)
         """
         self.pm: Optional[PluginsManager] = None
         self.cp: Optional[CommandProcessor] = None
@@ -198,8 +196,6 @@ class DB:
         self.models: Dict[str, Any] = {}
         self.engine: Any = None
         self.db_type: str = "unknown"
-        self.multi_tenant_config: Dict[str, Any] = {}
-        self.shared_tables: set = set()
         self.query_behaviors: List[Any] = []
         self.media: Optional[kitebase.media.Media] = None
 
@@ -226,7 +222,6 @@ class DB:
         3. Materialize the columns a `many_to_many:` declaration implies
         4. Process and validate column definitions
         5. register all endpoints from plugins and from package
-        6. Load multi-tenant configuration
 
         Args:
             plugins: Instance containing all loaded plugins
@@ -240,7 +235,6 @@ class DB:
         self.media = kitebase.media.Media(self.pm.config.get('media'), self.pm.resolve_media_path)
         self._warn_missing_media_base()
         self._calc_endpoints()
-        self._load_multi_tenant_config()
         # After the endpoints: a policy plugin registers its guard on import.
         kitebase.access.bind(self)
 
@@ -459,59 +453,6 @@ class DB:
         # 'endpoint_db.py', which iterates as its characters and loaded
         # nothing — the built-ins were arriving by accident.)
         self.cp.resolve_endpoints(self.pm.get_sources())
-
-    def _load_multi_tenant_config(self) -> None:
-        """
-        Load multi-tenancy configuration from PluginManager config.
-
-        If 'multi_tenant' section is not present in config.yaml,
-        the system works in standard single-tenant mode.
-        """
-        self.multi_tenant_config = self.pm.config.get('multi_tenant', {})
-        self.shared_tables = set(self.multi_tenant_config.get('shared_tables', []))
-
-    def get_table_name(self, model_name: str, context: Optional[Dict[str, Any]] = None) -> str:
-        """
-        Get the actual table name based on model name and context.
-
-        Supports multi-tenancy with tenant prefixes (e.g., 'data_orders', 'test_customers').
-
-        Args:
-            model_name: The model class name (e.g., "Order")
-            context: User context with optional tenant_prefix
-
-        Returns:
-            Actual table name (e.g., "data_orders" or "orders")
-
-        Example:
-            >>> app.get_table_name('Order', {'tenant_prefix': 'data'})
-            'data_orders'
-
-            >>> app.get_table_name('Config', {'tenant_prefix': 'data'})
-            'config'  # Config is shared, no prefix
-        """
-        # Get base table name from model definition
-        table_def = self.tables.get(model_name)
-        if not table_def:
-            return None
-
-        base_table_name = table_def.table_name
-
-        # Check if multi-tenancy is enabled
-        if not self.multi_tenant_config.get('enabled', False):
-            return base_table_name
-
-        # Check if this table is shared (no prefix)
-        if model_name in self.shared_tables:
-            return base_table_name
-
-        # Apply tenant prefix if context has tenant_prefix
-        if context and context.get('tenant_prefix'):
-            tenant_prefix = context.get('tenant_prefix')
-            return f"{tenant_prefix}_{base_table_name}"
-
-        # Fallback to base name
-        return base_table_name
 
     def find_model_class(self, table_name: str) -> Any:
         """
@@ -1538,31 +1479,6 @@ class BaseApp:
                 return col
 
         return None
-
-    @classmethod
-    def get_table_name(cls, context=None) -> str:
-        """
-        Get the actual table name for this model (with tenant prefix if applicable).
-
-        Args:
-            context: Optional context dict with tenant_prefix
-
-        Returns:
-            Actual table name (e.g., 'data_orders' or 'orders')
-
-        Example:
-            >>> context = {'tenant_prefix': 'data'}
-            >>> Order.get_table_name(context)
-            'data_orders'
-
-            >>> Config.get_table_name(context)  # Shared table
-            'config'
-        """
-        if context is None:
-            context = cls.get_context()
-
-        model_name = cls.__name__
-        return cls.__kitebase_app__.get_table_name(model_name, context)
 
     @classmethod
     def get_plugins(cls) -> list:

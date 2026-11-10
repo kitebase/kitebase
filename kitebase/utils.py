@@ -77,51 +77,6 @@ def get_app():
     return Base.__kitebase_app__
 
 
-def resolve_table_name(model_name: str, base_table_name: str) -> str:
-    """
-    Resolve table name dynamically based on current context.
-
-    Supports multi-tenancy with tenant prefixes (e.g., 'data_orders', 'test_customers').
-    If multi-tenancy is not configured, returns the base table name.
-
-    This function works both at import time (returns base table name) and at
-    runtime (returns tenant-prefixed name if applicable).
-
-    Args:
-        model_name: The model class name (e.g., 'User', 'Order')
-        base_table_name: The base table name (e.g., 'users', 'orders')
-
-    Returns:
-        Actual table name with tenant prefix if applicable
-
-    Example:
-        >>> # Standard mode (no multi-tenancy)
-        >>> resolve_table_name('User', 'users')
-        'users'
-
-        >>> # Multi-tenant mode with context
-        >>> BaseApp.set_context({'tenant_prefix': 'data'})
-        >>> resolve_table_name('Order', 'orders')
-        'data_orders'
-    """
-    try:
-        # Try to get app instance (works at runtime)
-        app = get_app()
-        if app and hasattr(app, 'tables') and app.tables:
-            # Import here to avoid circular dependency
-            from kitebase.db import BaseApp
-            context = BaseApp.get_context()
-            result = app.get_table_name(model_name, context)
-            if result:
-                return result
-    except Exception:
-        # App not initialized yet (during import)
-        pass
-
-    # Fallback to base table name
-    return base_table_name
-
-
 def table_definition(model_class, db_table=None):
     """
     The DbTable definition for a model class, when one is reachable.
