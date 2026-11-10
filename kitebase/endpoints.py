@@ -9,14 +9,16 @@ import kitebase
 import kitebase.context
 from kitebase.access import UNDECLARED, AccessDenied, check_endpoint
 from kitebase.plugins import load_modules
+from kitebase.registry import Registry
 
-# Global dictionary to register endpoints
-_ENDPOINTS: Dict[str, Callable] = {}
+# The endpoints of the process, by name
+_ENDPOINTS: Registry[Callable] = Registry('endpoints', 'endpoint')
 # What each endpoint declared with `access=`; absent means undeclared
 _ACCESS: Dict[str, Optional[str]] = {}
 
 
-def endpoint(name: str, access: Optional[str] = UNDECLARED) -> Callable[[Callable], Callable]:
+def endpoint(name: str, access: Optional[str] = UNDECLARED, *,
+             replace: bool = False) -> Callable[[Callable], Callable]:
     """
     Decorator to register an endpoint function.
 
@@ -31,12 +33,16 @@ def endpoint(name: str, access: Optional[str] = UNDECLARED) -> Callable[[Callabl
                 endpoint checks each table it touches itself, `AUTHENTICATED`
                 when any logged-in user may call it. Undeclared, the guard
                 decides: the open one lets it through, a real one need not.
+        replace: Take the place of the endpoint another module registered
+                under this name. Without it, a name already taken is an error:
+                two plugins cannot answer the same call, and the one loaded
+                last would win without anyone having chosen it.
 
     Returns:
         The decorated function with registration side effect
     """
     def decorator(func: Callable) -> Callable:
-        _ENDPOINTS[name] = func
+        _ENDPOINTS.add(name, func, replace=replace)
         _ACCESS[name] = access
 
         @wraps(func)
