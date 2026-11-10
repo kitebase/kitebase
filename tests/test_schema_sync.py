@@ -573,7 +573,7 @@ class _AppStub:
         import logging
         from types import SimpleNamespace
         self.engine = engine
-        self.pm = SimpleNamespace(logger=logging.getLogger('test'))
+        self.plugins = SimpleNamespace(logger=logging.getLogger('test'))
 
 
 def _forced_schema(monkeypatch):

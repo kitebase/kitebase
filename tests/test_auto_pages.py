@@ -25,7 +25,7 @@ class FakeTable:
 
 class FakeApp:
     def __init__(self, pm, tables):
-        self.pm = pm
+        self.plugins = pm
         self.tables = tables
 
 
@@ -97,7 +97,7 @@ def test_the_declared_page_is_not_touched():
 
     load_page(app, 'author_list')
     again = shown(app, 'author_list')
-    assert app.pm.get('pages.author_list')['$auto'] is True
+    assert app.plugins.get('pages.author_list')['$auto'] is True
     assert [c['field'] for c in again['content']['columns']] == ['id', 'name', 'active']
 
 

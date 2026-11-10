@@ -84,7 +84,7 @@ def dump_page(app: Any, page_id: str, auto: bool = False, raw: bool = False) -> 
             raise ValueError(f"Cannot auto-generate '{page_id}' — no matching table found")
         source_label = 'auto-generated'
     else:
-        raw_panel = app.pm.get(f'pages.{page_id}')
+        raw_panel = app.plugins.get(f'pages.{page_id}')
         if raw_panel is not None:
             if raw:
                 descriptor = strip_meta(raw_panel)
@@ -401,7 +401,7 @@ def db_sync(app: Any, dry_run: bool = False, force: bool = False,
 
     count = len(diff.safe) + len(forced)
     if count:
-        executed = apply_diff(app.engine, diff, logger=app.pm.logger, force=bool(forced))
+        executed = apply_diff(app.engine, diff, logger=app.plugins.logger, force=bool(forced))
         lines += ['', f'Applied {count} change(s):']
         lines += [f'  {statement}' for statement in executed]
 
@@ -473,8 +473,8 @@ def _backup_unit(app: Any, source: Path, parent: Path, stamp: str) -> Tuple[str,
     with sqlite3.connect(str(source)) as src, sqlite3.connect(str(db_file)) as out:
         src.backup(out)
 
-    roots, shared = media_roots(app.pm.config.get('media') or {})
-    base = app.pm.media_base()
+    roots, shared = media_roots(app.plugins.config.get('media') or {})
+    base = app.plugins.media_base()
     copied = linked = 0
     for _, path in roots:
         c, l = snapshot_files(base / path, folder / path,
@@ -515,7 +515,7 @@ def db_copy(app: Any, to: str, force: bool = False, dry_run: bool = False,
     shown = target.url.render_as_string(hide_password=True)
     source = app.engine.url.render_as_string(hide_password=True)
     head = f'{source}  ->  {shown}'
-    roots, shared = media_roots(app.pm.config.get('media') or {})
+    roots, shared = media_roots(app.plugins.config.get('media') or {})
 
     try:
         files = None
@@ -523,7 +523,7 @@ def db_copy(app: Any, to: str, force: bool = False, dry_run: bool = False,
             if '://' in to:
                 raise CopyError('--media needs the target engine by name: the name '
                                 'places its media folder')
-            files = MediaCopy(app.pm.media_base(), app.pm.media_base(to), roots)
+            files = MediaCopy(app.plugins.media_base(), app.plugins.media_base(to), roots)
             occupied = files.occupied()
             if occupied and not force:
                 raise CopyError(
@@ -554,7 +554,7 @@ def db_copy(app: Any, to: str, force: bool = False, dry_run: bool = False,
     lines = [report.format(source, shown)]
     if files is not None:
         verb = 'would be copied' if dry_run else 'copied'
-        lines.append(f'Media: {count} file(s) {verb}, {app.pm.media_base()} -> {files.target}.')
+        lines.append(f'Media: {count} file(s) {verb}, {app.plugins.media_base()} -> {files.target}.')
     elif roots:
         lines.append('Media not copied (--media copies them): the files these rows '
                      'refer to are where the target engine finds them, or missing.')
@@ -927,7 +927,7 @@ def run_cli(app: Any, args: argparse.Namespace, output_dir: Path = Path('.')) ->
     elif args.command == 'help':
         from kitebase.help import help_manual, help_merge, render_html, render_manual
         if args.lang != 'en':
-            app.pm.load_all_locales()
+            app.plugins.load_all_locales()
         try:
             if args.page_id == '@manual':
                 rendered = render_manual(app, help_manual(app, args.lang))

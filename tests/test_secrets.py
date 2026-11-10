@@ -68,7 +68,7 @@ def test_the_folder_moves_with_the_environment(app_dir, tmp_path_factory, monkey
 # -- the engine ---------------------------------------------------------------
 
 def resolve(pm, declared):
-    return Store._resolve_db_url(SimpleNamespace(pm=pm), declared)
+    return Store._resolve_db_url(SimpleNamespace(plugins=pm), declared)
 
 
 def test_a_url_in_config_is_used_as_before(app_dir):
@@ -110,7 +110,7 @@ def test_the_log_line_names_the_engine_and_hides_the_password(app_dir, monkeypat
     pm = manager(app_dir)
     url = resolve(pm, 'pg')
     with caplog.at_level(logging.INFO):
-        Store._log_engine(SimpleNamespace(pm=pm), 'pg', url)
+        Store._log_engine(SimpleNamespace(plugins=pm), 'pg', url)
     line = caplog.text
     assert 'Database engine: pg' in line
     assert 'KITEBASE_ENGINE' in line

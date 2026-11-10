@@ -3,12 +3,10 @@ import time
 import uuid
 import traceback as _traceback
 from functools import wraps
-from typing import Dict, List, Any, Optional, Union, Callable
-from pathlib import Path
+from typing import Dict, Any, Optional, Callable
 import kitebase
 import kitebase.context
 from kitebase.access import UNDECLARED, AccessDenied, check_endpoint
-from kitebase.plugins import load_modules
 from kitebase.registry import Registry
 
 # The endpoints of the process, by name
@@ -304,7 +302,7 @@ class Command:
 INHERIT: Any = object()
 
 
-class CommandProcessor:
+class Dispatcher:
     """
     Processes commands by routing them to registered endpoints.
 
@@ -319,26 +317,11 @@ class CommandProcessor:
 
     def __init__(self) -> None:
         """
-        Initialize the command processor.
-
-        Takes what is registered at this point: the package's own endpoints
-        (`auth`, `db`, `query`, `get_page` and the rest are decorated at import
-        time) and those of the plugin modules already loaded.
+        The endpoints are the registry of the process, read as it is at each
+        call: the package's own (`auth`, `db`, `query`, `get_page` and the
+        rest are decorated at import time) and those of the plugin modules.
         """
-        self.endpoints: Dict[str, Callable] = dict(_ENDPOINTS)
-
-    def resolve_endpoints(self, file_paths: List[Union[str, Path]]) -> None:
-        """
-        Load Python files and take the endpoints they register.
-
-        Args:
-            file_paths: List of paths to Python files containing endpoint definitions
-
-        Raises:
-            ImportError: If a file does not load, naming the module and the cause
-        """
-        load_modules(file_paths)
-        self.endpoints.update(_ENDPOINTS)
+        self.endpoints: Dict[str, Callable] = _ENDPOINTS
 
     def _execute_command(self, command: Command) -> CommandResult:
         """

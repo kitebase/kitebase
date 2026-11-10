@@ -18,7 +18,7 @@ import kitebase.utils
 from kitebase import access, server_utils
 from kitebase.app import App
 from kitebase.model_base import Base
-from kitebase.endpoints import _ACCESS, _ENDPOINTS, CommandProcessor, endpoint
+from kitebase.endpoints import _ACCESS, _ENDPOINTS, Dispatcher, endpoint
 from kitebase.plugins import PluginsManager
 from kitebase.source import Generator
 
@@ -163,7 +163,7 @@ def app(tmp_path, monkeypatch):
 
 
 def as_user(operation, parameters, roles=(), is_admin=False, exceptions=()):
-    return CommandProcessor().send({
+    return Dispatcher().send({
         'operation': operation, 'parameters': parameters,
         'context': {'id': 1, 'username': 'x', 'roles': list(roles), 'is_admin': is_admin,
                     'acl_exceptions': list(exceptions)}})
@@ -409,15 +409,15 @@ def test_roles_are_a_list_of_codes(app):
 
 def test_the_login_puts_the_exceptions_in_the_token(app):
     _set_user(app, 'bea', acl_exceptions=['+Book.delete'])
-    auth = server_utils.AuthMiddleware(app.pm.config, 'secret')
-    token = auth.login(app.cp, {'username': 'bea', 'password': 'pw'})['data']['token']
+    auth = server_utils.AuthMiddleware(app.plugins.config, 'secret')
+    token = auth.login(app.dispatcher, {'username': 'bea', 'password': 'pw'})['data']['token']
 
     assert jwt.decode(token, 'secret', algorithms=['HS256'])['acl_exceptions'] == ['+Book.delete']
 
 
 def test_the_login_puts_the_roles_in_the_token(app):
-    auth = server_utils.AuthMiddleware(app.pm.config, 'secret')
-    result = auth.login(app.cp, {'username': 'bea', 'password': 'pw'})
+    auth = server_utils.AuthMiddleware(app.plugins.config, 'secret')
+    result = auth.login(app.dispatcher, {'username': 'bea', 'password': 'pw'})
 
     payload = jwt.decode(result['data']['token'], 'secret', algorithms=['HS256'])
     assert payload['roles'] == LIBRARIAN
@@ -542,8 +542,8 @@ def _set_user(app, username, **values):
 
 
 def test_a_role_taken_away_counts_from_the_next_refresh(app):
-    auth = server_utils.AuthMiddleware(app.pm.config, 'secret')
-    token = auth.login(app.cp, {'username': 'bea', 'password': 'pw'})['data']['token']
+    auth = server_utils.AuthMiddleware(app.plugins.config, 'secret')
+    token = auth.login(app.dispatcher, {'username': 'bea', 'password': 'pw'})['data']['token']
     _set_user(app, 'bea', roles=MEMBER)
 
     payload, new_token, error = auth.decode_and_refresh(token)
@@ -556,8 +556,8 @@ def test_a_role_taken_away_counts_from_the_next_refresh(app):
 
 
 def test_a_disabled_account_is_refused_at_the_refresh(app):
-    auth = server_utils.AuthMiddleware(app.pm.config, 'secret')
-    token = auth.login(app.cp, {'username': 'bea', 'password': 'pw'})['data']['token']
+    auth = server_utils.AuthMiddleware(app.plugins.config, 'secret')
+    token = auth.login(app.dispatcher, {'username': 'bea', 'password': 'pw'})['data']['token']
     _set_user(app, 'bea', is_active=False)
 
     payload, new_token, error = auth.decode_and_refresh(_stale(token))
@@ -567,7 +567,7 @@ def test_a_disabled_account_is_refused_at_the_refresh(app):
 
 def test_what_the_host_vouched_for_is_not_read_again(app):
     """auth/token signs the host's word: the user need not be in our table."""
-    auth = server_utils.AuthMiddleware(app.pm.config, 'secret')
+    auth = server_utils.AuthMiddleware(app.plugins.config, 'secret')
     token = auth.issue_token({'username': 'guest', 'roles': MEMBER}, source='host')['data']['token']
 
     payload, new_token, error = auth.decode_and_refresh(_stale(token))
@@ -708,7 +708,7 @@ READER = ['library.reader']
 
 
 def as_member(operation, parameters, roles=READER, member=1, **context):
-    return CommandProcessor().send({
+    return Dispatcher().send({
         'operation': operation, 'parameters': parameters,
         'context': {'id': member, 'username': 'x', 'roles': list(roles),
                     'is_admin': False, 'acl_exceptions': [], **context}})
@@ -759,11 +759,11 @@ def test_a_grant_on_every_row_takes_the_conditions_in(loans):
 
 
 def test_the_administrator_and_an_exception_see_every_row(loans):
-    admin = CommandProcessor().send({'operation': 'query', 'parameters': {
+    admin = Dispatcher().send({'operation': 'query', 'parameters': {
         'format': 'records', 'query': {'table': 'Loan'}},
         'context': {'id': 2, 'roles': READER, 'is_admin': True}})
     assert loan_ids(admin) == [1, 2, 3, 4]
-    granted = CommandProcessor().send({'operation': 'query', 'parameters': {
+    granted = Dispatcher().send({'operation': 'query', 'parameters': {
         'format': 'records', 'query': {'table': 'Loan'}},
         'context': {'id': 2, 'roles': READER, 'acl_exceptions': ['+Loan.read']}})
     assert loan_ids(granted) == [1, 2, 3, 4]
@@ -903,10 +903,10 @@ def test_a_value_the_context_lacks_hides_the_rows(loans, guarded):
 # ── check reads the conditions ───────────────────────────────────────────────
 
 def _with_role(app, monkeypatch, where):
-    roles = dict(app.pm.data['roles'])
+    roles = dict(app.plugins.data['roles'])
     roles['library.probe'] = {'label': 'Probe', '$plugin': 'library',
                               'grants': ['Book.read', {'Loan.read': {'where': where}}]}
-    monkeypatch.setitem(app.pm.data, 'roles', roles)
+    monkeypatch.setitem(app.plugins.data, 'roles', roles)
 
 
 def test_check_names_a_condition_that_does_not_compile(app, monkeypatch):

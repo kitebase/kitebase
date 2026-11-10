@@ -94,13 +94,13 @@ def setup(generate: bool = True):
 
     if generate:
         model_file = "model.py"
-        if app.pm.should_regenerate(model_file):
+        if app.plugins.should_regenerate(model_file):
             print("Generating model.py ...")
             kitebase.source.Generator(app).generate(filename=model_file)
         else:
             print("model.py up to date.")
 
-    return app, app.pm
+    return app, app.plugins
 
 
 # ── Main (existing test suite) ─────────────────────────────────────────────────
@@ -130,8 +130,8 @@ def main():
             print(f"- {book.title} by {', '.join(authors_names)}")
 
     # register extra endpoints
-    cp = app.cp
-    cp.resolve_endpoints(["devtest.py"])
+    kitebase.plugins.load_modules(["devtest.py"])
+    cp = app.dispatcher
 
     # test some endpoints
     command = {

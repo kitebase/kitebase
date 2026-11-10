@@ -127,7 +127,7 @@ def diagnose(app: Any, roots: List[str]) -> List[Dict[str, Any]]:
 
     found: List[Tuple[str, str, Optional[str]]] = []
     for root in roots:
-        for item_id, item in (app.pm.data.get(root) or {}).items():
+        for item_id, item in (app.plugins.data.get(root) or {}).items():
             if not item_id.startswith('$'):
                 _tokens(item, f'{root}.{item_id}', found)
 

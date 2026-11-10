@@ -28,7 +28,7 @@ class Provider(settings.SettingsProvider):
 
 class FakeApp:
     def __init__(self, pm):
-        self.pm = pm
+        self.plugins = pm
         self.tables = {}
 
 
@@ -91,7 +91,7 @@ def test_the_client_receives_the_value(monkeypatch):
     assert result['data']['content']['source']['defaults'] == {
         'default_discount': 10, 'notes': 'Thanks'}
     # the merged tree keeps the token for the next request
-    assert app.pm.data['pages']['order_form']['content']['source']['defaults'][
+    assert app.plugins.data['pages']['order_form']['content']['source']['defaults'][
         'default_discount'] == '$setting.acquisitions.default_discount'
 
 

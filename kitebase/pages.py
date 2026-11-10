@@ -488,14 +488,14 @@ def _fill_fields(app: Any, obj: Any, model: Optional[str] = None) -> None:
 
 def _resolve(app: Any, page_id: str):
     """Return (page, collection map), or (None, {}) if no page answers to that id."""
-    page = app.pm.get(f'pages.{page_id}')
+    page = app.plugins.get(f'pages.{page_id}')
     if page is not None:
-        resolved = app.pm.resolve_refs(page)
+        resolved = app.plugins.resolve_refs(page)
         if resolved.get(AUTO):
             resolved = _on_auto(app, page_id, resolved)
         collections = resolve_collections(resolved, page_id)
         _fill_titles(app, resolved)
-        cp = getattr(app, 'cp', None)
+        cp = getattr(app, 'dispatcher', None)
         _complete_commands(resolved, cp.endpoints if cp is not None else None)
         content = resolved.get('content')
         if isinstance(content, dict) and content.get('type', 'form') == 'form':
@@ -608,9 +608,9 @@ def _collections_below(app: Any, page_id: str, seen: frozenset) -> Dict[str, Col
 def page_permissions(app: Any, page_id: str) -> Optional[List[str]]:
     """What opening a page asks: `<Model>.read` on the model it shows, then the
     page's own `access:`, which can only narrow. None when no page answers."""
-    page = app.pm.get(f'pages.{page_id}')
+    page = app.plugins.get(f'pages.{page_id}')
     if page is not None:
-        page = app.pm.resolve_refs(page)
+        page = app.plugins.resolve_refs(page)
         if page.get(AUTO):
             page = _on_auto(app, page_id, page)
     else:

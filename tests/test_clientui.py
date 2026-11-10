@@ -43,7 +43,7 @@ def test_a_mount_nobody_would_find_is_refused(section, message):
 
 def _issues(config):
     issues = []
-    _check_client(SimpleNamespace(pm=SimpleNamespace(config=config)), issues)
+    _check_client(SimpleNamespace(plugins=SimpleNamespace(config=config)), issues)
     return [(i['severity'], i['code']) for i in issues]
 
 

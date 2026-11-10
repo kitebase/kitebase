@@ -97,6 +97,6 @@ def help_manual_file(data: Dict[str, Any]) -> Any:
     rendered = render_manual(app, help_manual(app, lang, for_user=True))
     for warning in rendered.warnings:
         logger.warning('[help] manual: %s', warning)
-    name = (app.pm.config.get('name') or 'manual').lower()
+    name = (app.plugins.config.get('name') or 'manual').lower()
     return FileResult(rendered.html.encode('utf-8'), f'{name}-manual-{lang}.html',
                       'text/html; charset=utf-8', 'inline')

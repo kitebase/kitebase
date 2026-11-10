@@ -49,7 +49,7 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
     if getattr(kitebase_app, 'media', None) is not None:
         kitebase_app.media.set_signing_key(secret_key)
     report_checks(kitebase_app)
-    command_processor = kitebase_app.cp
+    dispatcher = kitebase_app.dispatcher
 
     def reply(result: Dict[str, Any], status_code: Optional[int] = None,
               new_token: Optional[str] = None) -> Response:
@@ -97,7 +97,7 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
     @target.post(f'{prefix}/auth/login')
     def kitebase_login(data: dict):
         try:
-            return reply(auth.login(command_processor, data))
+            return reply(auth.login(dispatcher, data))
         except Exception as e:
             return reply({'status': 'error', 'message': str(e)}, 500)
 
@@ -124,7 +124,7 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
         if refused is not None:
             return refused
         return reply(
-            handle_generic_endpoint(command_processor, operation, data, context=user),
+            handle_generic_endpoint(dispatcher, operation, data, context=user),
             new_token=new_token)
 
     @target.post(f'{prefix}/download/{{operation}}')
@@ -133,7 +133,7 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
         user, refused, new_token = identify(request)
         if refused is not None:
             return refused
-        result = handle_download(command_processor, operation, data, context=user)
+        result = handle_download(dispatcher, operation, data, context=user)
         if not isinstance(result, FileResult):
             return reply(result, new_token=new_token)
         headers = file_headers(result)
@@ -162,7 +162,7 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
         if isinstance(part, UploadFile):
             upload = UploadedFile(part.filename or '', iter(lambda: part.file.read(64 * 1024), b''))
         try:
-            result = await run_in_threadpool(handle_upload, command_processor, fields, upload, user)
+            result = await run_in_threadpool(handle_upload, dispatcher, fields, upload, user)
         finally:
             await form.close()
         return reply(result, new_token=new_token)
@@ -185,7 +185,7 @@ def register_fastapi(target, kitebase_app, plugins, secret_key: str, *,
             upload = UploadedFile(part.filename or '', iter(lambda: part.file.read(64 * 1024), b''))
         try:
             result = await run_in_threadpool(
-                handle_upload_op, command_processor, operation,
+                handle_upload_op, dispatcher, operation,
                 params if isinstance(params, str) else None, upload, user)
         finally:
             await form.close()

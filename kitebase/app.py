@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 import kitebase.access
 import kitebase.media
 import kitebase.refsets
-from kitebase.endpoints import INHERIT, CommandProcessor
+from kitebase.endpoints import INHERIT, Dispatcher
 from kitebase.model_base import Base, BaseApp
 from kitebase.plugins import PluginsManager
 from kitebase.schema import DbTable, DbType, Schema
@@ -24,14 +24,14 @@ class App:
 
     def __init__(self) -> None:
         """
-        - self.pm: Plugin manager instance
+        - self.plugins: Plugin manager instance
         - self.schema: The declared types and tables
         - self.store: The database: engine, models, sessions
-        - self.cp: Command processor instance
+        - self.dispatcher: Command processor instance
         """
-        self.pm: Optional[PluginsManager] = None
+        self.plugins: Optional[PluginsManager] = None
         self.schema: Schema = Schema()
-        self.cp: Optional[CommandProcessor] = None
+        self.dispatcher: Optional[Dispatcher] = None
         self.store: Store = Store()
         self.query_behaviors: List[Any] = []
         self.media: Optional[kitebase.media.Media] = None
@@ -114,8 +114,8 @@ class App:
 
     def call(self, operation: str, parameters: Optional[Dict[str, Any]] = None,
              context: Any = INHERIT) -> Dict[str, Any]:
-        """Call an endpoint from server code, as the caller: see CommandProcessor.call()."""
-        return self.cp.call(operation, parameters, context)
+        """Call an endpoint from server code, as the caller: see Dispatcher.call()."""
+        return self.dispatcher.call(operation, parameters, context)
 
     def _resolve_db_url(self, db_url: str) -> str:
         return self.store._resolve_db_url(db_url)
@@ -141,11 +141,11 @@ class App:
         Args:
             plugins: Instance containing all loaded plugins
         """
-        self.pm = plugins
-        self.store.pm = plugins
+        self.plugins = plugins
+        self.store.plugins = plugins
         self.schema = Schema()
         self.schema.calc(plugins)
-        self.media = kitebase.media.Media(self.pm.config.get('media'), self.pm.resolve_media_path)
+        self.media = kitebase.media.Media(self.plugins.config.get('media'), self.plugins.resolve_media_path)
         self._warn_missing_media_base()
         self._calc_endpoints()
         # After the endpoints: a policy plugin registers its guard on import.
@@ -157,12 +157,12 @@ class App:
         still runs: the rows are there, the files they refer to are not, so the
         references do not resolve. Said once at startup, not discovered later.
         """
-        if self.pm.engine_name is None or not self.media.roots:
+        if self.plugins.engine_name is None or not self.media.roots:
             return
-        base = self.pm.media_base()
+        base = self.plugins.media_base()
         if not base.exists():
-            self.pm.logger.warning(
-                f"Media of engine '{self.pm.engine_name}': {base} does not exist, "
+            self.plugins.logger.warning(
+                f"Media of engine '{self.plugins.engine_name}': {base} does not exist, "
                 "file references will not resolve (db-copy --media copies them)")
 
     def _calc_endpoints(self) -> None:
@@ -170,8 +170,8 @@ class App:
         Load the Python code of the plugins, then the dispatcher over what the
         package and the plugins registered.
         """
-        self.pm.load_modules()
-        self.cp = CommandProcessor()
+        self.plugins.load_modules()
+        self.dispatcher = Dispatcher()
 
     def get_type_schema(self, include_builtin: bool = False) -> Dict[str, Any]:
         """
@@ -198,7 +198,7 @@ class App:
     def get_schema_registry(self) -> Dict[str, Any]:
         """Return all declared schemas from plugin YAML as client-facing dicts."""
         from kitebase.types import get_schema_registry
-        return get_schema_registry(self.pm.data)
+        return get_schema_registry(self.plugins.data)
 
     def get_table_schema(self) -> Dict[str, Any]:
         """

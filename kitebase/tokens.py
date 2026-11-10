@@ -191,7 +191,7 @@ def handle_host_token(host_session, request, auth: 'AuthMiddleware') -> Dict[str
     return auth.issue_token(context, source='host')
 
 def handle_auth(
-    command_processor,
+    dispatcher,
     data: Dict[str, Any],
     secret_key: str,
     jwt_expiration_hours: int = 24,
@@ -201,7 +201,7 @@ def handle_auth(
     Framework-agnostic authentication handler.
 
     Args:
-        command_processor: Kitebase command processor instance
+        dispatcher: Kitebase command processor instance
         data: Request data with 'username' and 'password'
         secret_key: JWT secret key
         jwt_expiration_hours: Token expiration in hours
@@ -226,7 +226,7 @@ def handle_auth(
             }
         }
 
-        result = command_processor.send(command)
+        result = dispatcher.send(command)
 
         if result.get('status') == 'success':
             user_data = result.get('data', {}).get('context', {})
@@ -474,19 +474,19 @@ class AuthMiddleware:
                                                        self.context_fields)
         )
 
-    def login(self, command_processor, credentials: Dict[str, str]) -> Dict[str, Any]:
+    def login(self, dispatcher, credentials: Dict[str, str]) -> Dict[str, Any]:
         """
         Handle login using configured parameters.
 
         Args:
-            command_processor: Kitebase command processor
+            dispatcher: Kitebase command processor
             credentials: {'username': '...', 'password': '...'}
 
         Returns:
             Response dict with token and user data
         """
         return handle_auth(
-            command_processor,
+            dispatcher,
             credentials,
             self.secret_key,
             self.jwt_expiration_hours,

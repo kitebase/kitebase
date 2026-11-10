@@ -19,7 +19,7 @@ from kitebase.endpoint_panels import get_page
 
 class FakeApp:
     def __init__(self, pm):
-        self.pm = pm
+        self.plugins = pm
         self.tables = {}
 
 

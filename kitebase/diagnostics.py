@@ -58,7 +58,7 @@ def _descriptor_sections(pm: Any) -> List[str]:
 def _check_sections(app: Any, issues: List[Dict[str, Any]]) -> None:
     """A root nobody owns is read by nobody: a typo, or the plugin that reads it
     is not loaded. The owned ones bring their own checks."""
-    pm = app.pm
+    pm = app.plugins
     for root in pm.data:
         if root.startswith('$') or get_section(root) is not None:
             continue
@@ -89,12 +89,12 @@ def run_checks(app: Any) -> List[Dict[str, Any]]:
 
     Args:
         app: Initialized kitebase app (setup_schema() is sufficient —
-             needs app.pm and app.tables, no DB engine)
+             needs app.plugins and app.tables, no DB engine)
 
     Returns:
         List of issues, merge-time ones first, then descriptor checks.
     """
-    pm = app.pm
+    pm = app.plugins
     issues: List[Dict[str, Any]] = list(getattr(pm, 'issues', []))
     referenced: Set[str] = set()
 
@@ -143,7 +143,7 @@ def _walk(app: Any, obj: Any, path: str, plugin: Optional[str],
         ref = obj.get('$ref')
         if isinstance(ref, str):
             referenced.add(ref)
-            if app.pm.get(ref) is None:
+            if app.plugins.get(ref) is None:
                 issues.append(make_issue(
                     'error', 'ref-unresolved', path,
                     f"$ref '{ref}' does not resolve", plugin))
@@ -472,7 +472,7 @@ def _check_vocabulary(app: Any, issues: List[Dict[str, Any]]) -> None:
     from kitebase import vocabulary
 
     by_file: Dict[Any, Dict[str, Any]] = {}
-    for root, content in app.pm.data.items():
+    for root, content in app.plugins.data.items():
         section = get_section(root)
         if section is not None and section.vocabulary is not None:
             by_file.setdefault(section.vocabulary, {})[root] = content
@@ -500,7 +500,7 @@ def _check_client(app: Any, issues: List[Dict[str, Any]]) -> None:
     from kitebase.clientui import client_settings
 
     try:
-        settings = client_settings(app.pm.config)
+        settings = client_settings(app.plugins.config)
     except ValueError as e:
         issues.append(make_issue('error', 'client-config', 'config.client', str(e)))
         return
@@ -525,7 +525,7 @@ def _check_auto_pages(app: Any, issues: List[Dict[str, Any]]) -> None:
     """
     from kitebase.pages import AUTO, resolve_auto_page
 
-    for page_id, page in (app.pm.data.get('pages') or {}).items():
+    for page_id, page in (app.plugins.data.get('pages') or {}).items():
         if not isinstance(page, dict) or not page.get(AUTO):
             continue
         if resolve_auto_page(app, page_id) is None:
@@ -543,7 +543,7 @@ def _check_commands(app: Any, commands: List[Any], path: str,
     endpoint named after it (`reports.print` and `optional: {reports: [...]}`).
     Otherwise it is most likely a misspelt name, and the button vanishes silently.
     """
-    cp = getattr(app, 'cp', None)
+    cp = getattr(app, 'dispatcher', None)
     if cp is None:
         return      # nothing loaded to compare with
     for cmd in commands:
@@ -553,11 +553,11 @@ def _check_commands(app: Any, commands: List[Any], path: str,
         if name in cp.endpoints:
             continue
         owner = cmd.get('$plugin', plugin)
-        declarer = app.pm.plugins.get(owner) if owner else None
+        declarer = app.plugins.plugins.get(owner) if owner else None
         optional = declarer.config.get('optional') if declarer is not None else None
         prefix = name.split('.', 1)[0]
         if '.' in name and isinstance(optional, dict) and prefix in optional \
-                and prefix not in app.pm.plugins:
+                and prefix not in app.plugins.plugins:
             continue
         issues.append(make_issue(
             'warning', 'command-endpoint-unknown', f"{path}[{cmd.get('id', '?')}].endpoint",
@@ -574,7 +574,7 @@ def _check_phases(app: Any, content: Dict[str, Any], path: str,
     layout = content.get('layout') if isinstance(content.get('layout'), list) else []
     tops = {n.get('id'): n for n in layout if isinstance(n, dict) and n.get('id')}
     placed: Dict[str, str] = {}
-    cp = getattr(app, 'cp', None)
+    cp = getattr(app, 'dispatcher', None)
     for phase in content['phases']:
         if not isinstance(phase, dict):
             continue
@@ -636,7 +636,7 @@ def _check_push_target(app: Any, action: Dict[str, Any], path: str,
     target = action.get('panel')
     if not isinstance(target, str):
         return
-    pages = app.pm.data.get('pages') or {}
+    pages = app.plugins.data.get('pages') or {}
     if target in pages:
         return
 
@@ -725,7 +725,7 @@ def dump_app(app: Any) -> Dict[str, Any]:
     from kitebase import introspect
     from kitebase.cli import _table_dict
 
-    pm = app.pm
+    pm = app.plugins
 
     # Every owned root, dumped uniformly with $ref resolved and $plugin
     # attribution kept (pages, views, menus, menu_items, the plugins' roots).

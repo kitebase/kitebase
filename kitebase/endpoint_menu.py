@@ -38,13 +38,13 @@ _ORDER_LAST = 1_000_000
 
 def _app_default_root(app: Any) -> str:
     """App-wide fallback root (config.yaml `menu.default_root`)."""
-    return app.pm.config.get('menu', {}).get('default_root', 'main')
+    return app.plugins.config.get('menu', {}).get('default_root', 'main')
 
 
 def _plugin_menu_cfg(app: Any, plugin_name: Optional[str]) -> Dict[str, Any]:
     """The `menu:` section of a plugin's config.yaml, or {} (also in tests where
     pm.plugins isn't populated)."""
-    plugin = app.pm.plugins.get(plugin_name) if plugin_name else None
+    plugin = app.plugins.plugins.get(plugin_name) if plugin_name else None
     if plugin is None:
         return {}
     return plugin.config.get('menu', {}) or {}
@@ -93,8 +93,8 @@ def menu_tree(app: Any, root_id: str, for_user: bool = True) -> Optional[Dict[st
     # Skip merge-metadata keys ($plugin and any future $-prefixed convention),
     # matching how the rest of the codebase iterates a merged section
     # (db.py _calc_tables, types.py, diagnostics.py all use startswith('$')).
-    menus = {k: v for k, v in (app.pm.data.get('menus') or {}).items() if not k.startswith('$')}
-    raw_items = {k: v for k, v in (app.pm.data.get('menu_items') or {}).items() if not k.startswith('$')}
+    menus = {k: v for k, v in (app.plugins.data.get('menus') or {}).items() if not k.startswith('$')}
+    raw_items = {k: v for k, v in (app.plugins.data.get('menu_items') or {}).items() if not k.startswith('$')}
 
     root_def = menus.get(root_id)
     if not isinstance(root_def, dict):
@@ -114,7 +114,7 @@ def menu_tree(app: Any, root_id: str, for_user: bool = True) -> Optional[Dict[st
         groups.add(_effective_parent(app, item))
         if for_user and not _passes_access(app, item):
             continue
-        selected[item_id] = app.pm.resolve_refs(item)
+        selected[item_id] = app.plugins.resolve_refs(item)
 
     # 4. Build the parent → children map. An item whose effective parent is not a
     #    selected node of this root (missing, self, or belongs elsewhere) attaches

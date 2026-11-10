@@ -151,11 +151,11 @@ def setup(generate: bool = True):
     """The schema plus model.py, regenerated when the YAML or the generator moved."""
     app = setup_schema()
 
-    if generate and app.pm.should_regenerate("model.py"):
+    if generate and app.plugins.should_regenerate("model.py"):
         print("Generating model.py ...")
         kitebase.source.Generator(app).generate(filename="model.py")
 
-    return app, app.pm
+    return app, app.plugins
 
 
 def setup_db(create_all: bool = True, check_schema: bool = True):

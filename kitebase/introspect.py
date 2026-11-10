@@ -54,7 +54,7 @@ def _masked(data: Any) -> Any:
 
 def plugin_files(app: Any) -> List[Tuple[str, Path, Any]]:
     """Every data file of every plugin, in load order: (plugin, path, parsed)."""
-    pm = app.pm
+    pm = app.plugins
     out = []
     for name in pm.sorted:
         p = pm.plugins[name]
@@ -201,7 +201,7 @@ def _get(data: Any, steps: Sequence[Step]) -> Any:
 # ── The application ────────────────────────────────────────────────────────────
 
 def app_summary(app: Any) -> Dict[str, Any]:
-    pm = app.pm
+    pm = app.plugins
     return {
         'app': {k: pm.config.get(k) for k in ('name', 'version', 'description')},
         'root': str(pm.app_root),
@@ -244,7 +244,7 @@ def catalog(app: Any) -> Dict[str, Any]:
     sections = {norm.split('.')[0] for norm in cat.get('roots') or {}}
     # In the order of the merged tree: a set would list the uses differently
     # at every start.
-    data = {name: value for name, value in app.pm.data.items() if name in sections}
+    data = {name: value for name, value in app.plugins.data.items() if name in sections}
     return _masked({
         'roots': cat.get('roots') or {},
         'forms': cat_mod.forms(cat),
@@ -401,7 +401,7 @@ def roots(app: Any) -> List[Dict[str, Any]]:
         'kind': _kind(value),
         'count': _summary(value),
         'plugins': writers(app, [name]),
-    } for name, value in app.pm.data.items() if not str(name).startswith('$')]
+    } for name, value in app.plugins.data.items() if not str(name).startswith('$')]
 
 
 def node(app: Any, path: str, subject: Optional[str] = None) -> Dict[str, Any]:
@@ -412,7 +412,7 @@ def node(app: Any, path: str, subject: Optional[str] = None) -> Dict[str, Any]:
     A page or a view also comes resolved (`resolved`), and, for a `subject` of
     the guard, as that subject would receive it.
     """
-    data = app.pm.data
+    data = app.plugins.data
     steps = parse_path(data, path)
     # Masked from its root down: whether a value is secret is said by the key
     # that holds it, which the value alone no longer has
@@ -488,7 +488,7 @@ def _resolved(app: Any, steps: Sequence[Step], subject: Optional[str]) -> Option
         if root == 'pages':
             obj = load_page(app, ident)
         else:
-            obj = app.pm.resolve_refs(copy.deepcopy(app.pm.data[root][ident]))
+            obj = app.plugins.resolve_refs(copy.deepcopy(app.plugins.data[root][ident]))
     except ValueError as e:
         return {**out, 'error': str(e)}
     if holds is not None:
@@ -615,9 +615,9 @@ def used_by(app: Any, name: str) -> Dict[str, List[str]]:
             fk = col.attributes.get('foreign_key')
             if isinstance(fk, dict) and getattr(fk.get('table'), 'name', None) == name:
                 fks.append(f'{other}.{col.name}')
-    views = [vid for vid, v in (app.pm.data.get('views') or {}).items()
+    views = [vid for vid, v in (app.plugins.data.get('views') or {}).items()
              if not str(vid).startswith('$') and _model(v) == name]
-    pages = [pid for pid, p in (app.pm.data.get('pages') or {}).items()
+    pages = [pid for pid, p in (app.plugins.data.get('pages') or {}).items()
              if not str(pid).startswith('$') and _model((p or {}).get('content')) == name]
     return {'foreign_keys': fks, 'views': sorted(views), 'pages': sorted(pages)}
 
@@ -633,7 +633,7 @@ def _model(node: Any) -> Optional[str]:
 
 def source(app: Any, plugin: str, file: str) -> Dict[str, Any]:
     """A data file of a plugin, masked, to read it whole around a layer."""
-    p = app.pm.plugins.get(plugin)
+    p = app.plugins.plugins.get(plugin)
     if p is None:
         raise KeyError(plugin)
     allowed = {f.name: f for f in p.data_files}

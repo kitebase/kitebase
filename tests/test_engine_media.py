@@ -99,7 +99,7 @@ def test_choosing_the_default_by_name_changes_nothing(app_dir, monkeypatch):
 
 def test_a_missing_media_folder_is_said_at_startup(app_dir, monkeypatch, caplog):
     monkeypatch.setenv('KITEBASE_ENGINE', 'demo')
-    fake = SimpleNamespace(pm=manager(app_dir), media=SimpleNamespace(roots={'books': None}))
+    fake = SimpleNamespace(plugins=manager(app_dir), media=SimpleNamespace(roots={'books': None}))
     with caplog.at_level(logging.WARNING):
         App._warn_missing_media_base(fake)
     assert "Media of engine 'demo'" in caplog.text and 'does not exist' in caplog.text
@@ -137,8 +137,8 @@ def app(app_dir, metadata):
     target.parent.mkdir(parents=True)
     metadata.create_all(sa.create_engine(f'sqlite:///{target}'))
 
-    resolve = lambda url: Store._resolve_db_url(SimpleNamespace(pm=pm), url)
-    return SimpleNamespace(pm=pm, engine=engine, _resolve_db_url=resolve)
+    resolve = lambda url: Store._resolve_db_url(SimpleNamespace(plugins=pm), url)
+    return SimpleNamespace(plugins=pm, engine=engine, _resolve_db_url=resolve)
 
 
 def test_without_media_only_the_rows_travel_and_the_report_says_so(app, app_dir, metadata):

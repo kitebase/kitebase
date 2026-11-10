@@ -71,14 +71,14 @@ class Schema:
     """
     The types and the tables of an application, as its plugins declare them.
 
-    - self.pm: the plugins the schema is read from
+    - self.plugins: the plugins the schema is read from
     - self.types: every available type, built-in and declared
     - self.tables: every declared table, by model name
     - self.tables_list: the model names, in declaration order
     """
 
     def __init__(self) -> None:
-        self.pm: Optional[PluginsManager] = None
+        self.plugins: Optional[PluginsManager] = None
         self.types: Dict[str, DbType] = {}
         self.tables: Dict[str, DbTable] = {}
         self.tables_list: List[str] = []
@@ -93,7 +93,7 @@ class Schema:
         4. Process and validate column definitions
         5. Resolve the reference sets
         """
-        self.pm = plugins
+        self.plugins = plugins
         self._calc_types()
         self._calc_tables()
         self._calc_junctions()
@@ -125,8 +125,8 @@ class Schema:
         self.types['CodeSet'] = DbType('CodeSet', "", python_type=list)
 
         # Process plugin-defined types
-        for name in self.pm.sorted:
-            plugin = self.pm.plugins[name]
+        for name in self.plugins.sorted:
+            plugin = self.plugins.plugins[name]
             for data in plugin.data:
                 types = data.get('types', {})
                 for type_name, value in types.items():
@@ -153,7 +153,7 @@ class Schema:
 
         # Use merged data instead of individual plugin data
         # The merge handlers have already combined columns with the same name
-        tables = self.pm.data.get('tables', {})
+        tables = self.plugins.data.get('tables', {})
         for table_name, value in tables.items():
             # Skip metadata keys (those starting with $)
             if table_name.startswith('$'):
@@ -161,7 +161,7 @@ class Schema:
 
             # Get the plugin that defined/last modified this table
             plugin_name = value.get('$plugin', 'unknown')
-            plugin = self.pm.plugins.get(plugin_name)
+            plugin = self.plugins.plugins.get(plugin_name)
 
             # A copy: resolution writes into the definitions (inherited type
             # attributes, the table a foreign key points at), and the merged
@@ -186,7 +186,7 @@ class Schema:
         Two passes, so that a junction pointing at another junction does not
         depend on the order tables happen to be declared in.
         """
-        schema_cfg = self.pm.config.get('schema', {}) if self.pm else {}
+        schema_cfg = self.plugins.config.get('schema', {}) if self.plugins else {}
         pk_name = schema_cfg.get('pk_name', 'id')
 
         junctions = [t for t in self.tables.values() if t.attributes.get('many_to_many')]
@@ -559,8 +559,8 @@ class DbTable:
     def _resolve_search_info(self) -> Dict[str, Any]:
         """Resolve the search cascade once. See search_info."""
         schema_cfg = {}
-        if self.db is not None and self.db.pm is not None:
-            schema_cfg = self.db.pm.config.get('schema', {})
+        if self.db is not None and self.db.plugins is not None:
+            schema_cfg = self.db.plugins.config.get('schema', {})
         convention = schema_cfg.get('display_field_names', ['name', 'title', 'description'])
 
         columns = self.effective_columns

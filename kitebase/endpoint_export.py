@@ -57,7 +57,7 @@ FORMATS = {
 
 def max_rows() -> int:
     app = kitebase.utils.get_app()
-    return int(app.pm.config.get('dataview', {}).get('export_max_rows', DEFAULT_MAX_ROWS))
+    return int(app.plugins.config.get('dataview', {}).get('export_max_rows', DEFAULT_MAX_ROWS))
 
 
 def _situation(data: Dict[str, Any]) -> Dict[str, Any]:

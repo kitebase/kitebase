@@ -29,7 +29,7 @@ class FakeTable:
 
 class FakeApp:
     def __init__(self, pm, tables):
-        self.pm = pm
+        self.plugins = pm
         self.tables = tables
 
     def find_model_class(self, name):
@@ -136,7 +136,7 @@ def test_panel_missing(app):
 
 def test_panel_auto_generated_is_valid(app):
     # 'book_form' is not an explicit page but auto-resolves from table Book
-    app.pm.data['views']['book_list_view']['actions']['row'][0]['panel'] = 'book_form'
+    app.plugins.data['views']['book_list_view']['actions']['row'][0]['panel'] = 'book_form'
     assert not by_code(run_checks(app), 'panel-missing')
 
 
@@ -154,7 +154,7 @@ def test_plugin_attribution(app):
 
 
 def test_merge_issues_included(app):
-    app.pm.add_issue('warning', 'merge-anchor-missing', 'pages.x',
+    app.plugins.add_issue('warning', 'merge-anchor-missing', 'pages.x',
                      "anchor 'y' not found", 'p2')
     issues = by_code(run_checks(app), 'merge-anchor-missing')
     assert len(issues) == 1
@@ -379,7 +379,7 @@ def phases_app(phases, endpoints=()):
     }}}}, 'testplugin')
     app = FakeApp(pm, {'Order': FakeTable('id', 'date', 'customer'),
                        'Line': FakeTable('id', 'order_id', 'qty')})
-    app.cp = type('CP', (), {'endpoints': {e: None for e in endpoints}})()
+    app.dispatcher = type('CP', (), {'endpoints': {e: None for e in endpoints}})()
     return app
 
 

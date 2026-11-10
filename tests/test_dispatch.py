@@ -1,4 +1,4 @@
-"""Tests for the command dispatcher — CommandProcessor.send().
+"""Tests for the command dispatcher — Dispatcher.send().
 
 Every request of every server goes through here, and until now nothing covered
 it: the existing tests call endpoint functions directly. These fix the observable
@@ -14,7 +14,7 @@ import logging
 import pytest
 
 import kitebase.context
-from kitebase.endpoints import CommandProcessor, endpoint, _ENDPOINTS
+from kitebase.endpoints import Dispatcher, endpoint, _ENDPOINTS
 
 
 @pytest.fixture
@@ -31,7 +31,7 @@ def processor():
     register('shaped', lambda params: {'status': 'error', 'message': 'nope', 'code': 422})
     register('context', lambda params: kitebase.context.current())
 
-    cp = CommandProcessor()
+    cp = Dispatcher()
     cp.endpoints = dict(_ENDPOINTS)
     yield cp
 

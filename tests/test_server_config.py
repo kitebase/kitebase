@@ -6,8 +6,8 @@ from kitebase.plugins import PluginsManager
 
 class FakeApp:
     def __init__(self, config):
-        self.pm = PluginsManager()
-        self.pm.config = config
+        self.plugins = PluginsManager()
+        self.plugins.config = config
 
     def get_type_schema(self, include_builtin):
         return {}

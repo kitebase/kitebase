@@ -15,7 +15,7 @@ import kitebase.utils
 from kitebase import flow
 from kitebase.app import App
 from kitebase.model_base import Base
-from kitebase.endpoints import CommandProcessor
+from kitebase.endpoints import Dispatcher
 from kitebase.plugins import PluginsManager
 from kitebase.source import Generator
 
@@ -133,7 +133,7 @@ def app(tmp_path, monkeypatch):
 
 
 def send(operation, parameters):
-    return CommandProcessor().send({'operation': operation, 'parameters': parameters})
+    return Dispatcher().send({'operation': operation, 'parameters': parameters})
 
 
 def create_loan(title='Dune', answers=None, **extra):
@@ -552,7 +552,7 @@ def test_a_proposal_asks_and_refuses_as_a_rule_does(app):
 
 
 def test_a_command_on_the_rows_asks_through_a_form_and_works_on_the_chosen_rows(app):
-    app.pm.data.setdefault('views', {})['page_mark'] = {
+    app.plugins.data.setdefault('views', {})['page_mark'] = {
         'type': 'form', 'layout': [{'name': 'mark', 'label': 'Mark', 'type': 'String', 'default': '*'}]}
 
     def mark(ctx):
@@ -1041,7 +1041,7 @@ def test_a_duplicator_changes_the_draft(app, stored_loan):
 
 
 def test_a_duplicator_with_options_asks_them_first(app, stored_loan):
-    app.pm.data.setdefault('views', {})['loan_copy'] = {
+    app.plugins.data.setdefault('views', {})['loan_copy'] = {
         'layout': [{'name': 'pages', 'type': 'Boolean', 'default': True}]}
 
     @dup.duplicator('loan_tree', options='loan_copy')

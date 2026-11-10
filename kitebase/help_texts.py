@@ -132,8 +132,8 @@ class HelpCatalog:
             return
         declared: Dict[str, Tuple[int, str]] = {}
         translated: Dict[str, Tuple[int, str]] = {}
-        for index, name in enumerate(app.pm.sorted):
-            plugin = app.pm.plugins[name]
+        for index, name in enumerate(app.plugins.sorted):
+            plugin = app.plugins.plugins[name]
             for key, text in plugin_texts(plugin).items():
                 declared[key] = (index, text)
             for key, entry in read_file(help_dir(plugin) / f'{lang}.yaml').items():
@@ -158,11 +158,11 @@ _catalogs: Dict[str, Tuple[Any, HelpCatalog]] = {}
 def catalog(app: Any, lang: str) -> HelpCatalog:
     """The catalog of a language, kept between requests."""
     files = []
-    for name in app.pm.sorted:
-        path = help_dir(app.pm.plugins[name]) / f'{lang}.yaml'
+    for name in app.plugins.sorted:
+        path = help_dir(app.plugins.plugins[name]) / f'{lang}.yaml'
         if path.is_file():
             files.append((str(path), path.stat().st_mtime_ns))
-    signature = (id(app.pm), tuple(files))
+    signature = (id(app.plugins), tuple(files))
     cached = _catalogs.get(lang)
     if cached is None or cached[0] != signature:
         cached = (signature, HelpCatalog(app, lang))
@@ -182,7 +182,7 @@ def translate(text: str) -> str:
         app = kitebase.utils.get_app()
     except AttributeError:      # no application yet
         return text
-    if getattr(app, 'pm', None) is None:
+    if getattr(app, 'plugins', None) is None:
         return text
     return catalog(app, lang).translate(text) or text
 
@@ -190,8 +190,8 @@ def translate(text: str) -> str:
 def _layers(app: Any) -> List[Path]:
     """Where the long texts are, in order: the plugins, then the application,
     whose `help/` folder comes last and can rewrite any of them."""
-    layers = [help_dir(app.pm.plugins[name]) for name in app.pm.sorted]
-    root = getattr(app.pm, 'app_root', None)
+    layers = [help_dir(app.plugins.plugins[name]) for name in app.plugins.sorted]
+    root = getattr(app.plugins, 'app_root', None)
     if root is not None:
         layers.append(Path(root) / 'help')
     return layers
@@ -311,14 +311,14 @@ def sync_help(app: Any, new_lang: Optional[str] = None,
     """
     if new_lang == SOURCE:
         raise ValueError('English is written in the YAML, not in a translation file')
-    unknown = [p for p in plugins or [] if p not in app.pm.plugins]
+    unknown = [p for p in plugins or [] if p not in app.plugins.plugins]
     if unknown:
         raise ValueError(f"Unknown plugins: {', '.join(unknown)}")
     results: List[SyncResult] = []
-    for name in app.pm.sorted:
+    for name in app.plugins.sorted:
         if plugins and name not in plugins:
             continue
-        plugin = app.pm.plugins[name]
+        plugin = app.plugins.plugins[name]
         texts = plugin_texts(plugin)
         langs = languages(plugin)
         if new_lang and texts and new_lang not in langs:
@@ -351,8 +351,8 @@ def diagnose(app: Any) -> List[Dict[str, Any]]:
     how far behind the file is. An incomplete translation is not an error."""
     from kitebase.diagnostics import make_issue
     issues: List[Dict[str, Any]] = []
-    for name in app.pm.sorted:
-        plugin = app.pm.plugins[name]
+    for name in app.plugins.sorted:
+        plugin = app.plugins.plugins[name]
         texts = plugin_texts(plugin)
         for lang in languages(plugin):
             path = f'{name}/help/{lang}.yaml'

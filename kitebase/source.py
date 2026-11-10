@@ -35,11 +35,11 @@ class ModelImportManager:
     def _add_configured_imports(self) -> None:
         """Add imports configured in plugins."""
         # Add global imports from main config
-        for imp in self.db.pm.config.get('source_imports', []):
+        for imp in self.db.plugins.config.get('source_imports', []):
             self.standard_imports.add(imp)
 
         # Add imports from individual plugins
-        for plugin_name, plugin_data in self.db.pm.plugins.items():
+        for plugin_name, plugin_data in self.db.plugins.plugins.items():
             for imp in plugin_data.config.get('source_imports', []):
                 self.standard_imports.add(imp)
 
@@ -109,7 +109,7 @@ class PluginClassFinder:
         Args:
             plugins_manager: The plugins manager instance
         """
-        self.pm = plugins_manager
+        self.plugins = plugins_manager
         self.class_map: Dict[str, List[Tuple[str, str]]] = {}  # Table name -> [(module_path, class_name)]
         self.imported_modules: Dict[str, object] = {}  # Module path -> module object
 
@@ -117,7 +117,7 @@ class PluginClassFinder:
         """
         Scan all plugin source files for classes that match table names.
         """
-        for plugin_name, plugin in self.pm.plugins.items():
+        for plugin_name, plugin in self.plugins.plugins.items():
             for source_file in plugin.loadable_sources():
                 self._process_source_file(source_file, plugin)
 
@@ -702,7 +702,7 @@ class Generator:
         self.imports = ModelImportManager(db)
         self.relationships = RelationshipManager()
         self.column_generator = ColumnGenerator(db, self.imports, self.relationships)
-        self.class_finder = PluginClassFinder(db.pm)
+        self.class_finder = PluginClassFinder(db.plugins)
         self.class_finder.scan_plugin_sources()
 
         self.mixins: Set[str] = set()  # Set of mixin classes
@@ -722,7 +722,7 @@ class Generator:
         self._process_tables()
         self._generate_source()
 
-        path = self.db.pm.resolve_path(filename) if self.db.pm else Path(filename)
+        path = self.db.plugins.resolve_path(filename) if self.db.plugins else Path(filename)
         with open(path, 'w') as f:
             f.write(self.source)
 
@@ -954,7 +954,7 @@ class Generator:
             source_parts.append("")
 
         # Add additional source code
-        additional_code = self.db.pm.config.get('source_add', '')
+        additional_code = self.db.plugins.config.get('source_add', '')
         if additional_code:
             source_parts.append(additional_code)
 

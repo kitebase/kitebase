@@ -59,7 +59,7 @@ def register_flask(target, kitebase_app, plugins, secret_key: str, *,
     if getattr(kitebase_app, 'media', None) is not None:
         kitebase_app.media.set_signing_key(secret_key)
     report_checks(kitebase_app)
-    command_processor = kitebase_app.cp
+    dispatcher = kitebase_app.dispatcher
 
     def reply(result: Dict[str, Any], status_code: Optional[int] = None) -> Any:
         """Send a handler result with the status code it carries.
@@ -122,7 +122,7 @@ def register_flask(target, kitebase_app, plugins, secret_key: str, *,
     @target.route(f'{prefix}/auth/login', methods=['POST'])
     def kitebase_login():
         try:
-            return reply(auth.login(command_processor, request.json))
+            return reply(auth.login(dispatcher, request.json))
         except Exception as e:
             return reply({'status': 'error', 'message': str(e)}, 500)
 
@@ -144,13 +144,13 @@ def register_flask(target, kitebase_app, plugins, secret_key: str, *,
     def kitebase_dispatch(operation: str):
         """Everything that is not authentication: db, query, get_page, get_menu…"""
         return reply(handle_generic_endpoint(
-            command_processor, operation, request.json, context=g.user_context))
+            dispatcher, operation, request.json, context=g.user_context))
 
     @target.route(f'{prefix}/download/<operation>', methods=['POST'])
     @authenticated
     def kitebase_download(operation: str):
         """An operation whose answer is a file (FileResult): the bytes, not JSON."""
-        result = handle_download(command_processor, operation, request.json,
+        result = handle_download(dispatcher, operation, request.json,
                                  context=g.user_context)
         if not isinstance(result, FileResult):
             return reply(result)
@@ -166,7 +166,7 @@ def register_flask(target, kitebase_app, plugins, secret_key: str, *,
         upload = None
         if part is not None:
             upload = UploadedFile(part.filename or '', iter(lambda: part.stream.read(64 * 1024), b''))
-        return reply(handle_upload(command_processor, request.form.to_dict(), upload,
+        return reply(handle_upload(dispatcher, request.form.to_dict(), upload,
                                    context=g.user_context))
 
     @target.route(f'{prefix}/upload/<operation>', methods=['POST'])
@@ -179,7 +179,7 @@ def register_flask(target, kitebase_app, plugins, secret_key: str, *,
         upload = None
         if part is not None:
             upload = UploadedFile(part.filename or '', iter(lambda: part.stream.read(64 * 1024), b''))
-        return reply(handle_upload_op(command_processor, operation, request.form.get('params'),
+        return reply(handle_upload_op(dispatcher, operation, request.form.get('params'),
                                       upload, context=g.user_context))
 
     @target.route(f'{prefix}/media/<root>/<path:path>', methods=['GET'])

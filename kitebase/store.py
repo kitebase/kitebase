@@ -21,7 +21,7 @@ class Store:
     The database of a running application: the engine, the models generated
     from the schema, and the sessions over them.
 
-    - self.pm: the plugins, for the configuration and the paths
+    - self.plugins: the plugins, for the configuration and the paths
     - self.model: the module of the generated models
     - self.models: the model classes, by name
     - self.engine: the engine, once the database is open
@@ -29,7 +29,7 @@ class Store:
     """
 
     def __init__(self, plugins: Optional[PluginsManager] = None) -> None:
-        self.pm: Optional[PluginsManager] = plugins
+        self.plugins: Optional[PluginsManager] = plugins
         self.model: Any = None
         self.models: Dict[str, Any] = {}
         self._engine: Any = None
@@ -95,8 +95,8 @@ class Store:
 
         if check_schema:
             from kitebase.schema_sync import check_on_startup
-            policy = (self.pm.config.get('migrations') or {}).get('on_startup', 'error')
-            check_on_startup(engine, Base.metadata, policy, logger=self.pm.logger)
+            policy = (self.plugins.config.get('migrations') or {}).get('on_startup', 'error')
+            check_on_startup(engine, Base.metadata, policy, logger=self.plugins.logger)
 
         return engine
 
@@ -130,14 +130,14 @@ class Store:
             db_url = resolved
 
         prefix = 'sqlite:///'
-        if not db_url.startswith(prefix) or self.pm is None:
+        if not db_url.startswith(prefix) or self.plugins is None:
             return db_url
 
         target = db_url[len(prefix):]
         if not target or target == ':memory:' or Path(target).is_absolute():
             return db_url
 
-        return prefix + str(self.pm.resolve_path(target))
+        return prefix + str(self.plugins.resolve_path(target))
 
     def _log_engine(self, declared: str, url: str) -> None:
         """
@@ -145,16 +145,16 @@ class Store:
         shows here rather than as data that is missing. The password never
         appears: a name is printed as is, a URL masked.
         """
-        if self.pm is None:
+        if self.plugins is None:
             return
         from sqlalchemy.engine import make_url
         masked = make_url(url).render_as_string(hide_password=True)
-        source = getattr(self.pm, 'db_engine_source', 'config.yaml')
+        source = getattr(self.plugins, 'db_engine_source', 'config.yaml')
         if '://' in declared:
-            self.pm.logger.info(f"Database engine: {masked} (from {source})")
+            self.plugins.logger.info(f"Database engine: {masked} (from {source})")
         else:
             from kitebase import secrets
-            self.pm.logger.info(
+            self.plugins.logger.info(
                 f"Database engine: {declared} = {masked} "
                 f"({secrets.root() / 'engines.yaml'}, chosen by {source})")
 

@@ -73,7 +73,7 @@ def _error_from_result(result: Dict[str, Any],
 
 
 def handle_generic_endpoint(
-    command_processor,
+    dispatcher,
     operation: str,
     data: Dict[str, Any],
     context: Optional[Dict[str, Any]] = None
@@ -82,7 +82,7 @@ def handle_generic_endpoint(
     Framework-agnostic generic endpoint handler.
 
     Args:
-        command_processor: Kitebase command processor
+        dispatcher: Kitebase command processor
         operation: Endpoint operation name
         data: Operation parameters
         context: User context
@@ -99,7 +99,7 @@ def handle_generic_endpoint(
         if context:
             command["context"] = context
 
-        result = command_processor.send(command)
+        result = dispatcher.send(command)
 
         if result.get('status') == 'success':
             if isinstance(result.get('data'), FileResult):
@@ -122,7 +122,7 @@ def handle_generic_endpoint(
 
 
 def handle_download(
-    command_processor,
+    dispatcher,
     operation: str,
     data: Dict[str, Any],
     context: Optional[Dict[str, Any]] = None
@@ -140,7 +140,7 @@ def handle_download(
         if context:
             command["context"] = context
 
-        result = command_processor.send(command)
+        result = dispatcher.send(command)
 
         if result.get('status') != 'success':
             return _error_from_result(result, 'Operation failed')
@@ -154,7 +154,7 @@ def handle_download(
         return _error_from_exc(e)
 
 
-def handle_upload(command_processor, fields: Dict[str, Any], upload: Any,
+def handle_upload(dispatcher, fields: Dict[str, Any], upload: Any,
                   context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Framework-agnostic handler of the upload route.
@@ -171,7 +171,7 @@ def handle_upload(command_processor, fields: Dict[str, Any], upload: Any,
         command = {"operation": "media_upload", "parameters": {**fields, 'file': upload}}
         if context:
             command["context"] = context
-        result = command_processor.send(command)
+        result = dispatcher.send(command)
         if result.get('status') == 'success':
             return {'status': 'success', 'data': result.get('data'), 'status_code': 200}
         return _error_from_result(result, 'Upload failed')
@@ -179,7 +179,7 @@ def handle_upload(command_processor, fields: Dict[str, Any], upload: Any,
         return _error_from_exc(e)
 
 
-def handle_upload_op(command_processor, operation: str, params: Optional[str], upload: Any,
+def handle_upload_op(dispatcher, operation: str, params: Optional[str], upload: Any,
                      context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Framework-agnostic handler of `upload/<operation>`: an operation that takes
@@ -198,7 +198,7 @@ def handle_upload_op(command_processor, operation: str, params: Optional[str], u
         return _error_response("'params' is not JSON", status_code=400)
     if not isinstance(data, dict):
         return _error_response("'params' must be an object", status_code=400)
-    return handle_generic_endpoint(command_processor, operation, {**data, 'file': upload},
+    return handle_generic_endpoint(dispatcher, operation, {**data, 'file': upload},
                                    context=context)
 
 

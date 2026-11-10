@@ -10,7 +10,7 @@ JSON contract, which in the deployment that prompted this belongs to an API
 already in production on handheld terminals.
 
 No database and no plugin tree here: the registration layer only ever touches
-`kitebase_app.cp` and `plugins.config`, and driving it with stubs is what keeps
+`kitebase_app.dispatcher` and `plugins.config`, and driving it with stubs is what keeps
 these tests about routing instead of about everything else.
 """
 from datetime import date, datetime, timedelta, timezone
@@ -22,7 +22,7 @@ import pytest
 import kitebase.context
 import kitebase.server_utils as srv
 from kitebase.access import AccessDenied
-from kitebase.endpoints import CommandProcessor, FileResult, _ENDPOINTS
+from kitebase.endpoints import Dispatcher, FileResult, _ENDPOINTS
 
 SECRET = 'test-secret-key-long-enough-for-hs256'
 
@@ -62,9 +62,9 @@ def kitebase_app():
     register('a_pdf', lambda params: FileResult(b'%PDF-1.7', 'invoice.pdf',
                                                 'application/pdf', disposition='inline'))
 
-    cp = CommandProcessor()
+    cp = Dispatcher()
     cp.endpoints = dict(_ENDPOINTS)
-    yield SimpleNamespace(cp=cp)
+    yield SimpleNamespace(dispatcher=cp)
 
     for name in registered:
         _ENDPOINTS.pop(name, None)
@@ -382,7 +382,7 @@ def test_a_fastapi_host_route_after_a_kitebase_one_has_no_identity(kitebase_app,
 
     srv.register_fastapi(app, kitebase_app, plugins, SECRET)
     _ENDPOINTS['where'] = lambda params: threading.get_ident()
-    kitebase_app.cp.endpoints['where'] = _ENDPOINTS['where']
+    kitebase_app.dispatcher.endpoints['where'] = _ENDPOINTS['where']
 
     shared_thread = False
     try:

@@ -28,7 +28,7 @@ APP = textwrap.dedent('''
     import kitebase.utils
     from kitebase.app import App
     from kitebase.diagnostics import run_checks
-    from kitebase.endpoints import CommandProcessor
+    from kitebase.endpoints import Dispatcher
     from kitebase.plugins import PluginsManager
     from kitebase.source import Generator
 
@@ -77,7 +77,7 @@ APP = textwrap.dedent('''
     kitebase.utils.get_app = lambda: app
 
     def send(op, params):
-        return CommandProcessor().send({'operation': op, 'parameters': params})
+        return Dispatcher().send({'operation': op, 'parameters': params})
 
     out = {'issues': [i for i in run_checks(app) if i['severity'] != 'info']}
     maker = send('db', {'table': 'Maker', 'method': 'create', 'data': {'name': 'Aeolus'}})

@@ -63,7 +63,7 @@ def load(path: Path, monkeypatch) -> App:
     pm.load_all_locales()
     app = App()
     app.calc_db(pm)
-    app.cp = None
+    app.dispatcher = None
     return app
 
 

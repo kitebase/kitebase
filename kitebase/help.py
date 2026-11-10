@@ -159,7 +159,7 @@ def _limits(attrs: Dict[str, Any]) -> str:
 
 def _menu_pages(app: Any) -> Dict[str, str]:
     """The pages with a menu entry of their own, and the label of that entry."""
-    items = app.pm.get('menu_items') or {}
+    items = app.plugins.get('menu_items') or {}
     return {item['panel']: item.get('label', '') for item in items.values()
             if isinstance(item, dict) and isinstance(item.get('panel'), str)}
 
@@ -486,7 +486,7 @@ class _Merge:
             if type_name in _BUILTIN_HOW:
                 builtin = builtin or type_name
                 break
-            declared = self.app.pm.get(f'types.{type_name}')
+            declared = self.app.plugins.get(f'types.{type_name}')
             if not isinstance(declared, dict):
                 break
             text = declared.get('help_how')
@@ -739,9 +739,9 @@ def _environment(app: Any) -> Environment:
     """
     core = FileSystemLoader(_TEMPLATES)
     loaders: List[Any] = [PrefixLoader({'core': core}), core]
-    declared = (getattr(app.pm, 'config', None) or {}).get('help_templates')
+    declared = (getattr(app.plugins, 'config', None) or {}).get('help_templates')
     if declared:
-        folder = Path(app.pm.app_root) / declared
+        folder = Path(app.plugins.app_root) / declared
         if not folder.is_dir():
             raise ValueError(f"help_templates: no folder '{folder}'")
         loaders.insert(0, FileSystemLoader(folder))
@@ -846,7 +846,7 @@ def help_manual(app: Any, lang: str = help_texts.SOURCE, for_user: bool = False,
     """
     from kitebase.endpoint_menu import _app_default_root, menu_tree
 
-    config = getattr(app.pm, 'config', None) or {}
+    config = getattr(app.plugins, 'config', None) or {}
     manual = HelpManual(title=config.get('title') or config.get('name') or '', lang=lang)
     told: Set[str] = set()
     with use_locale(lang):
@@ -978,7 +978,7 @@ def _card(card: _Card, links: _Links, md: MarkdownIt, tr: Callable[[str], str],
 
 def _page(app: Any, lang: str, title: str, values: Dict[str, Any]) -> str:
     env = _environment(app)
-    config = getattr(app.pm, 'config', None) or {}
+    config = getattr(app.plugins, 'config', None) or {}
     return env.get_template('skeleton.html').render(
         lang=lang,
         app_title=_(config.get('title') or config.get('name') or ''),
@@ -1046,7 +1046,7 @@ def render_manual(app: Any, manual: HelpManual, today: Optional[str] = None) -> 
                 i += 1
             return nodes
 
-        version = (getattr(app.pm, 'config', None) or {}).get('version')
+        version = (getattr(app.plugins, 'config', None) or {}).get('version')
         values = {
             'card': None,
             'manual': {

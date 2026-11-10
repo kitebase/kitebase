@@ -77,7 +77,7 @@ def _fetch(table: str, data: dict, column: str, what: str, find) -> dict:
 
 def _languages() -> list[str]:
     """The application's language first, English after it."""
-    lang = kitebase.utils.get_app().pm.config.get('locale') or 'en'
+    lang = kitebase.utils.get_app().plugins.config.get('locale') or 'en'
     return [lang] if lang == 'en' else [lang, 'en']
 
 

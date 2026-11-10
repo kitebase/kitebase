@@ -227,10 +227,10 @@ def form_view(view_id: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     from kitebase.outbound import to_client
 
     app = kitebase.utils.get_app()
-    view = app.pm.get(f'views.{view_id}')
+    view = app.plugins.get(f'views.{view_id}')
     if view is None:
         raise ValueError(f"The form view '{view_id}' does not exist")
-    view = to_client(app.pm.resolve_refs(view))
+    view = to_client(app.plugins.resolve_refs(view))
     return view, {f['name']: f['default'] for f in _fields(view.get('layout') or [])
                   if 'default' in f}
 
@@ -527,8 +527,8 @@ def run_forms(page_id: str, trees: List[Dict[str, Any]],
 def _sender() -> Callable[[Dict[str, Any]], Dict[str, Any]]:
     """Calls through the dispatcher, as the caller: the access check of each
     endpoint is the one a request for it gets."""
-    from kitebase.endpoints import CommandProcessor
-    processor = CommandProcessor()
+    from kitebase.endpoints import Dispatcher
+    processor = Dispatcher()
     return lambda command: processor.call(command['operation'], command.get('parameters'))
 
 

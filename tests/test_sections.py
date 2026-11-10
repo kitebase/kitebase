@@ -16,7 +16,7 @@ from kitebase.sections import get_section, register_section
 
 class FakeApp:
     def __init__(self, pm):
-        self.pm = pm
+        self.plugins = pm
         self.tables = {}
 
 
@@ -100,7 +100,7 @@ def test_the_owner_brings_its_checks():
     def check(app):
         return [{'severity': 'error', 'code': 'gadget-bad', 'path': 'gadgets.g',
                  'message': 'bad gadget', 'plugin': 'acme'}
-                for k, g in app.pm.data['gadgets'].items()
+                for k, g in app.plugins.data['gadgets'].items()
                 if not k.startswith('$') and g.get('bad')]
 
     register_from('acme.reader', 'gadgets', check=check)

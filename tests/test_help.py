@@ -254,7 +254,7 @@ def load(path: Path, monkeypatch) -> App:
     app = App()
     app.calc_db(pm)
     # No endpoint is loaded here: None keeps the commands that name one
-    app.cp = None
+    app.dispatcher = None
     return app
 
 
@@ -332,8 +332,8 @@ def test_the_key_of_a_table_is_listed_only_with_a_text(app):
 
 
 def test_a_hidden_column_of_a_list_is_not_a_field(app):
-    app.pm.get('pages')['doc_list']['content']['columns'].append({'field': 'closing', 'visible': False})
-    app.pm.get('pages')['doc_list']['content']['navigator'] = {'form_id': 'owner_detail'}
+    app.plugins.get('pages')['doc_list']['content']['columns'].append({'field': 'closing', 'visible': False})
+    app.plugins.get('pages')['doc_list']['content']['navigator'] = {'form_id': 'owner_detail'}
     assert 'Doc.closing' not in fields(help_merge(app, 'doc_list'))
 
 
@@ -555,12 +555,12 @@ def test_the_index_names_every_part(app):
 
 
 def test_an_application_replaces_a_template_and_can_extend_the_original(app):
-    folder = Path(app.pm.app_root) / 'guide'
+    folder = Path(app.plugins.app_root) / 'guide'
     folder.mkdir()
     (folder / 'skeleton.html').write_text(
         '{% extends "core/skeleton.html" %}{% block header %}<header>Ours</header>{% endblock %}')
     (folder / 'style.css').write_text('body { color: red; }')
-    app.pm.config['help_templates'] = 'guide'
+    app.plugins.config['help_templates'] = 'guide'
     page = render_html(app, help_merge(app, 'doc_list')).html
     assert '<header>Ours</header>' in page
     assert 'body { color: red; }' in page
@@ -568,7 +568,7 @@ def test_an_application_replaces_a_template_and_can_extend_the_original(app):
 
 
 def test_a_template_folder_that_is_not_there_is_named(app):
-    app.pm.config['help_templates'] = 'nowhere'
+    app.plugins.config['help_templates'] = 'nowhere'
     with pytest.raises(ValueError, match='nowhere'):
         render_html(app, help_merge(app, 'doc_list'))
 
@@ -735,7 +735,7 @@ def test_the_manual_is_one_file_its_links_anchors_inside_it(written):
 
 def test_a_screen_is_told_once_in_the_manual(written):
     # A second entry on the same page points to the first card
-    written.pm.data['menu_items']['again'] = {'label': 'Zeta, again', 'action': 'stack_push',
+    written.plugins.data['menu_items']['again'] = {'label': 'Zeta, again', 'action': 'stack_push',
                                               'panel': 'doc_list'}
     manual = help_manual(written)
     again = next(s for s in manual.sections if s.title == 'Zeta, again')
@@ -775,6 +775,6 @@ def test_an_application_stylesheet_extends_the_core(written, tmp_path):
     folder = tmp_path / 'help' / 'templates'
     folder.mkdir()
     (folder / 'style.css').write_text('{% include "core/style.css" %}\nh1 { color: red; }\n')
-    written.pm.config['help_templates'] = 'help/templates'
+    written.plugins.config['help_templates'] = 'help/templates'
     page = render_html(written, help_merge(written, 'doc_list')).html
     assert 'h1 { color: red; }' in page and '--link:' in page

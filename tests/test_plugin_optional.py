@@ -141,8 +141,8 @@ class FakeProcessor:
 
 class FakeApp:
     def __init__(self, pm, cp):
-        self.pm = pm
-        self.cp = cp
+        self.plugins = pm
+        self.dispatcher = cp
         self.tables = {}
 
 

@@ -690,7 +690,7 @@ def authenticate(data: Dict[str, Any]) -> Dict[str, Any]:
 
         # Get authentication configuration
         app = kitebase.utils.get_app()
-        config = app.pm.config.get('authentication', {})
+        config = app.plugins.config.get('authentication', {})
         user_table = config.get('user_table', 'User')
         name_field = config.get('username_field', 'username')
         pass_field = config.get('password_field', 'password')
@@ -785,7 +785,7 @@ def update_context(data):
         # = remove the field.
         app = kitebase.utils.get_app()
         allowed = set(tokens.FRAMEWORK_UPDATABLE_FIELDS) | set(
-            tokens.custom_context_fields(app.pm.config)
+            tokens.custom_context_fields(app.plugins.config)
         )
         for field in allowed:
             if field not in data:
@@ -855,12 +855,12 @@ def get_server_config(data: Dict[str, Any]) -> Dict[str, Any]:
             'status': 'success',
             'data': {
                 'config': {
-                    **app.pm.config.get('dataview', {}),
+                    **app.plugins.config.get('dataview', {}),
                     # Always there, default included: the client refuses before
                     # loading every row, the server would refuse after.
                     'export_max_rows': max_rows(),
-                    'locale': app.pm.config.get('locale', 'en'),
-                    'app_title': app.pm.config.get('title'),
+                    'locale': app.plugins.config.get('locale', 'en'),
+                    'app_title': app.plugins.config.get('title'),
                 },
                 'types': _each_to_client(app.get_type_schema(include_builtin)),
                 # The column labels name the fields in filters and pickers.

@@ -267,7 +267,7 @@ def test_a_path_out_of_the_page_gets_the_page(server):
 def test_a_changed_file_makes_the_application_old(server):
     port, app = server
     assert json.loads(_get(port, '/api/version')[1])['stale'] is False
-    model = app.pm.plugins['shop'].data_files[0]
+    model = app.plugins.plugins['shop'].data_files[0]
     later = time.time() + 5
     os.utime(model, (later, later))
     assert json.loads(_get(port, '/api/version')[1])['stale'] is True
