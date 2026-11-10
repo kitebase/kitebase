@@ -300,6 +300,10 @@ class Command:
         }
 
 
+# `context=` left unsaid in call(): the caller's own.
+INHERIT: Any = object()
+
+
 class CommandProcessor:
     """
     Processes commands by routing them to registered endpoints.
@@ -419,9 +423,37 @@ class CommandProcessor:
                  command.request_id)
         return result
 
+    def call(self, operation: str, parameters: Optional[Dict[str, Any]] = None,
+             context: Any = INHERIT) -> Dict[str, Any]:
+        """
+        Call an endpoint from the server's own code, and return its result.
+
+        Through the same door as a request: the access check and the log line
+        are the ones a client's call gets. It runs as whoever is asking now,
+        the context of the caller, and leaves that context as it found it;
+        `context=` names another one for the length of the call.
+
+        Outside a request there is no caller: the endpoint runs with an empty
+        context, and a guard decides what nobody may do.
+
+        Args:
+            operation: The name of the endpoint
+            parameters: Its parameters
+            context: The context to run it with, when not the caller's
+
+        Returns:
+            Dictionary with the command result
+        """
+        if context is INHERIT:
+            context = kitebase.context.current()
+        with kitebase.context.use(context):
+            command = Command(operation, parameters, context=context)
+            return self._execute_command(command).to_dict()
+
     def send(self, command_dict: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Execute a command and return its result.
+        Execute a command and return its result: the entry of a request, which
+        owns the context from here on. Server code calls `call()`.
 
         Args:
             command_dict: Dictionary representation of the command

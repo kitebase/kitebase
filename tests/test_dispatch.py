@@ -183,3 +183,32 @@ def test_parameter_values_are_never_logged(processor, caplog):
     text = '\n'.join(r.getMessage() for r in caplog.records)
     assert 'hunter2' not in text
     assert 'data{password}' in text and 'ids[2]' in text and 'table' in text
+
+
+# ── call(): an endpoint from the server's own code ───────────────────────────
+
+def test_call_runs_as_the_caller_and_leaves_the_context_alone(processor):
+    """No context to pass by hand, and none replaced behind the caller's back."""
+    import kitebase.context
+    kitebase.context.replace({'username': 'alice'})
+
+    result = processor.call('context')
+
+    assert result['data'] == {'username': 'alice'}
+    assert kitebase.context.current() == {'username': 'alice'}
+
+
+def test_call_with_a_context_of_its_own_gives_the_callers_back(processor):
+    import kitebase.context
+    kitebase.context.replace({'username': 'alice'})
+
+    assert processor.call('context', context={'username': 'poller'})['data'] == {'username': 'poller'}
+    assert kitebase.context.current() == {'username': 'alice'}
+
+
+def test_call_outside_a_request_runs_as_nobody(processor):
+    import kitebase.context
+    kitebase.context.replace(None)
+
+    assert processor.call('context')['data'] == {}
+    assert kitebase.context.current() is None

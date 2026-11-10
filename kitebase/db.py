@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 import kitebase.access
 import kitebase.media
 import kitebase.refsets
-from kitebase.endpoints import CommandProcessor
+from kitebase.endpoints import INHERIT, CommandProcessor
 from kitebase.model_base import Base, BaseApp  # noqa: F401
 from kitebase.plugins import PluginsManager
 from kitebase.schema import (  # noqa: F401
@@ -116,6 +116,11 @@ class DB:
 
     def get_database_type(self) -> str:
         return self.store.get_database_type()
+
+    def call(self, operation: str, parameters: Optional[Dict[str, Any]] = None,
+             context: Any = INHERIT) -> Dict[str, Any]:
+        """Call an endpoint from server code, as the caller: see CommandProcessor.call()."""
+        return self.cp.call(operation, parameters, context)
 
     def _resolve_db_url(self, db_url: str) -> str:
         return self.store._resolve_db_url(db_url)

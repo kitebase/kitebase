@@ -525,13 +525,11 @@ def run_forms(page_id: str, trees: List[Dict[str, Any]],
 
 
 def _sender() -> Callable[[Dict[str, Any]], Dict[str, Any]]:
-    """Calls through the dispatcher with the caller's context: the dispatcher
-    replaces the context with the command's, and without it a call would run as
-    nobody and leave nobody behind."""
+    """Calls through the dispatcher, as the caller: the access check of each
+    endpoint is the one a request for it gets."""
     from kitebase.endpoints import CommandProcessor
-    context = kitebase.context.current()
     processor = CommandProcessor()
-    return lambda command: processor.send({**command, 'context': context})
+    return lambda command: processor.call(command['operation'], command.get('parameters'))
 
 
 def _propose_all(page: Dict[str, Any], doc: Dict[str, Any], answers: Dict[str, Any],
