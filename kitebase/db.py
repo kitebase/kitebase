@@ -290,7 +290,9 @@ class DB:
                 for type_name, value in types.items():
                     if type_name in self.types:
                         raise ValueError(f"Type already defined: {type_name}")
-                    self.types[type_name] = DbType(type_name, plugin, attributes=value)
+                    # A copy, as for the tables: see _calc_tables.
+                    self.types[type_name] = DbType(type_name, plugin,
+                                                   attributes=copy.deepcopy(value))
 
         # Resolve inheritance relationships
         for type_name in self.types:
@@ -319,7 +321,10 @@ class DB:
             plugin_name = value.get('$plugin', 'unknown')
             plugin = self.pm.plugins.get(plugin_name)
 
-            table = DbTable(table_name, plugin, value, self)
+            # A copy: resolution writes into the definitions (inherited type
+            # attributes, the table a foreign key points at), and the merged
+            # tree and the plugins' sources stay what the plugins declared.
+            table = DbTable(table_name, plugin, copy.deepcopy(value), self)
             self.tables[table_name] = table
             self.tables_list.append(table_name)
 

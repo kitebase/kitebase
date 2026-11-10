@@ -14,10 +14,6 @@ tables.Author.columns.documents:
   en: What the library keeps about this author, such as contracts and letters.
   it: ''
 
-tables.LibraryUser.columns.card.help_how:
-  en: 'One picture per field: drag it in or choose it, and it is kept when you save the form. A very large photo can be reduced before it is sent.'
-  it: ''
-
 tables.LibraryUser.columns.phone:
   en: Contact phone number
   it: ''

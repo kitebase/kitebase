@@ -240,7 +240,9 @@ def catalog(app: Any) -> Dict[str, Any]:
 
     cat = cat_mod.load()
     sections = {norm.split('.')[0] for norm in cat.get('roots') or {}}
-    data = {name: app.pm.data[name] for name in sections if name in app.pm.data}
+    # In the order of the merged tree: a set would list the uses differently
+    # at every start.
+    data = {name: value for name, value in app.pm.data.items() if name in sections}
     return _masked({
         'roots': cat.get('roots') or {},
         'forms': cat_mod.forms(cat),
