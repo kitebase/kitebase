@@ -14,6 +14,7 @@ from kitebase.app import App
 from kitebase.model_base import Base
 from kitebase.endpoint_db import db_operations
 from kitebase.endpoint_tree import load_tree, save_tree
+from kitebase.errors import Invalid
 from kitebase.plugins import PluginsManager
 from kitebase.source import Generator
 
@@ -175,10 +176,10 @@ def test_an_empty_list_removes_every_link(app, shelf):
 
 
 def test_a_key_that_does_not_exist_is_refused_and_nothing_is_written(app, shelf):
-    result = db_operations({'table': 'Book', 'method': 'update', 'id': shelf['tagged'],
-                            'data': {'title': 'Changed', 'tags': [shelf['mango'], 999]}})
-    assert result['status'] == 'error'
-    assert '999' in result['data']['errors']['tags']
+    with pytest.raises(Invalid) as refused:
+        db_operations({'table': 'Book', 'method': 'update', 'id': shelf['tagged'],
+                       'data': {'title': 'Changed', 'tags': [shelf['mango'], 999]}})
+    assert '999' in refused.value.data['errors']['tags']
     assert len(links(app)) == 2
     book = ok(db_operations({'table': 'Book', 'method': 'get', 'id': shelf['tagged']}))
     assert book['title'] == 'Tagged'
@@ -262,8 +263,8 @@ def test_a_list_that_does_not_name_it_does_not_read_it(app, shelf):
 
 def test_another_format_is_refused(app, shelf):
     from kitebase.endpoint_db import db_query
-    result = db_query({'format': 'tuples', 'query': {'table': 'Book', 'select': ['id', 'tags']}})
-    assert result['status'] == 'error' and 'tags' in result['message']
+    with pytest.raises(Invalid, match='tags'):
+        db_query({'format': 'tuples', 'query': {'table': 'Book', 'select': ['id', 'tags']}})
 
 
 def titles(app, op, keys):
@@ -292,8 +293,8 @@ def test_the_verbose_form_says_the_same(app, shelf):
 
 
 def test_a_set_operator_wants_a_collection(app, shelf):
-    result = query(app, select=['title'], filters={'conditions': [{'title': ['any_of', ['x']]}]})
-    assert result['status'] == 'error' and 'collection' in result['message']
+    with pytest.raises(Invalid, match='collection'):
+        query(app, select=['title'], filters={'conditions': [{'title': ['any_of', ['x']]}]})
 
 
 def test_filtering_asks_for_the_record_and_the_vocabulary_not_the_junction(app, shelf):

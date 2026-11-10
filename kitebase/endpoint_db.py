@@ -6,13 +6,14 @@ import kitebase.media
 import kitebase.refsets
 from kitebase import flow
 from kitebase import access
-from kitebase.access import AccessDenied
 from kitebase.endpoints import endpoint
+from kitebase.errors import Invalid, NotFound, Refusal
 from kitebase.querybuilder import DynamicQueryBuilder
 from kitebase.i18n import _, _f
 from typing import Dict, Any
 from sqlalchemy import desc, asc
 from sqlalchemy import Date, DateTime, Integer, inspect as sa_inspect
+from sqlalchemy.exc import SQLAlchemyError
 import datetime
 
 
@@ -34,43 +35,29 @@ def db_operations(data: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Dictionary with operation results
     """
-    try:
-        # Validate required parameters
-        table_name = data.get('table')
-        method = data.get('method', 'get').lower()
+    table_name = data.get('table')
+    method = data.get('method', 'get').lower()
+    if not table_name:
+        raise Invalid(_('Table name is required'))
 
-        if not table_name:
-            return {"status": "error", "message": _('Table name is required'), "code": 400}
+    app = kitebase.utils.get_app()
+    model_class = app.find_model_class(table_name)
+    if not model_class:
+        raise NotFound(_f("Table '{name}' not found", name=table_name))
+    db_table = app.tables.get(table_name)
 
-        # Get database app and model class
-        app = kitebase.utils.get_app()
-        model_class = app.find_model_class(table_name)
+    if method not in access.DB_METHODS:
+        raise Invalid(_f("Unsupported method: '{method}'", method=method))
+    access.check_table(model_class.__name__, access.DB_METHODS[method])
 
-        if not model_class:
-            return {"status": "error", "message": _f("Table '{name}' not found", name=table_name), "code": 404}
-
-        db_table = app.tables.get(table_name)
-
-        if method not in access.DB_METHODS:
-            return {"status": "error", "message": _f("Unsupported method: '{method}'", method=method), "code": 400}
-        access.check_table(model_class.__name__, access.DB_METHODS[method])
-
-        # Execute the requested method
-        if method == 'get':
-            return handle_get(app, model_class, data, db_table)
-        elif method == 'create':
-            return handle_create(app, model_class, data, db_table)
-        elif method == 'update':
-            return handle_update(app, model_class, data, db_table)
-        else:
-            return handle_delete(app, model_class, data, db_table)
-
-    except AccessDenied:
-        raise
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {"status": "error", "message": str(e), "code": 500}
+    if method == 'get':
+        return handle_get(app, model_class, data, db_table)
+    elif method == 'create':
+        return handle_create(app, model_class, data, db_table)
+    elif method == 'update':
+        return handle_update(app, model_class, data, db_table)
+    else:
+        return handle_delete(app, model_class, data, db_table)
 
 
 def pk_field(db_table) -> str:
@@ -196,7 +183,7 @@ def handle_get(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[
     # A filter here would be a second dialect beside the endpoint `query`:
     # refused, so a list never comes back whole when a filter was meant.
     if params.get('query'):
-        raise ValueError("db get takes no filters: lists are read with the endpoint 'query'")
+        raise Invalid("db get takes no filters: lists are read with the endpoint 'query'")
     order_by = params.get('order_by')
     order_dir = params.get('order_dir', 'asc')
 
@@ -205,7 +192,7 @@ def handle_get(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[
             # Get single record
             record = session.get(model_class, record_id)
             if not record or not access.row_visible(session, model_class, record_id):
-                return {"status": "error", "message": _f('Record with id {id} not found', id=record_id), "code": 404}
+                raise NotFound(_f('Record with id {id} not found', id=record_id))
 
             data = serialize_model(record, db_table=db_table)
             kitebase.refsets.attach(app, session, db_table, [data])
@@ -225,7 +212,7 @@ def handle_get(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[
                 column = getattr(model_class, order_by, None)
                 if column:
                     if order_by in kitebase.utils.secret_columns(db_table):
-                        raise ValueError(f"Column '{order_by}' is not sortable")
+                        raise Invalid(f"Column '{order_by}' is not sortable")
                     access.check_columns(model_class.__name__, [order_by])
                     if order_dir.lower() == 'desc':
                         query = query.order_by(desc(column))
@@ -354,20 +341,13 @@ def refuse_key_change(record, model_class, changes: Dict[str, Any]) -> None:
         raise kitebase.transforms.ValidationError(errors)
 
 
-def _invalid(error) -> Dict[str, Any]:
-    """A write refused by a column's rule: the errors go back by field."""
-    return {"status": "error", "code": 400, "message": _('Some values are not valid'),
-            "data": {"errors": error.errors}}
-
-
 def handle_create(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[str, Any]:
     """Handle CREATE operations"""
     record_data = params.get('data')
 
     if not record_data:
-        return {"status": "error", "message": _('No data provided for creation'), "code": 400}
+        raise Invalid(_('No data provided for creation'))
 
-    # Create new instance
     try:
         record_data, sets = kitebase.refsets.split(db_table, record_data)
         record_data = write_values(db_table, record_data)
@@ -404,44 +384,34 @@ def handle_create(app, model_class, params: Dict[str, Any], db_table=None) -> Di
                 "code": 201
             }
         return flow.finish(ctx, result, saved)
-    except kitebase.transforms.ValidationError as e:
-        return _invalid(e)
-    except AccessDenied:
-        raise
-    except Exception as e:
-        return {"status": "error", "message": f"Creation failed: {str(e)}", "code": 400}
+    except SQLAlchemyError as e:
+        raise Invalid(f"Creation failed: {e}") from e
 
 
 def handle_update(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[str, Any]:
     """Handle UPDATE operations"""
     record_id = params.get(pk_field(db_table))
     if not record_id:
-        return {"status": "error", "message": _('Record ID is required for updates'), "code": 400}
+        raise Invalid(_('Record ID is required for updates'))
 
     record_data = params.get('data')
     if not record_data:
-        return {"status": "error", "message": _('No data provided for update'), "code": 400}
+        raise Invalid(_('No data provided for update'))
 
-    try:
-        record_data, sets = kitebase.refsets.split(db_table, record_data)
-        record_data = write_values(db_table, record_data)
-    except kitebase.transforms.ValidationError as e:
-        return _invalid(e)
+    record_data, sets = kitebase.refsets.split(db_table, record_data)
+    record_data = write_values(db_table, record_data)
 
     with app.get_session() as session:
         # Find the record
         record = session.get(model_class, record_id)
         if not record or not access.row_visible(session, model_class, record_id):
-            return {"status": "error", "message": f"Record with id {record_id} not found", "code": 404}
+            raise NotFound(_f('Record with id {id} not found', id=record_id))
         # On the row as stored: otherwise the change itself could satisfy it
         access.check_row(session, model_class, record_id, 'update')
 
         changes = {k: coerce_value(model_class, k, v) for k, v in record_data.items()
                    if hasattr(record, k)}
-        try:
-            refuse_key_change(record, model_class, changes)
-        except kitebase.transforms.ValidationError as e:
-            return _invalid(e)
+        refuse_key_change(record, model_class, changes)
         original = flow.row_values(record)
         ctx, refusal = flow.judge(model_class.__name__, 'update', {**original, **changes},
                                   original, params.get('answers'))
@@ -464,12 +434,8 @@ def handle_update(app, model_class, params: Dict[str, Any], db_table=None) -> Di
             session.commit()
             saved = serialize_model(record, db_table=db_table)
             kitebase.refsets.attach(app, session, db_table, [saved])
-        except kitebase.transforms.ValidationError as e:
-            session.rollback()
-            return _invalid(e)
-        except Exception as e:
-            session.rollback()
-            return {"status": "error", "message": f"Update failed: {str(e)}", "code": 400}
+        except SQLAlchemyError as e:
+            raise Invalid(f"Update failed: {e}") from e
 
     return flow.finish(ctx, {"status": "success", "data": saved,
                              "message": _('Record updated successfully'), "code": 200}, saved)
@@ -479,13 +445,13 @@ def handle_delete(app, model_class, params: Dict[str, Any], db_table=None) -> Di
     """Handle DELETE operations"""
     record_id = params.get(pk_field(db_table))
     if not record_id:
-        return {"status": "error", "message": _('Record ID is required for deletion'), "code": 400}
+        raise Invalid(_('Record ID is required for deletion'))
 
     with app.get_session() as session:
         # Find the record
         record = session.get(model_class, record_id)
         if not record or not access.row_visible(session, model_class, record_id):
-            return {"status": "error", "message": f"Record with id {record_id} not found", "code": 404}
+            raise NotFound(_f('Record with id {id} not found', id=record_id))
         access.check_row(session, model_class, record_id, 'delete')
 
         original = flow.row_values(record)
@@ -498,9 +464,8 @@ def handle_delete(app, model_class, params: Dict[str, Any], db_table=None) -> Di
             flow.commit(ctx, session, record)
             session.delete(record)
             session.commit()
-        except Exception as e:
-            session.rollback()
-            return {"status": "error", "message": f"Deletion failed: {str(e)}", "code": 400}
+        except SQLAlchemyError as e:
+            raise Invalid(f"Deletion failed: {e}") from e
 
     return flow.finish(ctx, {"status": "success",
                              "message": _('Record deleted successfully'), "code": 200}, None)
@@ -527,7 +492,7 @@ def db_query(data: Dict[str, Any]) -> Dict[str, Any]:
     want_count = bool(data.get("count", False))
 
     if not query_def:
-        return {"status": "error", "message": _('Query not defined'), "code": 400}
+        raise Invalid(_('Query not defined'))
 
     # Allow top-level limit/offset as a convenience shorthand
     if 'limit' in data and 'limit' not in query_def:
@@ -535,45 +500,39 @@ def db_query(data: Dict[str, Any]) -> Dict[str, Any]:
     if 'offset' in data and 'offset' not in query_def:
         query_def = {**query_def, 'offset': data['offset']}
 
-    try:
-        app = kitebase.utils.get_app()
-        # A RefSet named in the select is read apart, as a list per record
-        main_table = app.tables.get(query_def.get('table')) if isinstance(query_def, dict) else None
-        query_def, sets = kitebase.refsets.from_select(main_table, query_def)
-        if sets and fmt != 'records':
-            return {"status": "error", "code": 400,
-                    "message": _f("{fields} can be read in the records format only",
-                                  fields=', '.join(sets))}
-        with app.get_session() as session:
-            builder = DynamicQueryBuilder(
-                session, app.models, covered=kitebase.refsets.junctions(main_table),
-                value_transform=kitebase.media.query_transform(app, data.get('variants')))
+    app = kitebase.utils.get_app()
+    # A RefSet named in the select is read apart, as a list per record
+    main_table = app.tables.get(query_def.get('table')) if isinstance(query_def, dict) else None
+    query_def, sets = kitebase.refsets.from_select(main_table, query_def)
+    if sets and fmt != 'records':
+        raise Invalid(_f("{fields} can be read in the records format only",
+                         fields=', '.join(sets)))
+    with app.get_session() as session:
+        builder = DynamicQueryBuilder(
+            session, app.models, covered=kitebase.refsets.junctions(main_table),
+            value_transform=kitebase.media.query_transform(app, data.get('variants')))
+        try:
             records = builder.execute_query(query_def, result_format=fmt)
-            if sets:
-                kitebase.refsets.attach(app, session, main_table, records, sets)
+            total = builder.count_query(query_def) if want_count else None
+        except Refusal:
+            raise
+        except ValueError as e:
+            # The querybuilder names what it refuses in the query it was given
+            raise Invalid(str(e)) from e
+        if sets:
+            kitebase.refsets.attach(app, session, main_table, records, sets)
 
-            if want_count:
-                total = builder.count_query(query_def)
-                return {
-                    "status": "success",
-                    "data": {
-                        "records": records,
-                        "total": total,
-                        "offset": query_def.get('offset', 0),
-                        "limit": query_def.get('limit'),
-                    }
-                }
-
-            return {"status": "success", "data": records}
-
-    except AccessDenied:
-        raise
-    except kitebase.media.MediaError as e:
-        return {"status": "error", "message": str(e), "code": 400}
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {"status": "error", "message": str(e), "code": 500}
+    if want_count:
+        return {
+            "status": "success",
+            "data": {
+                "records": records,
+                "total": total,
+                "offset": query_def.get('offset', 0),
+                "limit": query_def.get('limit'),
+            }
+        }
+    return {"status": "success", "data": records}
 
 
 @endpoint('auth', access=access.AUTHENTICATED)
@@ -588,89 +547,47 @@ def authenticate(data: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Dictionary with authentication result and context
     """
-    try:
-        username = data.get('username')
-        password = data.get('password')
+    username = data.get('username')
+    password = data.get('password')
+    if not username or not password:
+        raise Invalid(_('Username and password are required'))
 
-        if not username or not password:
-            return {
-                "status": "error",
-                "message": _('Username and password are required'),
-                "code": 400
-            }
+    app = kitebase.utils.get_app()
+    config = app.plugins.config.get('authentication', {})
+    user_table = config.get('user_table', 'User')
+    name_field = config.get('username_field', 'username')
+    pass_field = config.get('password_field', 'password')
+    context_fields = tokens.context_fields(config, default=['id'])
 
-        # Get authentication configuration
-        app = kitebase.utils.get_app()
-        config = app.plugins.config.get('authentication', {})
-        user_table = config.get('user_table', 'User')
-        name_field = config.get('username_field', 'username')
-        pass_field = config.get('password_field', 'password')
-        context_fields = tokens.context_fields(config, default=['id'])
+    user = kitebase.utils.seek(user_table, {name_field: username})
+    # Verify the password against its stored form. A value still stored the
+    # old way is accepted and left alone: hashing happens when a password is
+    # written, never behind the back of a login (see kitebase.transforms).
+    if not user or not kitebase.transforms.verify_password(password, getattr(user, pass_field, None)):
+        raise Refusal(_('Invalid credentials'), code=401)
+    if hasattr(user, 'is_active') and not user.is_active:
+        raise Refusal(_('Account is inactive'), code=401)
 
-        # Find the user
-        user = kitebase.utils.seek(user_table, {name_field: username})
+    # The context: the fields of the user table it names, and the others
+    # from the request when it carries them
+    user_model = app.models.get(user_table)
+    user_attributes = [column.key for column in user_model.__table__.columns]
+    context = {}
+    for field in context_fields:
+        if field in user_attributes:
+            context[field] = getattr(user, field)
+        else:
+            context[field] = data.get(field)
+    context['username'] = username
 
-        if not user:
-            return {
-                "status": "error",
-                "message": _('Invalid credentials'),
-                "code": 401
-            }
-
-        # Verify the password against its stored form. A value still stored the
-        # old way is accepted and left alone: hashing happens when a password is
-        # written, never behind the back of a login (see kitebase.transforms).
-        if not kitebase.transforms.verify_password(password, getattr(user, pass_field, None)):
-            return {
-                "status": "error",
-                "message": _('Invalid credentials'),
-                "code": 401
-            }
-
-        # Check if user is active
-        if hasattr(user, 'is_active') and not user.is_active:
-            return {
-                "status": "error",
-                "message": _('Account is inactive'),
-                "code": 401
-            }
-
-        # Build context with selected fields from the User table
-        # and handle custom fields automatically
-        context = {}
-
-        # Get all attributes available on the user model
-        user_model = app.models.get(user_table)
-        user_attributes = [column.key for column in user_model.__table__.columns]
-
-        for field in context_fields:
-            if field in user_attributes:
-                # Standard field from User table
-                context[field] = getattr(user, field)
-            else:
-                # Custom field not in User table
-                # Check if this field was provided in the request
-                if field in data:
-                    context[field] = data[field]
-                else:
-                    # Otherwise set to None
-                    context[field] = None
-
-        context['username'] = username
-
-        return {
-            "status": "success",
-            "data": {
-                "authenticated": True,
-                "context": context
-            },
-            "code": 200
-        }
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {"status": "error", "message": str(e), "code": 500}
+    return {
+        "status": "success",
+        "data": {
+            "authenticated": True,
+            "context": context
+        },
+        "code": 200
+    }
 
 
 @endpoint('update_context', access=access.AUTHENTICATED)
@@ -678,49 +595,35 @@ def update_context(data):
     """
     Update user context and return a new token with updated context.
     """
-    try:
-        # Get current context
-        current_context = kitebase.context.current()
+    current_context = kitebase.context.current()
+    if not current_context or 'id' not in current_context:
+        raise Refusal(_('User not authenticated'), code=401)
 
-        # Verify user is authenticated
-        if not current_context or 'id' not in current_context:
-            return {
-                "status": "error",
-                "message": _('User not authenticated'),
-                "code": 401
-            }
+    # Only allow the client to set framework fields (op_date, ...) + this
+    # app's custom context fields. Identity columns stay server-authoritative.
+    # Same allowlist as the /auth/update_context route, and the same None
+    # = remove the field.
+    app = kitebase.utils.get_app()
+    allowed = set(tokens.FRAMEWORK_UPDATABLE_FIELDS) | set(
+        tokens.custom_context_fields(app.plugins.config)
+    )
+    for field in allowed:
+        if field not in data:
+            continue
+        if data[field] is None:
+            current_context.pop(field, None)
+        else:
+            current_context[field] = data[field]
 
-        # Only allow the client to set framework fields (op_date, ...) + this
-        # app's custom context fields. Identity columns stay server-authoritative.
-        # Same allowlist as the /auth/update_context route, and the same None
-        # = remove the field.
-        app = kitebase.utils.get_app()
-        allowed = set(tokens.FRAMEWORK_UPDATABLE_FIELDS) | set(
-            tokens.custom_context_fields(app.plugins.config)
-        )
-        for field in allowed:
-            if field not in data:
-                continue
-            if data[field] is None:
-                current_context.pop(field, None)
-            else:
-                current_context[field] = data[field]
+    kitebase.context.replace(current_context)
 
-        # Update the context in the current thread
-        kitebase.context.replace(current_context)
-
-        return {
-            "status": "success",
-            "data": {
-                "context": current_context
-            },
-            "code": 200
-        }
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {"status": "error", "message": str(e), "code": 500}
+    return {
+        "status": "success",
+        "data": {
+            "context": current_context
+        },
+        "code": 200
+    }
 
 
 def _each_to_client(names: Dict[str, Any]) -> Dict[str, Any]:
@@ -758,30 +661,25 @@ def get_server_config(data: Dict[str, Any]) -> Dict[str, Any]:
     Each client (web, mobile, desktop, …) applies its own rendering logic.
     Field-level attrs from view descriptors override type-level defaults (client-side).
     """
-    try:
-        from kitebase.endpoint_export import max_rows
-        app = kitebase.utils.get_app()
-        include_builtin = bool(data.get('include_builtin', False))
-        return {
-            'status': 'success',
-            'data': {
-                'config': {
-                    **app.plugins.config.get('dataview', {}),
-                    # Always there, default included: the client refuses before
-                    # loading every row, the server would refuse after.
-                    'export_max_rows': max_rows(),
-                    'locale': app.plugins.config.get('locale', 'en'),
-                    'app_title': app.plugins.config.get('title'),
-                },
-                'types': _each_to_client(app.get_type_schema(include_builtin)),
-                # The column labels name the fields in filters and pickers.
-                'tables': _each_to_client(app.get_table_schema()),
-                'schemas': {schema_id: _each_to_client(fields)
-                            for schema_id, fields in app.get_schema_registry().items()},
+    from kitebase.endpoint_export import max_rows
+    app = kitebase.utils.get_app()
+    include_builtin = bool(data.get('include_builtin', False))
+    return {
+        'status': 'success',
+        'data': {
+            'config': {
+                **app.plugins.config.get('dataview', {}),
+                # Always there, default included: the client refuses before
+                # loading every row, the server would refuse after.
+                'export_max_rows': max_rows(),
+                'locale': app.plugins.config.get('locale', 'en'),
+                'app_title': app.plugins.config.get('title'),
             },
-            'code': 200,
-        }
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {'status': 'error', 'message': str(e), 'code': 500}
+            'types': _each_to_client(app.get_type_schema(include_builtin)),
+            # The column labels name the fields in filters and pickers.
+            'tables': _each_to_client(app.get_table_schema()),
+            'schemas': {schema_id: _each_to_client(fields)
+                        for schema_id, fields in app.get_schema_registry().items()},
+        },
+        'code': 200,
+    }

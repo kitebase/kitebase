@@ -55,7 +55,8 @@ def test_a_key_the_user_types_is_asked_for():
 
 
 def test_create_answers_by_field_without_reaching_the_database():
-    result = handle_create(None, Member, {'data': {'name': 'Erin'}})
+    with pytest.raises(transforms.ValidationError) as refused:
+        handle_create(None, Member, {'data': {'name': 'Erin'}})
 
-    assert result['code'] == 400
-    assert set(result['data']['errors']) == {'password'}
+    assert refused.value.code == 400
+    assert set(refused.value.data['errors']) == {'password'}

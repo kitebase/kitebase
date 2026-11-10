@@ -94,10 +94,11 @@ def test_the_email_validator_is_built_in(address, valid):
 
 def test_create_answers_with_the_errors_by_field():
     """What a form reads: `data.errors`, one message per field."""
-    result = handle_create(None, None, {'data': {'email': 'nobody'}}, db_table=people())
+    with pytest.raises(transforms.ValidationError) as refused:
+        handle_create(None, None, {'data': {'email': 'nobody'}}, db_table=people())
 
-    assert result['status'] == 'error' and result['code'] == 400
-    assert result['data'] == {'errors': {'email': transforms.email_validator('nobody', {})}}
+    assert refused.value.code == 400
+    assert refused.value.data == {'errors': {'email': transforms.email_validator('nobody', {})}}
 
 
 def test_check_reports_a_validator_nobody_registered():
