@@ -359,3 +359,24 @@ def test_a_field_written_short_is_still_addressable_by_the_merge(pm):
     data = pm.merge_dicts({"fields": [{"name": "language", "$after": "title"}]}, "ext")
 
     assert [f["name"] for f in data["fields"]] == ["title", "language", "price"]
+
+
+def test_columns_merge_by_name_like_any_identified_list(pm):
+    """No handler of their own: a table's columns are refined, moved and
+    removed by a second plugin with the rules of every other list."""
+    pm.merge_dicts({"tables": {"Book": {"columns": [
+        {"name": "id", "type": "ID"},
+        {"name": "title", "type": "String"},
+        {"name": "notes", "type": "Text"},
+    ]}}}, "books")
+    data = pm.merge_dicts({"tables": {"Book": {"columns": [
+        {"name": "title", "length": 120},
+        {"name": "isbn", "type": "String", "$after": "id"},
+        {"name": "notes", "$remove": True},
+    ]}}}, "library")
+
+    columns = data["tables"]["Book"]["columns"]
+    assert [c["name"] for c in columns] == ["id", "isbn", "title"]
+    title = columns[2]
+    assert (title["type"], title["length"], title["$plugin"]) == ("String", 120, "library")
+    assert all("$after" not in c for c in columns)

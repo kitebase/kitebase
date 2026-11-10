@@ -277,72 +277,10 @@ def json_to_model_types(data, table_name):
 
 def register_standard_handlers(pm) -> None:
     """
-    Register standard merge handlers for common data patterns.
-
-    This function sets up handlers for merging lists that contain items
-    with a 'name' field, such as table columns or type columns.
+    Nothing to register: columns merge by name like every other list whose
+    items carry an identity (kitebase.plugins, IDENTITY_KEYS), directives
+    included. Kept while applications still call it at startup.
 
     Args:
         pm: PluginsManager instance
     """
-
-    def merge_by_name(base_list: List[Dict[str, Any]],
-                      new_list: List[Dict[str, Any]],
-                      plugin) -> List[Dict[str, Any]]:
-        """
-        Merge two lists of dictionaries by their 'name' field.
-
-        When items with the same 'name' are found, the attributes from
-        the new item are merged into the existing item, with new values
-        overwriting old ones.
-
-        Args:
-            base_list: Base list to merge into
-            new_list: New list to merge from
-            plugin: Plugin providing the new items
-
-        Returns:
-            Merged list with combined items
-        """
-        result = []
-
-        # Copy base list items
-        for item in base_list:
-            result.append(item.copy())
-
-        # Process new list items
-        for new_item in new_list:
-            name = new_item.get('name')
-
-            if not name:
-                # If no name, just append
-                new_copy = new_item.copy()
-                if '$plugin' not in new_copy:
-                    new_copy['$plugin'] = plugin
-                result.append(new_copy)
-                continue
-
-            # Find existing item with same name
-            existing = None
-            for item in result:
-                if item.get('name') == name:
-                    existing = item
-                    break
-
-            if existing:
-                # Merge attributes (new values overwrite old ones)
-                deep_merge(existing, new_item)
-                # Update plugin marker
-                existing['$plugin'] = plugin
-            else:
-                # Add new item
-                new_copy = new_item.copy()
-                if '$plugin' not in new_copy:
-                    new_copy['$plugin'] = plugin
-                result.append(new_copy)
-
-        return result
-
-    # Register handlers for common patterns
-    pm.register_merge_handler('tables.*.columns', merge_by_name)
-    pm.register_merge_handler('types.*.columns', merge_by_name)
