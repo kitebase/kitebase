@@ -45,6 +45,7 @@ from sqlalchemy import func
 
 import kitebase
 from kitebase import access
+from kitebase.flow import run_forms
 from kitebase.i18n import _, _f
 
 
@@ -188,8 +189,6 @@ class SheetImport:
 
     def run(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """The endpoint's answer for an uploaded sheet: written, or why not."""
-        from kitebase.flow import run_forms
-
         documents, refusal = self.load(data)
         if refusal:
             return refusal

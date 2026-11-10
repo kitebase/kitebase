@@ -22,7 +22,12 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import yaml
 
+from kitebase import access, vocabulary
+from kitebase import catalog as cat_mod
+from kitebase.endpoints import _ENDPOINTS
+from kitebase.pages import load_page, page_permissions, restrict_page
 from kitebase.registry import Registry, caller
+from kitebase.utils import identity_key
 
 
 # ── Plain data ─────────────────────────────────────────────────────────────────
@@ -238,7 +243,6 @@ def issues(app: Any) -> List[Dict[str, Any]]:
 
 def catalog(app: Any) -> Dict[str, Any]:
     """The catalog of the forms, and where the application uses each key."""
-    from kitebase import catalog as cat_mod, vocabulary
 
     cat = cat_mod.load()
     sections = {norm.split('.')[0] for norm in cat.get('roots') or {}}
@@ -255,7 +259,6 @@ def catalog(app: Any) -> Dict[str, Any]:
 
 
 def _endpoints() -> Dict[str, Any]:
-    from kitebase.endpoints import _ENDPOINTS
     return _ENDPOINTS
 
 
@@ -290,7 +293,6 @@ def endpoints() -> Dict[str, Dict[str, Any]]:
 
 def parse_path(data: Any, text: str) -> List[Step]:
     """The steps of `text` in `data`; KeyError where the tree has no such node."""
-    from kitebase.utils import identity_key
 
     steps: List[Step] = []
     node, rest = data, text.strip()
@@ -372,7 +374,6 @@ def _summary(value: Any) -> Any:
 
 def _children(app: Any, steps: List[Step], value: Any) -> List[Dict[str, Any]]:
     # `value` comes masked: the summaries of its values are shown as they are
-    from kitebase.utils import identity_key
 
     if isinstance(value, dict):
         entries = [(k, [*steps, k], v) for k, v in value.items()]
@@ -471,8 +472,6 @@ def _resolved(app: Any, steps: Sequence[Step], subject: Optional[str]) -> Option
     nothing is taken out: there is no user here to judge.
     """
     import copy
-    from kitebase import access
-    from kitebase.pages import load_page, page_permissions, restrict_page
 
     if len(steps) != 2 or steps[0] not in _RESOLVED or not isinstance(steps[1], str):
         return None

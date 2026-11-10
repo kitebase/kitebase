@@ -16,6 +16,7 @@ import pytest
 import yaml
 from sqlalchemy import event, text
 
+import kitebase.endpoint_db
 import kitebase.utils
 from kitebase.app import App
 from kitebase.model_base import Base
@@ -178,7 +179,7 @@ def rows(app, model_name):
     """Every row of a table, as dicts, straight from the ORM."""
     model_class = app.find_model_class(model_name)
     with app.get_session() as session:
-        return [kitebase.utils.serialize_model(obj, db_table=app.tables.get(model_name))
+        return [kitebase.endpoint_db.serialize_model(obj, db_table=app.tables.get(model_name))
                 for obj in session.query(model_class).all()]
 
 

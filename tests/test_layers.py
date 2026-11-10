@@ -24,25 +24,19 @@ SPINE = [
 
 # importer -> the higher modules it reaches from inside a function.
 KNOWN_UPWARD = {
-    'access': {'endpoints'},
+    'access': {'endpoints', 'querybuilder'},
     'app': {'source'},
-    'catalog': {'defaults', 'vocabulary'},
     'cli': {'model_base', 'db_copy', 'dev', 'diagnostics', 'help', 'help_texts', 'inspector',
             'pages', 'scaffold', 'schema_sync'},
-    'db_copy': {'schema_sync'},
     'dev': {'plugins'},
-    'diagnostics': {'pages'},
-    'duplicate': {'endpoint_tree', 'pages'},
+    'diagnostics': {'introspect', 'pages'},
     'endpoint_db': {'endpoint_export'},
-    'flow': {'access', 'endpoint_tree', 'endpoints', 'outbound', 'pages'},
+    'flow': {'endpoint_tree'},
     'help': {'endpoint_menu'},
     'help_texts': {'diagnostics'},
     'inspector': {'introspect'},
-    'introspect': {'access', 'diagnostics', 'endpoints', 'pages'},
     'media': {'diagnostics'},
-    'querybuilder': {'access', 'utils'},
     'settings': {'diagnostics'},
-    'utils': {'access', 'media', 'model_base'},
     'vocabulary': {'diagnostics'},
 }
 
@@ -64,15 +58,34 @@ def _imported(node: ast.AST) -> Set[str]:
     return set()
 
 
+def _run_at_import(tree: ast.Module) -> Set[ast.AST]:
+    """The statements that run when the module is imported: the body of the
+    file and of the blocks in it (`if`, `try`, `with`), not of functions or
+    classes."""
+    found: Set[ast.AST] = set()
+    todo = list(tree.body)
+    while todo:
+        node = todo.pop()
+        found.add(node)
+        if isinstance(node, (ast.If, ast.Try, ast.With)):
+            todo.extend(node.body)
+            todo.extend(getattr(node, 'orelse', []))
+            todo.extend(getattr(node, 'finalbody', []))
+            for handler in getattr(node, 'handlers', []):
+                todo.extend(handler.body)
+    return found
+
+
 def _graph() -> Dict[str, Tuple[Set[str], Set[str]]]:
     """module -> (imported at the top of the file, imported inside a function)."""
     graph = {}
     for name in sorted(MODULES):
         tree = ast.parse((PACKAGE / f'{name}.py').read_text())
+        at_import = _run_at_import(tree)
         top: Set[str] = set()
         inside: Set[str] = set()
         for node in ast.walk(tree):
-            (top if node in tree.body else inside).update(_imported(node))
+            (top if node in at_import else inside).update(_imported(node))
         graph[name] = (top - {name}, inside - top - {name})
     return graph
 

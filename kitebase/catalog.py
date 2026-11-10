@@ -23,6 +23,8 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import yaml
 
+from kitebase import defaults
+
 CATALOG_FILE = Path(__file__).with_name('catalog.yaml')
 
 Catalog = Dict[str, Any]
@@ -61,8 +63,6 @@ def tokens(catalog: Catalog) -> Dict[str, Dict[str, Any]]:
     The meaning is the first line of the docstring of what the registry holds,
     so a token an application registers is told without writing it twice.
     """
-    from kitebase import defaults
-
     registries = {'kitebase.defaults': {n: defaults.get_default(n) for n in defaults.default_names()}}
     out: Dict[str, Dict[str, Any]] = {}
     for family, spec in (catalog.get('tokens') or {}).items():

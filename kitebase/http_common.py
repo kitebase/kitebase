@@ -14,7 +14,10 @@ import json
 import traceback as _traceback
 from typing import Any, Dict, Optional, Tuple, Union
 
+from kitebase.clientui import client_settings, signin_texts
+from kitebase import diagnostics
 from kitebase.endpoints import FileResult
+from kitebase.media import MediaReply, UploadedFile, serve
 
 
 def _error_response(message: str, status_code: int = 500,
@@ -163,7 +166,6 @@ def handle_upload(dispatcher, fields: Dict[str, Any], upload: Any,
     processor, so the upload runs with the same context, permissions and log
     line as any operation, and the same statuses: 403, 404, 413, 415.
     """
-    from kitebase.media import UploadedFile
 
     if not isinstance(upload, UploadedFile):
         return _error_response("The upload has no 'file' part", status_code=400)
@@ -188,7 +190,6 @@ def handle_upload_op(dispatcher, operation: str, params: Optional[str], upload: 
     in `data['file']` (an UploadedFile) and reads itself, within its own limit.
     The answer is the dispatcher's, questions and all.
     """
-    from kitebase.media import UploadedFile
 
     if not isinstance(upload, UploadedFile):
         return _error_response("The upload has no 'file' part", status_code=400)
@@ -205,7 +206,6 @@ def handle_upload_op(dispatcher, operation: str, params: Optional[str], upload: 
 def handle_media_get(kitebase_app, root: str, path: str, params: Dict[str, str],
                      if_none_match: Optional[str] = None):
     """Framework-agnostic handler of `GET media/<root>/<path>`: a MediaReply."""
-    from kitebase.media import MediaReply, serve
 
     media = getattr(kitebase_app, 'media', None)
     if media is None or root not in media.roots:
@@ -259,7 +259,6 @@ def get_app_info(plugins_config: Dict[str, Any], api_prefix: str) -> Dict[str, A
         is signed in: the app's `title` and `client.signin` (subtitle, hint),
         written to be public, and nothing else of the configuration.
     """
-    from kitebase.clientui import client_settings, signin_texts
 
     return {
         'status': 'success',
@@ -339,11 +338,10 @@ def report_checks(kitebase_app) -> None:
     for. It costs a few milliseconds.
     """
     import logging
-    from kitebase.diagnostics import run_checks
 
     log = logging.getLogger('kitebase')
     try:
-        issues = [i for i in run_checks(kitebase_app) if i['severity'] in ('error', 'warning')]
+        issues = [i for i in diagnostics.run_checks(kitebase_app) if i['severity'] in ('error', 'warning')]
     except Exception:
         log.exception('the startup checks failed; `kitebase check` tells more')
         return

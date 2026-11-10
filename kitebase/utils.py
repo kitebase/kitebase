@@ -1,8 +1,8 @@
-import datetime
 import importlib
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from sqlalchemy import inspection
+
+from kitebase.model_base import BaseApp
 
 
 def autoimport(file: str, package: str) -> None:
@@ -72,7 +72,6 @@ def get_app():
     Returns:
         The application instance
     """
-    from kitebase.model_base import BaseApp
     return BaseApp.__kitebase_app__
 
 
@@ -124,67 +123,6 @@ def search_info(db_table) -> dict:
     return db_table.search_info
 
 
-def serialize_model(model, include_relationships=False, db_table=None):
-    """
-    Convert SQLAlchemy model instance to dictionary.
-
-    Columns marked `secret: true` are left out: they must never reach a client,
-    and the definition is resolved from the model itself when the caller has
-    none at hand, so forgetting to pass one cannot turn into a leak. So are the
-    columns of a group the current user may not read (kitebase.access).
-
-    Args:
-        model: SQLAlchemy model instance
-        include_relationships: Whether to include relationship attributes
-        db_table: DbTable instance to include virtual columns (optional)
-
-    Returns:
-        Dictionary representation of the model
-    """
-    from kitebase import access
-    db_table = table_definition(model.__class__, db_table)
-    secrets = secret_columns(db_table)
-    if db_table is not None:
-        secrets = secrets | access.unreadable_columns(db_table)
-
-    result = {}
-    # Add real + mixin columns (SQLAlchemy introspection covers both)
-    for column in inspection.inspect(model.__class__).columns:
-        if column.name in secrets:
-            continue
-        result[column.name] = getattr(model, column.name)
-
-    # Add virtual columns (hybrid_property, not in __table__.columns)
-    if db_table:
-        for col in db_table.virtual_columns:
-            if col.name in secrets:
-                continue
-            result[col.name] = getattr(model, col.name, None)
-
-    # A file's stored reference leaves as its signed URL (kitebase.media)
-    if db_table is not None:
-        from kitebase import media
-        media.sign_record(get_app(), db_table, result)
-
-    # Optionally add relationships
-    if include_relationships:
-        for relationship in inspection.inspect(model.__class__).relationships:
-            rel_name = relationship.key
-            rel_value = getattr(model, rel_name)
-
-            # Handle different types of relationships
-            if rel_value is None:
-                result[rel_name] = None
-            elif isinstance(rel_value, list):
-                # Many relationship - serialize IDs only
-                result[rel_name] = [item.id if hasattr(item, 'id') else str(item) for item in rel_value]
-            else:
-                # Single relationship - serialize ID only
-                result[rel_name] = rel_value.id if hasattr(rel_value, 'id') else str(rel_value)
-
-    return result
-
-
 def seek(table_name, filters):
     """
     Generic seek function to find a record by filters.
@@ -213,62 +151,3 @@ def seek(table_name, filters):
 
         # Return first match or None
         return query.first()
-
-
-def json_to_model_types(data, table_name):
-    """
-    Convert JSON data types to appropriate SQLAlchemy model types,
-    with special handling based on database type.
-
-    Args:
-        data: Dictionary of values from JSON
-        table_name: Name of the table/model
-
-    Returns:
-        Dictionary with values converted to appropriate Python types
-    """
-
-    app = get_app()
-    model_class = app.find_model_class(table_name)
-    if not data or not model_class or not hasattr(model_class, '__table__'):
-        return data
-
-    # Skip conversion for databases that handle JSON conversion well
-    if app.db_type.lower() in ('postgresql', 'mysql', 'mariadb'):
-        return data
-
-    result = data.copy()
-
-    for column in model_class.__table__.columns:
-        column_name = column.name
-
-        # Skip if column not in data
-        if column_name not in result:
-            continue
-
-        value = result[column_name]
-
-        # Skip None values
-        if value is None:
-            continue
-
-        # Get Python type for the column
-        try:
-            python_type = column.type.python_type
-        except NotImplementedError:
-            # Some SQLAlchemy types don't have a direct Python type
-            continue
-
-        # Convert based on target type
-        if python_type == datetime.date and isinstance(value, str):
-            try:
-                result[column_name] = datetime.date.fromisoformat(value)
-            except ValueError:
-                pass
-        elif python_type == datetime.datetime and isinstance(value, str):
-            try:
-                result[column_name] = datetime.datetime.fromisoformat(value)
-            except ValueError:
-                pass
-
-    return result

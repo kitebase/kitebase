@@ -54,6 +54,7 @@ from contextvars import ContextVar
 from typing import Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Set, Tuple
 
 import kitebase.context
+import kitebase.utils
 from kitebase.registry import Slot, caller
 
 # What an endpoint declares with `@endpoint(name, access=...)`, besides a
@@ -291,7 +292,6 @@ def guard_session(session: Any) -> Any:
     def check_statement(state: Any) -> None:
         if not state.is_select or _SYSTEM.get():
             return
-        import kitebase.utils
         app = kitebase.utils.get_app()
         for model_name in sorted(columns_read(state.statement, app.models)):
             check_table(model_name, 'read')
@@ -369,7 +369,6 @@ def label_columns(model_name: str, app: Any = None) -> FrozenSet[str]:
     for columns this cannot name, so it opens nothing beyond the search ones.
     """
     if app is None:
-        import kitebase.utils
         app = kitebase.utils.get_app()
     table = app.tables.get(model_name)
     if table is None:
@@ -473,7 +472,6 @@ def row_clause(model_name: str, action: str, app: Any = None) -> Any:
 def compile_conditions(model_name: str, rule: List[Any], app: Any = None) -> Any:
     from kitebase.querybuilder import condition_clause
     if app is None:
-        import kitebase.utils
         app = kitebase.utils.get_app()
     return condition_clause(app.models, model_name, rule)
 
@@ -511,7 +509,6 @@ def column_groups(model: Any, app: Any = None) -> Dict[str, str]:
     if not isinstance(model, str):
         return getattr(model, 'column_groups', None) or {}
     if app is None:
-        import kitebase.utils
         app = kitebase.utils.get_app()
     # an app with no table definitions (a bare query builder) has no groups
     table = (getattr(app, 'tables', None) or {}).get(model)

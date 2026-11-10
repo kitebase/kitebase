@@ -154,6 +154,40 @@ def write_values(db_table, record_data: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
+def serialize_model(model, db_table=None) -> Dict[str, Any]:
+    """
+    A record as it leaves for the client.
+
+    Columns marked `secret: true` are left out: they must never reach a client,
+    and the definition is resolved from the model itself when the caller has
+    none at hand, so forgetting to pass one cannot turn into a leak. So are the
+    columns of a group the current user may not read (kitebase.access). A
+    file's stored reference leaves as its signed URL (kitebase.media).
+
+    Args:
+        model: SQLAlchemy model instance
+        db_table: DbTable instance, for the virtual columns (optional)
+    """
+    db_table = kitebase.utils.table_definition(model.__class__, db_table)
+    secrets = kitebase.utils.secret_columns(db_table)
+    if db_table is not None:
+        secrets = secrets | access.unreadable_columns(db_table)
+
+    # Real and mixin columns: SQLAlchemy introspection covers both
+    result = {column.name: getattr(model, column.name)
+              for column in sa_inspect(model.__class__).columns
+              if column.name not in secrets}
+
+    if db_table is not None:
+        # Virtual columns (hybrid_property, not in __table__.columns)
+        for col in db_table.virtual_columns:
+            if col.name not in secrets:
+                result[col.name] = getattr(model, col.name, None)
+        kitebase.media.sign_record(kitebase.utils.get_app(), db_table, result)
+
+    return result
+
+
 def handle_get(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[str, Any]:
     """Handle GET operations (list or single record)"""
     record_id = params.get(pk_field(db_table))
@@ -173,7 +207,7 @@ def handle_get(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[
             if not record or not access.row_visible(session, model_class, record_id):
                 return {"status": "error", "message": _f('Record with id {id} not found', id=record_id), "code": 404}
 
-            data = kitebase.utils.serialize_model(record, db_table=db_table)
+            data = serialize_model(record, db_table=db_table)
             kitebase.refsets.attach(app, session, db_table, [data])
             return {"status": "success", "data": data, "code": 200}
         else:
@@ -206,7 +240,7 @@ def handle_get(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[
 
             # Execute query and serialize results
             records = query.all()
-            result = [kitebase.utils.serialize_model(record, db_table=db_table) for record in records]
+            result = [serialize_model(record, db_table=db_table) for record in records]
 
             return {
                 "status": "success",
@@ -361,7 +395,7 @@ def handle_create(app, model_class, params: Dict[str, Any], db_table=None) -> Di
             # Refresh to get generated IDs and other database defaults
             session.refresh(new_record)
 
-            saved = kitebase.utils.serialize_model(new_record, db_table=db_table)
+            saved = serialize_model(new_record, db_table=db_table)
             kitebase.refsets.attach(app, session, db_table, [saved])
             result = {
                 "status": "success",
@@ -428,7 +462,7 @@ def handle_update(app, model_class, params: Dict[str, Any], db_table=None) -> Di
             kitebase.refsets.write(app, session, db_table, record, sets)
             flow.commit(ctx, session, record)
             session.commit()
-            saved = kitebase.utils.serialize_model(record, db_table=db_table)
+            saved = serialize_model(record, db_table=db_table)
             kitebase.refsets.attach(app, session, db_table, [saved])
         except kitebase.transforms.ValidationError as e:
             session.rollback()

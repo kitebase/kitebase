@@ -37,6 +37,8 @@ import sqlalchemy as sa
 from sqlalchemy.engine import Engine
 from sqlalchemy.schema import sort_tables_and_constraints
 
+from kitebase.schema_sync import diff_schema, format_diff
+
 CHUNK = 1000
 
 
@@ -102,7 +104,6 @@ def _deferred_columns(fkcs: List[sa.ForeignKeyConstraint]) -> List[sa.Column]:
 
 
 def _check_aligned(engine: Engine, metadata: sa.MetaData, side: str) -> None:
-    from kitebase.schema_sync import diff_schema, format_diff
     diff = diff_schema(engine, metadata)
     if not diff.is_aligned:
         raise CopyError(

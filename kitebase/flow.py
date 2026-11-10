@@ -50,7 +50,11 @@ from sqlalchemy import event, inspect as sa_inspect
 
 import kitebase
 import kitebase.context
+from kitebase import access
+from kitebase.endpoints import Dispatcher
 from kitebase.i18n import _f
+from kitebase.outbound import to_client
+from kitebase.pages import load_page
 from kitebase.registry import Registry
 
 _log = logging.getLogger('kitebase')
@@ -223,8 +227,6 @@ def form_view(view_id: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     A form view of the plugins as the client shows it (references resolved,
     metadata out, labels translated), and its first values from `default`.
     """
-    from kitebase.outbound import to_client
-
     app = kitebase.utils.get_app()
     view = app.plugins.get(f'views.{view_id}')
     if view is None:
@@ -432,7 +434,6 @@ def proposal(table: str):
     def wrap(fn: Callable) -> Callable:
         @functools.wraps(fn)
         def body(data: Dict[str, Any]) -> Dict[str, Any]:
-            from kitebase import access
             access.check_table(table, 'read')
             return propose(table, fn, data)
         body.proposes = fn  # type: ignore[attr-defined]
@@ -458,8 +459,6 @@ def run_form(page_id: str, tree: Dict[str, Any],
     Returns the answer of `save_tree`, with the lines the proposals had for the
     person, or the refusal of the step that stopped.
     """
-    from kitebase.pages import load_page
-
     if isinstance(tree.get('id'), int) and tree['id'] >= 0:
         return {'status': 'error', 'code': 400,
                 'message': 'run_form writes new documents: this one already has a key'}
@@ -492,7 +491,6 @@ def run_forms(page_id: str, trees: List[Dict[str, Any]],
     label (the key of its rows in a sheet, say), or by its position.
     """
     from kitebase.endpoint_tree import save_trees
-    from kitebase.pages import load_page
 
     page = load_page(kitebase.utils.get_app(), page_id)
     if page is None:
@@ -526,7 +524,6 @@ def run_forms(page_id: str, trees: List[Dict[str, Any]],
 def _sender() -> Callable[[Dict[str, Any]], Dict[str, Any]]:
     """Calls through the dispatcher, as the caller: the access check of each
     endpoint is the one a request for it gets."""
-    from kitebase.endpoints import Dispatcher
     processor = Dispatcher()
     return lambda command: processor.call(command['operation'], command.get('parameters'))
 

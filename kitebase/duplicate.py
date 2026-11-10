@@ -39,7 +39,10 @@ from typing import Any, Callable, Dict, Optional, Tuple
 import kitebase
 from kitebase import access
 from kitebase.endpoints import endpoint
+from kitebase.endpoint_tree import _link_of, _load_tree
+from kitebase.flow import form_view
 from kitebase.i18n import _, _f
+from kitebase.pages import page_aggregate
 from kitebase.registry import Registry, owner_of
 
 
@@ -90,9 +93,6 @@ def duplicate_tree(page_id: str, record_id: Any
     The record as it was read, and the same as a tree with no keys: what the
     form opens. (None, None) if it is not there.
     """
-    from kitebase.endpoint_tree import _link_of, _load_tree
-    from kitebase.pages import page_aggregate
-
     app = kitebase.utils.get_app()
     aggregate = page_aggregate(app, page_id)
     access.check_table(aggregate.model, 'create')
@@ -158,7 +158,6 @@ _CALL_KEYS = {'page', 'id', 'confirm', '$asked', 'table', 'query_params', 'ids',
 def _ask_options(page_id: str, custom: _Duplicator, source: Dict[str, Any],
                  again: Dict[str, Any]) -> Dict[str, Any]:
     """The options view as the question, its first values computed from the record."""
-    from kitebase.flow import form_view
     try:
         view, values = form_view(custom.options)
     except ValueError as e:

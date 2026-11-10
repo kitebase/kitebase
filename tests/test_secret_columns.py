@@ -16,9 +16,9 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
 from kitebase import transforms
-from kitebase.endpoint_db import write_values
+from kitebase.endpoint_db import serialize_model, write_values
 from kitebase.querybuilder import DynamicQueryBuilder, SelectBuilder
-from kitebase.utils import secret_columns, serialize_model
+from kitebase.utils import secret_columns
 
 Base = declarative_base()
 
