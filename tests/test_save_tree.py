@@ -21,6 +21,7 @@ import kitebase.utils
 from kitebase.app import App
 from kitebase.model_base import Base
 from kitebase.endpoint_tree import load_tree, save_tree
+from kitebase.errors import Refusal
 from kitebase.plugins import PluginsManager
 from kitebase.source import Generator
 
@@ -192,6 +193,13 @@ def make_author(app, name):
         return obj.id
 
 
+def refused(endpoint, data):
+    """Assert the endpoint refuses `data`, and return the refusal."""
+    with pytest.raises(Refusal) as refusal:
+        endpoint(data)
+    return refusal.value
+
+
 def ok(result):
     """Assert a successful envelope and return its data."""
     assert result['status'] == 'success', result.get('message')
@@ -246,21 +254,21 @@ def test_a_child_that_says_nothing_still_gets_its_foreign_key(app):
 
 
 def test_a_temporary_id_nothing_creates_is_refused(app):
-    result = save_tree({
+    result = refused(save_tree, {
         'page': 'book_form',
         'root': {'op': 'create', 'id': -1, 'values': {'title': 'x'},
                  'children': {'authors': [
                      {'op': 'create', 'id': -2, 'values': {'author_id': -99}}]}},
     })
 
-    assert result['code'] == 400
-    assert '-99' in result['message']
+    assert result.code == 400
+    assert '-99' in result.message
     assert rows(app, 'Book') == []      # one commit at the top: nothing was written
 
 
 def test_a_temporary_id_used_twice_is_refused(app):
     """One counter for the payload: the map is global, and so is the collision."""
-    result = save_tree({
+    result = refused(save_tree, {
         'page': 'book_form',
         'root': {'op': 'create', 'id': -1, 'values': {'title': 'Dune'},
                  'children': {'chapters': [
@@ -269,8 +277,8 @@ def test_a_temporary_id_used_twice_is_refused(app):
                  ]}},
     })
 
-    assert result['code'] == 400
-    assert '-2' in result['message']
+    assert result.code == 400
+    assert '-2' in result.message
     assert rows(app, 'Book') == []
 
 
@@ -280,7 +288,7 @@ def test_a_row_cannot_reparent_itself(app):
     first = ok(save_tree({'page': 'book_form',
                           'root': {'op': 'create', 'id': -1, 'values': {'title': 'Ficciones'}}}))
 
-    result = save_tree({
+    result = refused(save_tree, {
         'page': 'book_form',
         'root': {'op': 'create', 'id': -1, 'values': {'title': 'El Aleph'},
                  'children': {'authors': [
@@ -288,8 +296,8 @@ def test_a_row_cannot_reparent_itself(app):
                       'values': {'book_id': first['id'], 'author_id': author}}]}},
     })
 
-    assert result['code'] == 400
-    assert 'book_id' in result['message']
+    assert result.code == 400
+    assert 'book_id' in result.message
 
 
 # ── Update and delete: explicit operations, never a delta ───────────────────
@@ -436,21 +444,21 @@ def test_what_is_not_owned_survives_the_parent(app):
 
 
 def test_a_delete_needs_the_id_of_a_saved_row(app):
-    result = save_tree({
+    result = refused(save_tree, {
         'page': 'book_form',
         'root': {'op': 'create', 'id': -1, 'values': {'title': 'x'},
                  'children': {'authors': [{'op': 'delete', 'id': -2}]}},
     })
 
-    assert result['code'] == 400
+    assert result.code == 400
 
 
 def test_an_unknown_operation_is_refused(app):
-    result = save_tree({'page': 'book_quick_form',
+    result = refused(save_tree, {'page': 'book_quick_form',
                         'root': {'op': 'upsert', 'values': {'title': 'x'}}})
 
-    assert result['code'] == 400
-    assert 'upsert' in result['message']
+    assert result.code == 400
+    assert 'upsert' in result.message
 
 
 # ── Depth: grandchildren, and deletions the other way round ─────────────────
@@ -513,7 +521,7 @@ def test_nothing_may_be_added_under_a_row_that_goes_away(app):
     }))
     chapter_id = created['id_map'][-2]
 
-    result = save_tree({
+    result = refused(save_tree, {
         'page': 'book_form',
         'root': {'op': 'update', 'id': created['id'], 'values': {},
                  'children': {'chapters': [
@@ -523,25 +531,25 @@ def test_nothing_may_be_added_under_a_row_that_goes_away(app):
                  ]}},
     })
 
-    assert result['code'] == 400
+    assert result.code == 400
     assert rows(app, 'Chapter') != []    # the whole save was refused, not half of it
 
 
 def test_a_collection_the_page_does_not_declare_is_refused(app):
-    result = save_tree({
+    result = refused(save_tree, {
         'page': 'book_quick_form',
         'root': {'op': 'create', 'id': -1, 'values': {'title': 'x'},
                  'children': {'authors': [{'op': 'create', 'id': -2, 'values': {}}]}},
     })
 
-    assert result['code'] == 400
-    assert 'authors' in result['message']
+    assert result.code == 400
+    assert 'authors' in result.message
     assert rows(app, 'Book') == []
 
 
 def test_a_collection_declared_one_level_up_is_not_available_below(app):
     """`chapters` belongs to the book, not to a chapter: depth is part of the map."""
-    result = save_tree({
+    result = refused(save_tree, {
         'page': 'book_form',
         'root': {'op': 'create', 'id': -1, 'values': {'title': 'x'},
                  'children': {'chapters': [
@@ -550,15 +558,15 @@ def test_a_collection_declared_one_level_up_is_not_available_below(app):
                  ]}},
     })
 
-    assert result['code'] == 400
-    assert 'chapters' in result['message']
+    assert result.code == 400
+    assert 'chapters' in result.message
 
 
 def test_an_unknown_page_writes_nothing(app):
-    result = save_tree({'page': 'nowhere_form',
+    result = refused(save_tree, {'page': 'nowhere_form',
                         'root': {'op': 'create', 'id': -1, 'values': {'title': 'x'}}})
 
-    assert result['code'] == 400
+    assert result.code == 404
     assert rows(app, 'Book') == []
 
 
@@ -626,13 +634,13 @@ def test_what_load_returns_is_accepted_unchanged(app):
 
 def test_a_pass_through_needs_the_id_of_a_saved_row(app):
     """A row that was never written has nothing below it to reach."""
-    result = save_tree({
+    result = refused(save_tree, {
         'page': 'book_form',
         'root': {'op': 'create', 'id': -1, 'values': {'title': 'x'},
                  'children': {'chapters': [{'id': -2, 'values': {}}]}},
     })
 
-    assert result['code'] == 400
+    assert result.code == 400
     assert rows(app, 'Book') == []
 
 
@@ -642,7 +650,7 @@ def test_a_pass_through_cannot_reach_into_another_aggregate(app):
     second = ok(save_tree({'page': 'book_form',
                            'root': {'op': 'create', 'id': -1, 'values': {'title': 'Ubik'}}}))
 
-    result = save_tree({
+    result = refused(save_tree, {
         'page': 'book_form',
         'root': {'op': 'update', 'id': second['id'], 'values': {},
                  'children': {'chapters': [
@@ -652,8 +660,8 @@ def test_a_pass_through_cannot_reach_into_another_aggregate(app):
                  ]}},
     })
 
-    assert result['code'] == 400
-    assert str(chapter_of_first) in result['message']
+    assert result.code == 400
+    assert str(chapter_of_first) in result.message
     assert len(rows(app, 'Note')) == 1      # the one the fixture wrote, and no other
 
 
@@ -661,7 +669,7 @@ def test_a_row_that_would_survive_its_deleted_parent_is_refused(app):
     """Below a row that goes away only deletions make sense — silence included."""
     book_id, chapter_id, note_id = _book_with_a_note(app)
 
-    result = save_tree({
+    result = refused(save_tree, {
         'page': 'book_form',
         'root': {'op': 'update', 'id': book_id, 'values': {},
                  'children': {'chapters': [
@@ -670,7 +678,7 @@ def test_a_row_that_would_survive_its_deleted_parent_is_refused(app):
                  ]}},
     })
 
-    assert result['code'] == 400
+    assert result.code == 400
     assert rows(app, 'Chapter') != []
 
 
@@ -833,7 +841,7 @@ def test_the_domain_of_a_tab_is_a_filter_and_still_applies(app):
 
 
 def test_loading_a_record_that_is_not_there(app):
-    assert load_tree({'page': 'book_form', 'id': 999})['code'] == 404
+    assert refused(load_tree, {'page': 'book_form', 'id': 999}).code == 404
 
 
 def test_the_save_hands_back_the_tree_as_the_database_holds_it(app):
@@ -906,7 +914,7 @@ def test_a_child_cannot_cite_another_parent_by_key(app):
     created = ok(save_tree({'page': 'visit_form',
                             'root': {'op': 'create', 'id': -1, 'values': {'place': 'A'}}}))
 
-    result = save_tree({
+    result = refused(save_tree, {
         'page': 'visit_form',
         'root': {'op': 'update', 'id': created['id'], 'values': {},
                  'children': {'reports': [
@@ -914,5 +922,5 @@ def test_a_child_cannot_cite_another_parent_by_key(app):
                       'values': {'text': 'x', 'visit_code': 'someone-else'}}]}},
     })
 
-    assert result['code'] == 400
+    assert result.code == 400
     assert rows(app, 'Report') == []

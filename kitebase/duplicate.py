@@ -39,6 +39,7 @@ from typing import Any, Callable, Dict, Optional, Tuple
 import kitebase
 from kitebase import access
 from kitebase.endpoints import endpoint
+from kitebase.errors import Invalid, NotFound
 from kitebase.endpoint_tree import _link_of, _load_tree
 from kitebase.flow import form_view
 from kitebase.i18n import _, _f
@@ -125,15 +126,12 @@ def duplicate(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     page_id, record_id = data.get('page'), data.get('id')
     if not page_id or record_id is None:
-        return {'status': 'error', 'code': 400, 'message': 'page and id are required'}
+        raise Invalid('page and id are required')
 
     custom = _DUPLICATORS.get(page_id)
-    try:
-        source, tree = duplicate_tree(page_id, record_id)
-    except ValueError as e:
-        return {'status': 'error', 'code': 400, 'message': str(e)}
+    source, tree = duplicate_tree(page_id, record_id)
     if tree is None:
-        return {'status': 'error', 'code': 404, 'message': _f('No record {id}', id=record_id)}
+        raise NotFound(_f('No record {id}', id=record_id))
 
     if not data.get('$asked'):
         again = {'action': 'endpoint', 'op': 'duplicate',
@@ -158,10 +156,7 @@ _CALL_KEYS = {'page', 'id', 'confirm', '$asked', 'table', 'query_params', 'ids',
 def _ask_options(page_id: str, custom: _Duplicator, source: Dict[str, Any],
                  again: Dict[str, Any]) -> Dict[str, Any]:
     """The options view as the question, its first values computed from the record."""
-    try:
-        view, values = form_view(custom.options)
-    except ValueError as e:
-        return {'status': 'error', 'code': 500, 'message': f"{e} (duplicate of '{page_id}')"}
+    view, values = form_view(custom.options)
     if custom.values:
         values.update(custom.values(source) or {})
     return {'status': 'success', 'data': {

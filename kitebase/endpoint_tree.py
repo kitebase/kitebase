@@ -43,6 +43,7 @@ import kitebase.media
 import kitebase.refsets
 from kitebase import access, flow
 from kitebase.access import AccessDenied
+from kitebase.errors import Invalid, NotFound, Refusal
 from kitebase.endpoints import endpoint
 from kitebase.endpoint_db import pk_field, write_values, coerce_value, require_columns
 from kitebase.pages import Aggregate, Collection, page_aggregate
@@ -254,27 +255,16 @@ def load_tree(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     page_id = data.get('page')
     if not page_id:
-        return {'status': 'error', 'message': 'page is required', 'code': 400}
+        raise Invalid('page is required')
     if 'id' not in data or data['id'] is None:
-        return {'status': 'error', 'message': 'id is required', 'code': 400}
+        raise Invalid('id is required')
 
     app = kitebase.utils.get_app()
-    try:
-        aggregate = page_aggregate(app, page_id)
-        with app.get_session() as session:
-            root = _load_tree(app, session, aggregate, data['id'])
-    except AccessDenied:
-        raise
-    except ValueError as e:
-        return {'status': 'error', 'message': str(e), 'code': 400}
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {'status': 'error', 'message': str(e), 'code': 500}
-
+    aggregate = page_aggregate(app, page_id)
+    with app.get_session() as session:
+        root = _load_tree(app, session, aggregate, data['id'])
     if root is None:
-        return {'status': 'error',
-                'message': f"No record {data['id']} in '{aggregate.model}'", 'code': 404}
+        raise NotFound(f"No record {data['id']} in '{aggregate.model}'")
 
     return {'status': 'success', 'data': root, 'code': 200}
 
@@ -294,7 +284,7 @@ def _resolve_temp_ids(model_name: str, db_table, values: Dict[str, Any],
     for key, value in values.items():
         if key in fks and isinstance(value, int) and not isinstance(value, bool) and value < 0:
             if value not in id_map:
-                raise ValueError(
+                raise Invalid(
                     f"'{model_name}.{key}' points at the temporary id {value}, which "
                     f"nothing in this save creates before it")
             value = id_map[value]
@@ -305,7 +295,7 @@ def _resolve_temp_ids(model_name: str, db_table, values: Dict[str, Any],
 def _require_saved_id(model_name: str, node_id: Any, op: str) -> None:
     """An update or a delete addresses a row that exists: a real, positive key."""
     if not isinstance(node_id, int) or isinstance(node_id, bool) or node_id < 0:
-        raise ValueError(
+        raise Invalid(
             f"A {op} on '{model_name}' needs the id of a saved row, got {node_id!r}")
 
 
@@ -324,12 +314,12 @@ def _passthrough_row(app, session, node_def, node_id: Any,
     model_class, _, _ = _table_of(app, node_def.model)
     obj = session.get(model_class, node_id)
     if obj is None:
-        raise ValueError(f"No record {node_id} in '{node_def.model}'")
+        raise NotFound(f"No record {node_id} in '{node_def.model}'")
 
     for key, value in inherited.items():
         current = getattr(obj, key, None)
         if current != value:
-            raise ValueError(
+            raise Invalid(
                 f"Row {node_id} of '{node_def.model}' has '{key}' = {current!r}, but "
                 f"the collection it appears in belongs to {value!r} — an unchanged "
                 f"row is verified, never reparented")
@@ -352,7 +342,7 @@ def _save_node(app, session, node_def, node: Dict[str, Any],
 
     op = str(node.get('op') or '').lower()
     if op and op not in _OPS:
-        raise ValueError(f"Unknown operation '{node.get('op')}' on '{node_def.model}'")
+        raise Invalid(f"Unknown operation '{node.get('op')}' on '{node_def.model}'")
 
     node_id = node.get('id')
 
@@ -390,7 +380,7 @@ def _save_node(app, session, node_def, node: Dict[str, Any],
     # the caller believed it had performed.
     for key, value in inherited.items():
         if key in values and values[key] != value:
-            raise ValueError(
+            raise Invalid(
                 f"A row of '{node_def.model}' sets '{key}' to {values[key]!r}, but the "
                 f"collection it belongs to writes {value!r} there")
         values[key] = value
@@ -416,7 +406,7 @@ def _save_node(app, session, node_def, node: Dict[str, Any],
             # from one counter. Two tables reusing a number would silently graft
             # one tree onto another.
             if node_id in id_map:
-                raise ValueError(
+                raise Invalid(
                     f"Temporary id {node_id} is used twice in this save; they are "
                     f"unique across the whole payload, not per collection")
             id_map[node_id] = real_id
@@ -424,13 +414,13 @@ def _save_node(app, session, node_def, node: Dict[str, Any],
     else:   # update
         _require_saved_id(node_def.model, node_id, 'update')
         if pk in values and values[pk] != node_id:
-            raise ValueError(
+            raise Invalid(
                 f"An update on '{node_def.model}' cannot move the row from {node_id} "
                 f"to {values[pk]!r}")
 
         obj = session.get(model_class, node_id)
         if obj is None:
-            raise ValueError(f"No record {node_id} in '{node_def.model}'")
+            raise NotFound(f"No record {node_id} in '{node_def.model}'")
         for key, value in values.items():
             if key != pk and hasattr(obj, key):
                 setattr(obj, key, value)
@@ -454,14 +444,14 @@ def _save_children(app, session, node_def, node: Dict[str, Any], parent: Optiona
     for cid, rows in (node.get('children') or {}).items():
         coll = node_def.collections.get(cid)
         if coll is None:
-            raise ValueError(
+            raise Invalid(
                 f"'{node_def.model}' declares no collection '{cid}' on this page")
         if not isinstance(rows, list):
-            raise ValueError(f"Collection '{cid}' must carry a list of rows")
+            raise Invalid(f"Collection '{cid}' must carry a list of rows")
 
         for child in rows:
             if parent is None and str(child.get('op') or '').lower() != 'delete':
-                raise ValueError(
+                raise Invalid(
                     f"A row of '{coll.model}' hangs from a deleted row of "
                     f"'{node_def.model}': below a row that goes away, only deletions")
             inherited = ({} if parent is None
@@ -497,7 +487,7 @@ def _judge_root(app, aggregate: Aggregate, root_node: Dict[str, Any], answers):
         with app.get_session() as session:
             obj = session.get(root_class, root_node.get('id'))
             if obj is None:
-                raise ValueError(f"No record {root_node.get('id')} in '{aggregate.model}'")
+                raise NotFound(f"No record {root_node.get('id')} in '{aggregate.model}'")
             original = flow.row_values(obj)
 
     ctx, refusal = flow.judge(aggregate.model, mode, {**(original or {}), **changes},
@@ -543,41 +533,28 @@ def save_tree(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     page_id = data.get('page')
     if not page_id:
-        return {'status': 'error', 'message': 'page is required', 'code': 400}
-
+        raise Invalid('page is required')
     root_node = data.get('root')
     if not isinstance(root_node, dict):
-        return {'status': 'error', 'message': 'root must be a node', 'code': 400}
+        raise Invalid('root must be a node')
 
     app = kitebase.utils.get_app()
-    try:
-        aggregate, ctx, refusal = _prepare(app, page_id, root_node, data.get('answers'))
-        if refusal:
-            return refusal
+    aggregate, ctx, refusal = _prepare(app, page_id, root_node, data.get('answers'))
+    if refusal:
+        return refusal
 
-        id_map: Dict[int, Any] = {}
-        with app.get_session() as session:
-            root_id = _write(app, session, aggregate, root_node, ctx, id_map)
-            session.commit()
-            # What was just written comes back under the permission that wrote it.
-            root = _load_tree(app, session, aggregate, root_id,
-                              covered=_aggregate_models(aggregate)) if root_id is not None else None
+    id_map: Dict[int, Any] = {}
+    with app.get_session() as session:
+        root_id = _write(app, session, aggregate, root_node, ctx, id_map)
+        session.commit()
+        # What was just written comes back under the permission that wrote it.
+        root = _load_tree(app, session, aggregate, root_id,
+                          covered=_aggregate_models(aggregate)) if root_id is not None else None
 
-        return flow.finish(ctx, {'status': 'success',
-                                 'data': {'id': root_id, 'id_map': id_map, 'root': root},
-                                 'code': 200},
-                           root['values'] if root else None)
-
-    except _Refused as r:
-        return r.envelope
-    except AccessDenied:
-        raise
-    except ValueError as e:
-        return {'status': 'error', 'message': str(e), 'code': 400}
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {'status': 'error', 'message': str(e), 'code': 500}
+    return flow.finish(ctx, {'status': 'success',
+                             'data': {'id': root_id, 'id_map': id_map, 'root': root},
+                             'code': 200},
+                       root['values'] if root else None)
 
 
 def save_trees(page_id: str, roots: List[Dict[str, Any]],
@@ -628,21 +605,11 @@ def save_trees(page_id: str, roots: List[Dict[str, Any]],
             result['$flow'] = outcome
         return result
 
-    except _Refused as r:
-        r.envelope['data'] = {**(r.envelope.get('data') or {}), 'index': index}
-        return r.envelope
     except AccessDenied:
         raise
-    except ValueError as e:
-        return {'status': 'error', 'message': str(e), 'code': 400, 'data': {'index': index}}
-
-
-class _Refused(Exception):
-    """A tree refused while being written, with the envelope that says why."""
-
-    def __init__(self, envelope: Dict[str, Any]):
-        super().__init__(envelope.get('message'))
-        self.envelope = envelope
+    except Refusal as e:
+        return {'status': 'error', 'code': e.code, 'message': e.message,
+                'data': {**(e.data or {}), 'index': index}}
 
 
 def _prepare(app, page_id: str, root_node: Dict[str, Any], answers):
@@ -668,8 +635,7 @@ def _write(app, session, aggregate, root_node: Dict[str, Any], ctx,
     if action != 'create' and isinstance(root_key, int) and root_key > 0 \
             and str(root_node.get('op') or 'update').lower() in _OPS:
         if not access.row_visible(session, root_class, root_key):
-            raise _Refused({'status': 'error', 'code': 404,
-                            'message': f"No record {root_key} in '{aggregate.model}'"})
+            raise NotFound(f"No record {root_key} in '{aggregate.model}'")
         access.check_row(session, root_class, root_key, action)
 
     root_id = _save_node(app, session, aggregate, root_node, {}, {}, id_map, deletes, 0)
@@ -682,7 +648,7 @@ def _write(app, session, aggregate, root_node: Dict[str, Any], ctx,
         model_class, _, _ = _table_of(app, model_name)
         obj = session.get(model_class, record_id)
         if obj is None:
-            raise ValueError(f"No record {record_id} to delete in '{model_name}'")
+            raise NotFound(f"No record {record_id} to delete in '{model_name}'")
         session.delete(obj)
 
     root_obj = session.get(root_class, root_id) if root_id is not None else None

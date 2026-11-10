@@ -16,6 +16,7 @@ from kitebase import flow
 from kitebase.app import App
 from kitebase.model_base import Base
 from kitebase.endpoints import Dispatcher
+from kitebase.errors import Invalid, Refusal
 from kitebase.plugins import PluginsManager
 from kitebase.source import Generator
 
@@ -801,7 +802,7 @@ def test_a_document_that_fails_to_write_takes_the_others_back(app):
     @flow.on_write('Loan', 'commit')
     def fail_on_emma(ctx):
         if ctx.record.get('title') == 'Emma':
-            raise ValueError('the warehouse is closed')
+            raise Invalid('the warehouse is closed')
 
     result = flow.run_forms('loan_doc', [new_loan('Dune'), new_loan('Emma')],
                             {'drop_drafts': True}, labels=['A1', 'A2'])
@@ -850,6 +851,13 @@ def xlsx(rows):
     return out.getvalue()
 
 
+def refused(call, *args):
+    """Assert the call refuses, and return the refusal."""
+    with pytest.raises(Refusal) as refusal:
+        call(*args)
+    return refusal.value
+
+
 def import_sheet(rows, answers=None, name='loans.xlsx'):
     from kitebase.media import UploadedFile
     return LoanSheet().run({'file': UploadedFile(name, iter([xlsx(rows)])), 'answers': answers})
@@ -872,10 +880,10 @@ def test_a_sheet_becomes_one_document_per_key_written_together(app):
 
 
 def test_the_header_is_checked_first_and_named_whole(app):
-    result = import_sheet([['loan', 'Member', 'title', 'pages', 'extra'], ['L1', 'Erin', 'Dune', 'p1', 1]])
+    result = refused(import_sheet, [['loan', 'Member', 'title', 'pages', 'extra'], ['L1', 'Erin', 'Dune', 'p1', 1]])
 
-    assert result['code'] == 422
-    assert result['data']['detail'].split('\n') == [
+    assert result.code == 422
+    assert result.data['detail'].split('\n') == [
         'Row 1: missing columns: page',
         'Row 1: columns this import does not know: pages, extra']
 
@@ -909,10 +917,10 @@ def test_a_sheet_without_titles_is_read_by_position(app):
 
 
 def test_a_column_of_the_layout_named_twice_is_refused(app):
-    result = import_sheet([['loan', 'member', 'title', 'page', 'Page'], ['L1', 'Erin', 'Dune', 'p1', 'p2']])
+    result = refused(import_sheet, [['loan', 'member', 'title', 'page', 'Page'], ['L1', 'Erin', 'Dune', 'p1', 'p2']])
 
-    assert result['code'] == 422
-    assert result['data']['detail'] == 'Row 1: column page appears twice'
+    assert result.code == 422
+    assert result.data['detail'] == 'Row 1: column page appears twice'
 
 
 def test_every_mistake_of_the_rows_is_reported_in_sheet_order_and_nothing_written(app):
@@ -920,14 +928,14 @@ def test_every_mistake_of_the_rows_is_reported_in_sheet_order_and_nothing_writte
         session.add_all([app.models['Member'](name='Sam'), app.models['Member'](name='sam')])
         session.commit()
 
-    result = import_sheet([HEADER,
+    result = refused(import_sheet, [HEADER,
                            ['L1', 'Nobody', 'Dune', 'p1', None],
                            ['L2', 'Sam', 'Emma', None, None],
                            ['L3', 'Erin', 'Ulysses', 'p1', None],
                            ['L3', 'Erin', 'Odyssey', 'p2', None]])
 
-    assert result['code'] == 422
-    assert result['data']['detail'].split('\n') == [
+    assert result.code == 422
+    assert result.data['detail'].split('\n') == [
         'Row 2, member: no Member "Nobody"',
         'Row 3, page: missing',
         'Row 3, member: more than one Member "Sam"',
@@ -938,13 +946,13 @@ def test_every_mistake_of_the_rows_is_reported_in_sheet_order_and_nothing_writte
 def test_a_file_that_is_not_a_sheet_is_refused_before_reading(app):
     from kitebase.media import UploadedFile
 
-    assert LoanSheet().run({'file': UploadedFile('loans.csv', iter([b'a,b']))})['code'] == 415
-    assert LoanSheet().run({'file': UploadedFile('loans.xlsx', iter([b'not a zip']))})['code'] == 415
+    assert refused(LoanSheet().run, {'file': UploadedFile('loans.csv', iter([b'a,b']))}).code == 415
+    assert refused(LoanSheet().run, {'file': UploadedFile('loans.xlsx', iter([b'not a zip']))}).code == 415
 
     class Small(LoanSheet):
         max_bytes = 10
 
-    assert Small().run({'file': UploadedFile('loans.xlsx', iter([xlsx([HEADER])]))})['code'] == 413
+    assert refused(Small().run, {'file': UploadedFile('loans.xlsx', iter([xlsx([HEADER])]))}).code == 413
 
 
 def test_a_question_of_the_phases_is_asked_once_for_the_whole_sheet(app):
@@ -980,10 +988,10 @@ def test_a_draft_opens_the_document_in_its_form_and_writes_nothing(app):
 
 
 def test_a_draft_is_one_document(app):
-    result = draft_sheet([HEADER, ['L1', 'Erin', 'Dune', 'p1', None], ['L2', 'Erin', 'Emma', 'p1', None]])
+    result = refused(draft_sheet, [HEADER, ['L1', 'Erin', 'Dune', 'p1', None], ['L2', 'Erin', 'Emma', 'p1', None]])
 
-    assert result['code'] == 422
-    assert result['message'] == 'The sheet holds 2 loans: a draft is one'
+    assert result.code == 422
+    assert result.message == 'The sheet holds 2 loans: a draft is one'
 
 
 # ── Duplicate: a saved document as a new draft (kitebase.duplicate) ─────────

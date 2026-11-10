@@ -45,6 +45,7 @@ from sqlalchemy import func
 
 import kitebase
 from kitebase import access
+from kitebase.errors import Invalid
 from kitebase.flow import run_forms
 from kitebase.i18n import _, _f
 
@@ -189,10 +190,7 @@ class SheetImport:
 
     def run(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """The endpoint's answer for an uploaded sheet: written, or why not."""
-        documents, refusal = self.load(data)
-        if refusal:
-            return refusal
-
+        documents = self.load(data)
         result = run_forms(self.page, [tree for _, tree in documents], data.get('answers'),
                            labels=[label for label, _ in documents])
         if result.get('status') != 'success':
@@ -215,13 +213,10 @@ class SheetImport:
         document, as a new draft in its form, with what `propose` adds to it.
         The person finishes it there, and the form writes it as any other.
         """
-        documents, refusal = self.load(data)
-        if refusal:
-            return refusal
+        documents = self.load(data)
         if len(documents) > 1:
-            return {'status': 'error', 'code': 422,
-                    'message': _f('The sheet holds {n} {nouns}: a draft is one',
-                                  n=len(documents), nouns=self.nouns)}
+            raise Invalid(_f('The sheet holds {n} {nouns}: a draft is one',
+                             n=len(documents), nouns=self.nouns), code=422)
         _, tree = documents[0]
         app = kitebase.utils.get_app()
         with app.get_session() as session:
@@ -239,10 +234,11 @@ class SheetImport:
         to them or replace them. Nothing is written until the form is saved.
         """
         upload = ctx.file('sheet', list(accept))
-        documents, refusal = self.load({'file': upload})
-        if refusal:
-            detail = (refusal.get('data') or {}).get('detail')
-            ctx.stay(refusal['message'] + (f'\n{detail}' if detail else ''))
+        try:
+            documents = self.load({'file': upload})
+        except Invalid as e:
+            detail = (e.data or {}).get('detail')
+            ctx.stay(e.message + (f'\n{detail}' if detail else ''))
         if len(documents) > 1:
             ctx.stay(_f('The sheet holds {n} {nouns}: here it goes into one',
                         n=len(documents), nouns=self.nouns))
@@ -272,32 +268,30 @@ class SheetImport:
         under the reader's permissions.
         """
 
-    def load(self, data: Dict[str, Any]
-             ) -> Tuple[List[Tuple[str, Dict[str, Any]]], Optional[Dict[str, Any]]]:
-        """The documents of an uploaded sheet, or the answer that refuses it."""
-        from kitebase.media import MediaError, UploadedFile
+    def load(self, data: Dict[str, Any]) -> List[Tuple[str, Dict[str, Any]]]:
+        """The documents of an uploaded sheet.
+
+        Raises:
+            Invalid: no file (400), not a sheet (415), or a sheet with mistakes (422)
+        """
+        from kitebase.media import UploadedFile
 
         self.left_out = []
         upload = data.get('file')
         if not isinstance(upload, UploadedFile):
-            return [], {'status': 'error', 'code': 400,
-                        'message': 'No file: call through upload/<op>'}
+            raise Invalid('No file: call through upload/<op>')
         if not upload.filename.lower().endswith('.xlsx'):
-            return [], {'status': 'error', 'code': 415,
-                        'message': _f('{name} is not an Excel sheet (.xlsx)', name=upload.filename)}
-        try:
-            content = upload.read(self.max_bytes)
-        except MediaError as e:
-            return [], {'status': 'error', 'code': e.status, 'message': str(e)}
-
+            raise Invalid(_f('{name} is not an Excel sheet (.xlsx)', name=upload.filename),
+                          code=415)
+        content = upload.read(self.max_bytes)
         try:
             rows = self.read(content)
         except CellError as e:
-            return [], {'status': 'error', 'code': 415, 'message': str(e)}
+            raise Invalid(str(e), code=415) from None
         documents, errors = self.documents(rows)
         if errors:
-            return [], self.refusal(errors)
-        return documents, None
+            raise self.refusal(errors)
+        return documents
 
     def read(self, content: bytes) -> List[Tuple[int, List[Any]]]:
         """The rows of the first sheet, numbered as the spreadsheet numbers them."""
@@ -458,16 +452,16 @@ class SheetImport:
             rows.append({'values': line})
         return list(documents.items())
 
-    def refusal(self, errors: List[str]) -> Dict[str, Any]:
+    def refusal(self, errors: List[str]) -> Invalid:
+        """The refusal of a sheet with mistakes, listed in `data.detail`."""
         # In the order of the sheet, not of the checks that found them
         errors = sorted(errors, key=_row_of)
         shown = errors[:self.max_errors]
         more = len(errors) - len(shown)
         detail = '\n'.join(shown + ([_f('... and {n} more', n=more)] if more else []))
-        return {'status': 'error', 'code': 422,
-                'message': (_f('The sheet has a mistake: nothing was imported') if len(errors) == 1
-                            else _f('The sheet has {n} mistakes: nothing was imported', n=len(errors))),
-                'data': {'detail': detail}}
+        return Invalid(_f('The sheet has a mistake: nothing was imported') if len(errors) == 1
+                       else _f('The sheet has {n} mistakes: nothing was imported', n=len(errors)),
+                       data={'detail': detail}, code=422)
 
 
 def _text(value: Any) -> str:

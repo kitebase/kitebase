@@ -12,6 +12,7 @@ tests check both ends of that claim.
 import pytest
 
 import kitebase.utils
+from kitebase.errors import NotFound
 from kitebase.plugins import PluginsManager
 from kitebase.pages import Collection, page_aggregate, resolve_collections
 from kitebase.endpoint_panels import get_page
@@ -185,7 +186,7 @@ def test_a_page_that_names_no_model_cannot_be_written():
 
 
 def test_an_unknown_page_is_not_a_tree():
-    with pytest.raises(ValueError, match='not found'):
+    with pytest.raises(NotFound, match='not found'):
         page_aggregate(make_app({}), 'nowhere_form')
 
 

@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from kitebase import access
+from kitebase.errors import NotFound
 import kitebase.refsets
 from kitebase.utils import deep_merge
 
@@ -529,11 +530,12 @@ def page_aggregate(app: Any, page_id: str, _seen: frozenset = frozenset()) -> Ag
     cannot be a reason to refuse a save.
 
     Raises:
-        ValueError: if the page does not exist, or declares no root model
+        NotFound: if the page does not exist
+        ValueError: if it declares no root model
     """
     page, collections = _resolve(app, page_id)
     if page is None:
-        raise ValueError(f"Page not found: '{page_id}'")
+        raise NotFound(f"Page not found: '{page_id}'")
 
     content = page.get('content') or {}
     model = (content.get('source') or {}).get('model')
