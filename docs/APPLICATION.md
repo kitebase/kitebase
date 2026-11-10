@@ -54,12 +54,7 @@ CONFIG = APP_DIR / "config.yaml"
 
 def setup_schema():
     """Plugins and schema: no engine, no model.py."""
-    plugins = kitebase.plugins.PluginsManager()
-    plugins.load_config(CONFIG)
-    kitebase.utils.register_standard_handlers(plugins)   # before load_plugins
-    plugins.load_plugins()                               # discover + merge
-    app = kitebase.utils.get_app()
-    app.calc_db(plugins)                                 # schema from the merge
+    app = kitebase.utils.get_app().declare(CONFIG)       # discover, merge, schema
     # app.add_query_behavior(Archivable)                 # behaviours go here
     return app
 
@@ -116,8 +111,7 @@ args = parser.parse_args()
 
 if args.command == "import-items":
     app, plugins, model = setup_db()
-    result = app.cp.send({"operation": "import_items",
-                          "parameters": {"dry_run": args.dry_run}})
+    result = app.call("import_items", {"dry_run": args.dry_run})
 elif args.command in DB_COMMANDS:
     ...
 ```
