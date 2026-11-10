@@ -203,8 +203,10 @@ class Names:
         return [by_name.get(v, v) if isinstance(v, str) else v for v in values]
 
 
-def test_a_registered_resolver_turns_values_into_keys(app, shelf, monkeypatch):
-    monkeypatch.setattr(kitebase.refsets, '_RESOLVERS', [])
+def test_a_registered_resolver_turns_values_into_keys(app, shelf, monkeypatch, request):
+    saved = kitebase.refsets._RESOLVERS.snapshot()
+    request.addfinalizer(lambda: kitebase.refsets._RESOLVERS.restore(saved))
+    kitebase.refsets._RESOLVERS.clear()
     kitebase.refsets.register_resolver(Names)
     data = ok(db_operations({'table': 'Book', 'method': 'update', 'id': shelf['bare'],
                              'data': {'tags': ['Mango', shelf['plum']]}}))
@@ -227,8 +229,10 @@ def test_a_generated_form_carries_the_field_after_the_columns(app):
     assert [f['name'] for f in fields] == ['id', 'title', 'tags']
 
 
-def test_a_resolver_that_creates_says_so_to_the_widget(app, monkeypatch):
-    monkeypatch.setattr(kitebase.refsets, '_RESOLVERS', [])
+def test_a_resolver_that_creates_says_so_to_the_widget(app, monkeypatch, request):
+    saved = kitebase.refsets._RESOLVERS.snapshot()
+    request.addfinalizer(lambda: kitebase.refsets._RESOLVERS.restore(saved))
+    kitebase.refsets._RESOLVERS.clear()
     kitebase.refsets.register_resolver(type('Creating', (Names,), {'creates': True}))
     tags = next(c for c in app.get_table_schema()['Book']['columns'] if c['name'] == 'tags')
     assert tags['ref_set']['create'] is True

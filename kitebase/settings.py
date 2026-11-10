@@ -19,6 +19,8 @@ a key the provider does not have.
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
+from kitebase.registry import Slot, caller
+
 TOKEN = '$setting.'
 
 _log = logging.getLogger(__name__)
@@ -35,28 +37,28 @@ class SettingsProvider:
 
 
 # One per process, like the guard: the plugin module registers when it is imported.
-_PROVIDER: Optional[SettingsProvider] = None
+PROVIDER: Slot[Optional[SettingsProvider]] = Slot('settings_provider', None, 'settings provider')
 
 
 def set_settings_provider(provider: SettingsProvider) -> None:
     """Register the provider. One only: two would give two answers to one key."""
-    global _PROVIDER
-    if _PROVIDER is not None:
-        raise ValueError(f"A settings provider is already registered: {type(_PROVIDER).__name__}")
-    _PROVIDER = provider
+    if PROVIDER.taken:
+        raise ValueError(
+            f"A settings provider is already registered: {type(PROVIDER.get()).__name__}")
+    PROVIDER.set(provider, owner=caller())
 
 
 def provider() -> Optional[SettingsProvider]:
     """The registered provider, or None."""
-    return _PROVIDER
+    return PROVIDER.get()
 
 
 def get(key: str) -> Any:
     """The value of a setting; None without a provider. A key the provider does
     not have is a KeyError: a misspelt key must not read as an unset one."""
-    if _PROVIDER is None:
+    if PROVIDER.get() is None:
         return None
-    return _PROVIDER.get(key)
+    return PROVIDER.get().get(key)
 
 
 def _token_key(value: Any) -> Optional[str]:
@@ -91,10 +93,10 @@ def resolve_tokens(obj: Any) -> Any:
 
 
 def _lookup(key: str) -> Tuple[bool, Any]:
-    if _PROVIDER is None:
+    if PROVIDER.get() is None:
         return False, None
     try:
-        return True, _PROVIDER.get(key)
+        return True, PROVIDER.get().get(key)
     except KeyError:
         _log.error("setting '%s' is not known to the settings provider", key)
         return False, None
@@ -133,12 +135,12 @@ def diagnose(app: Any, roots: List[str]) -> List[Dict[str, Any]]:
 
     issues = []
     for path, key, plugin in found:
-        if _PROVIDER is None:
+        if PROVIDER.get() is None:
             issues.append(make_issue(
                 'warning', 'setting-no-provider', path,
                 f"'{TOKEN}{key}' gives nothing: no settings provider is loaded "
                 f"(the settings plugin), so the value stays empty", plugin))
-        elif not _PROVIDER.has(key):
+        elif not PROVIDER.get().has(key):
             issues.append(make_issue(
                 'error', 'setting-unknown', path,
                 f"'{TOKEN}{key}': no setting '{key}' is declared", plugin))

@@ -12,6 +12,7 @@ import jwt
 from typing import Any, Callable, Dict, Optional, Tuple
 
 from kitebase.http_common import _error_from_exc
+from kitebase.registry import Registry
 
 
 # ============================================
@@ -244,10 +245,9 @@ def handle_auth(
 
 
 # Fields a plugin adds to every login context, beside the configured ones: the
-# plugin that reads a column off the user puts it in the token itself.
-_REGISTERED_CONTEXT_FIELDS: list = []
-# Who registered each field, by module: two owners of one name is a collision.
-_CONTEXT_FIELD_OWNERS: Dict[str, str] = {}
+# plugin that reads a column off the user puts it in the token itself. Each
+# under its name, with the module that registered it.
+_CONTEXT_FIELDS: Registry[str] = Registry('context_fields', 'context field')
 
 # The claims the token carries for itself: a field by one of these names would
 # overwrite them, or be overwritten.
@@ -268,19 +268,17 @@ def add_context_field(name: str, owner: Optional[str] = None) -> None:
     if name in RESERVED_CONTEXT_FIELDS:
         raise ValueError(f"Context field '{name}' ({owner}): the token uses that name "
                          f"for itself")
-    known = _CONTEXT_FIELD_OWNERS.get(name)
+    known = _CONTEXT_FIELDS.owner(name)
     if known is not None and known != owner:
         raise ValueError(f"Context field '{name}' is registered by both {known} "
                          f"and {owner}")
-    _CONTEXT_FIELD_OWNERS[name] = owner
-    if name not in _REGISTERED_CONTEXT_FIELDS:
-        _REGISTERED_CONTEXT_FIELDS.append(name)
+    _CONTEXT_FIELDS.add(name, name, owner=owner)
 
 
 def context_fields(auth_config: Dict[str, Any], default: Optional[list] = None) -> list:
     """The configured `context_fields`, then those plugins registered."""
     fields = list(auth_config.get('context_fields', default or []))
-    return fields + [f for f in _REGISTERED_CONTEXT_FIELDS if f not in fields]
+    return fields + [f for f in _CONTEXT_FIELDS if f not in fields]
 
 
 def reload_user_context(config: Dict[str, Any], payload: Dict[str, Any],

@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import select
 
 from kitebase.i18n import _, _f
+from kitebase.registry import Registry, owner_of
 from kitebase.transforms import ValidationError
 
 
@@ -98,17 +99,17 @@ def from_select(db_table: Any, query_def: Dict[str, Any]) -> Tuple[Dict[str, Any
 #
 # Without a resolver the values must be keys of the target, and exist.
 
-_RESOLVERS: List[Any] = []
+_RESOLVERS: Registry[Any] = Registry('refset_resolvers', 'resolver')
 
 
 def register_resolver(resolver: Any) -> None:
     """Register a resolver for the RefSets whose target it applies to."""
-    if resolver not in _RESOLVERS:
-        _RESOLVERS.append(resolver)
+    name = getattr(resolver, '__qualname__', type(resolver).__qualname__)
+    _RESOLVERS.add(f"{owner_of(resolver)}.{name}", resolver)
 
 
 def _resolver_for(target_class: Any) -> Any:
-    return next((r for r in _RESOLVERS if r.applies_to(target_class)), None)
+    return next((r for r in _RESOLVERS.values() if r.applies_to(target_class)), None)
 
 
 def field(app: Any, ref: Any) -> Dict[str, Any]:

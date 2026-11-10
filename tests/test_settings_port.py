@@ -34,10 +34,10 @@ class FakeApp:
 
 @pytest.fixture(autouse=True)
 def no_provider():
-    saved = settings._PROVIDER
-    settings._PROVIDER = None
+    saved = settings.PROVIDER.snapshot()
+    settings.PROVIDER.reset()
     yield
-    settings._PROVIDER = saved
+    settings.PROVIDER.restore(saved)
 
 
 ORDER_FORM = {'order_form': {'content': {

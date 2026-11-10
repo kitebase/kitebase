@@ -108,19 +108,16 @@ def test_get_session_restores_context_on_exception(db):
 
 @pytest.fixture
 def context_registry():
-    from kitebase import server_utils
-    fields = list(server_utils._REGISTERED_CONTEXT_FIELDS)
-    owners = dict(server_utils._CONTEXT_FIELD_OWNERS)
-    yield server_utils
-    server_utils._REGISTERED_CONTEXT_FIELDS[:] = fields
-    server_utils._CONTEXT_FIELD_OWNERS.clear()
-    server_utils._CONTEXT_FIELD_OWNERS.update(owners)
+    from kitebase import tokens
+    saved = tokens._CONTEXT_FIELDS.snapshot()
+    yield tokens
+    tokens._CONTEXT_FIELDS.restore(saved)
 
 
 def test_a_field_registered_again_by_its_owner_is_harmless(context_registry):
     context_registry.add_context_field('branch_id', owner='a')
     context_registry.add_context_field('branch_id', owner='a')
-    assert context_registry._REGISTERED_CONTEXT_FIELDS.count('branch_id') == 1
+    assert list(context_registry._CONTEXT_FIELDS).count('branch_id') == 1
 
 
 def test_two_owners_of_one_field_collide(context_registry):

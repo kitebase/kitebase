@@ -15,7 +15,7 @@ import yaml
 
 import kitebase.context
 import kitebase.utils
-from kitebase import access, server_utils
+from kitebase import access, server_utils, tokens
 from kitebase.app import App
 from kitebase.model_base import Base
 from kitebase.endpoints import _ACCESS, _ENDPOINTS, Dispatcher, endpoint
@@ -115,11 +115,10 @@ def app(tmp_path, monkeypatch):
 
     # Registries a plugin module fills once per process: put back what the
     # first load did, and take it away after, for the tests that follow.
-    fields = list(server_utils._REGISTERED_CONTEXT_FIELDS)
-    owners = dict(server_utils._CONTEXT_FIELD_OWNERS)
+    fields = tokens._CONTEXT_FIELDS.snapshot()
     loaded = sys.modules.get('acl.guard')
     if loaded is not None:
-        access._GUARD = loaded.GUARD
+        access.GUARD.set(loaded.GUARD, replace=True)
         for field in ('roles', 'is_admin', 'acl_exceptions'):
             server_utils.add_context_field(field, owner='acl.guard')
 
@@ -155,10 +154,8 @@ def app(tmp_path, monkeypatch):
 
     Base.registry.dispose()
     Base.metadata.clear()
-    access._GUARD = access.OPEN
-    server_utils._REGISTERED_CONTEXT_FIELDS[:] = fields
-    server_utils._CONTEXT_FIELD_OWNERS.clear()
-    server_utils._CONTEXT_FIELD_OWNERS.update(owners)
+    access.GUARD.reset()
+    tokens._CONTEXT_FIELDS.restore(fields)
 
 
 def as_user(operation, parameters, roles=(), is_admin=False, exceptions=()):
@@ -176,7 +173,7 @@ DESK = ['library.desk']
 # ── Roles into permissions ───────────────────────────────────────────────────
 
 def test_a_role_gives_what_it_implies(app):
-    guard = access._GUARD
+    guard = access.GUARD.get()
     assert guard.permissions(LIBRARIAN) >= {'Book.read', 'Loan.read', 'Book.create',
                                             'Book.update', 'Loan.*', 'library.renew'}
     assert 'Book.delete' not in guard.permissions(LIBRARIAN)
@@ -446,7 +443,7 @@ def test_check_names_a_grant_nothing_declares(app):
 def test_check_names_a_table_no_role_reads(app):
     assert acl_issues(app, 'acl-table-closed') == {}     # `*.label` reaches them all
 
-    guard = access._GUARD
+    guard = access.GUARD.get()
     roles = guard.roles
     guard.roles = sys.modules['acl.guard'].resolve_roles(
         {'a': {'grants': ['Book.read']}, 'b': {'grants': ['Loan.label']}})

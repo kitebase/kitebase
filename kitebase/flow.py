@@ -51,13 +51,16 @@ from sqlalchemy import event, inspect as sa_inspect
 import kitebase
 import kitebase.context
 from kitebase.i18n import _f
+from kitebase.registry import Registry
 
 _log = logging.getLogger('kitebase')
 
 STAGES = ('check', 'commit', 'after')
 MODES = ('insert', 'update', 'delete')
 
-_RULES: Dict[str, Dict[str, List[Callable]]] = {}
+# (table, stage, the rule), under a name made of the three: a module imported
+# again replaces its rules, it does not repeat them.
+_RULES: Registry[Tuple[str, str, Callable]] = Registry('write_rules', 'write rule')
 
 
 def on_write(table: str, stage: str = 'check'):
@@ -66,11 +69,7 @@ def on_write(table: str, stage: str = 'check'):
         raise ValueError(f"stage must be one of {', '.join(STAGES)}, not {stage!r}")
 
     def register(fn: Callable) -> Callable:
-        rules = _RULES.setdefault(table, {}).setdefault(stage, [])
-        # A file imported twice - reloaded, or reachable under two package
-        # names from two plugin roots - replaces its rule, not repeats it
-        rules[:] = [r for r in rules if _identity(r) != _identity(fn)]
-        rules.append(fn)
+        _RULES.add(f"{table}:{stage}:{':'.join(_identity(fn))}", (table, stage, fn))
         return fn
     return register
 
@@ -81,11 +80,11 @@ def _identity(fn: Callable):
 
 
 def has_rules(table: str) -> bool:
-    return any(_RULES.get(table, {}).values())
+    return any(t == table for t, _, _ in _RULES.values())
 
 
 def _rules(table: str, stage: str) -> List[Callable]:
-    return _RULES.get(table, {}).get(stage, [])
+    return [fn for t, s, fn in _RULES.values() if t == table and s == stage]
 
 
 # ── What a rule can say ───────────────────────────────────────────────────────

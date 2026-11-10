@@ -242,7 +242,7 @@ MENU = {
 def open_guard():
     # devtest loads the acl plugin, which registers its guard for good
     yield
-    access._GUARD = access.OPEN
+    access.GUARD.reset()
 
 
 def load(path: Path, monkeypatch) -> App:
@@ -625,10 +625,10 @@ def served(app, monkeypatch):
     monkeypatch.setattr(kitebase.utils, 'get_app', lambda: app)
 
     def deny(*permissions):
-        access._GUARD = access.OPEN
+        access.GUARD.reset()
         access.set_guard(Denying(permissions))
     yield deny
-    access._GUARD = access.OPEN
+    access.GUARD.reset()
 
 
 def test_the_guide_of_a_stack_is_the_one_that_tells_its_top(app):

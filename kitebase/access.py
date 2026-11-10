@@ -54,6 +54,7 @@ from contextvars import ContextVar
 from typing import Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Set, Tuple
 
 import kitebase.context
+from kitebase.registry import Slot, caller
 
 # What an endpoint declares with `@endpoint(name, access=...)`, besides a
 # permission code. `$` marks them as framework values, never a permission.
@@ -142,28 +143,28 @@ OPEN = OpenGuard()
 
 # One per process, like the other registries a plugin module fills when it is
 # imported: the module runs once, whatever number of apps load it.
-_GUARD: Guard = OPEN
+GUARD: Slot[Guard] = Slot('guard', OPEN, 'guard')
 
 
 def set_guard(guard: Guard) -> None:
     """
     Register the guard every port asks. One only: two policies have no obvious
-    composition, so a second registration is an error, not a replacement.
+    composition, so a second registration is an error, not a replacement, even
+    from the module that made the first.
     """
-    global _GUARD
-    if _GUARD is not OPEN:
-        raise ValueError(f"A guard is already registered: {type(_GUARD).__name__}")
-    _GUARD = guard
+    if GUARD.taken:
+        raise ValueError(f"A guard is already registered: {type(GUARD.get()).__name__}")
+    GUARD.set(guard, owner=caller())
 
 
 def bind(app: Any) -> None:
     """Hand the app to the guard; the core calls it at the end of calc_db."""
-    _GUARD.bind(app)
+    GUARD.get().bind(app)
 
 
 def diagnose(app: Any) -> List[Dict[str, Any]]:
     """The guard's issues for `check`."""
-    return _GUARD.diagnose(app)
+    return GUARD.get().diagnose(app)
 
 
 class _Holding(Guard):
@@ -197,11 +198,11 @@ def holding(holds: Callable[[str], bool]) -> Iterator[None]:
 
 def subjects(app: Any) -> Dict[str, Callable[[str], bool]]:
     """The guard's named sets of permissions (`Guard.subjects`)."""
-    return _GUARD.subjects(app)
+    return GUARD.get().subjects(app)
 
 
 def _guard() -> Guard:
-    return _HOLDING.get() or _GUARD
+    return _HOLDING.get() or GUARD.get()
 
 
 def _context() -> Optional[Dict[str, Any]]:

@@ -131,7 +131,8 @@ class App:
         Called at startup after calc_db():
           app.add_query_behavior(Archivable)
         """
-        self.query_behaviors.append(behavior_class)
+        if behavior_class not in self.query_behaviors:
+            self.query_behaviors.append(behavior_class)
 
     # ── Starting up, in three stages ─────────────────────────────────────
     #

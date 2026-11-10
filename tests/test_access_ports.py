@@ -127,7 +127,7 @@ def fresh_registry():
     yield
     Base.registry.dispose()
     Base.metadata.clear()
-    access._GUARD = access.OPEN
+    access.GUARD.reset()
 
 
 @pytest.fixture
@@ -423,7 +423,7 @@ def test_the_menu_shows_what_the_user_can_open(app, declared):
         'catalog': {'authors': {}, 'books': {}}, 'review': {}, 'renew': {},
         'reports': {}, 'home': {}}
 
-    access._GUARD = access.OPEN
+    access.GUARD.reset()
     guarded(app, denied={'Book.read', 'bench.review', 'bench.renew', 'bench.reports'})
     assert menu_ids(send('get_menu', {'id': 'main'})['data']['items']) == {
         'catalog': {'authors': {}}, 'home': {}}
@@ -446,7 +446,7 @@ def test_panels_and_tabs_on_a_model_the_user_cannot_read_go(app):
     assert [p['id'] for p in page['panels']] == ['side']
     assert [t['id'] for t in page['panels'][0]['tabs']] == ['chapters']
 
-    access._GUARD = access.OPEN
+    access.GUARD.reset()
     guarded(app, denied={'Author.read', 'Chapter.read'})
     page = send('get_page', {'id': 'book_desk'})['data']
     assert page['panels'] == []              # the tab set left empty goes too
@@ -457,7 +457,7 @@ def test_add_and_delete_follow_create_and_delete(app):
     page = send('get_page', {'id': 'book_list'})['data']
     assert page['content']['navigator']['hide'] == ['add', 'delete']
 
-    access._GUARD = access.OPEN
+    access.GUARD.reset()
     guarded(app, denied={'Book.delete'})
     navigator = send('get_page', {'id': 'chapter_list'})['data']['content']['navigator']
     assert 'hide' not in navigator          # Chapter is not Book: nothing hidden
@@ -472,7 +472,7 @@ def test_a_form_without_create_or_update_is_read_only(app):
     chapters = next(n for n in content['layout'] if n.get('type') == 'collection')
     assert 'navigator' not in (chapters.get('view') or {})   # the rows follow the root
 
-    access._GUARD = access.OPEN
+    access.GUARD.reset()
     guarded(app, denied={'Book.update'})
     assert 'policy' not in send('get_page', {'id': 'book_form'})['data']['content']
 
@@ -497,7 +497,7 @@ def test_search_more_goes_when_the_lookup_page_is_closed(app):
     guarded(app)
     assert 'lookup' not in author_field()
 
-    access._GUARD = access.OPEN
+    access.GUARD.reset()
     guarded(app, denied={'Author.read'})
     assert author_field()['lookup'] == {'page': False}
 
@@ -558,7 +558,7 @@ def test_a_session_not_guarded_works_for_the_system(app):
 
 
 def test_without_a_guard_everything_is_open(app, declared):
-    assert access._GUARD is access.OPEN
+    assert access.GUARD.get() is access.OPEN
     assert send('bench.silent', {})['status'] == 'success'
     assert send('db', {'table': 'Book', 'method': 'delete', 'id': 1})['status'] == 'success'
 

@@ -162,5 +162,12 @@ class Slot(Generic[T]):
         """Back to the default, as if nobody had registered."""
         self._value, self._owner = self.default, None
 
+    def snapshot(self) -> Any:
+        """The state to hand back to `restore()`: a test registers, then undoes."""
+        return self._value, self._owner
+
+    def restore(self, snapshot: Any) -> None:
+        self._value, self._owner = snapshot
+
     def __repr__(self) -> str:
         return f"Slot({self.name!r}, {self._value!r})"

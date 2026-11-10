@@ -91,9 +91,11 @@ PAGES = {
 
 
 @pytest.fixture(autouse=True)
-def fresh_registry(monkeypatch):
-    monkeypatch.setattr(flow, '_RULES', {})
+def fresh_registry():
+    saved = flow._RULES.snapshot()
+    flow._RULES.clear()
     yield
+    flow._RULES.restore(saved)
     Base.registry.dispose()
     Base.metadata.clear()
 

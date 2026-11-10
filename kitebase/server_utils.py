@@ -26,7 +26,7 @@ from kitebase.http_fastapi import register_fastapi, serve_client_fastapi  # noqa
 from kitebase.http_flask import register_flask, serve_client_flask  # noqa: F401
 from kitebase.tokens import (  # noqa: F401
     FRAMEWORK_UPDATABLE_FIELDS, HOST_TOKEN_NOT_JSON, RESERVED_CONTEXT_FIELDS,
-    _CONTEXT_FIELD_OWNERS, _REGISTERED_CONTEXT_FIELDS, AuthMiddleware,
+    AuthMiddleware,
     add_context_field, context_fields, custom_context_fields,
     decode_and_check_refresh, extract_bearer_token, handle_auth,
     handle_host_token, handle_update_context, issue_token, reload_user_context,
