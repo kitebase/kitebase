@@ -8,7 +8,7 @@ from contextlib import contextmanager, ExitStack
 from dataclasses import dataclass
 import sqlalchemy.types
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session, Session
+from sqlalchemy.orm import sessionmaker, Session
 import kitebase.access
 import kitebase.media
 import kitebase.refsets
@@ -194,10 +194,21 @@ class DB:
         self.tables_list: List[str] = []
         self.model: Any = None
         self.models: Dict[str, Any] = {}
-        self.engine: Any = None
+        self._engine: Any = None
+        self._sessions: sessionmaker = sessionmaker()
         self.db_type: str = "unknown"
         self.query_behaviors: List[Any] = []
         self.media: Optional[kitebase.media.Media] = None
+
+    @property
+    def engine(self) -> Any:
+        return self._engine
+
+    @engine.setter
+    def engine(self, engine: Any) -> None:
+        # The factory follows the engine: one per engine, not one per session.
+        self._engine = engine
+        self._sessions = sessionmaker(bind=engine)
 
     def add_query_behavior(self, behavior_class: Any) -> None:
         """
@@ -712,9 +723,7 @@ class DB:
             if context is not None:
                 stack.enter_context(BaseApp.context(context))
 
-            session_factory = sessionmaker(bind=self.engine)
-            Session = scoped_session(session_factory)
-            session = Session()
+            session = self._sessions()
             try:
                 yield session
             except Exception:
