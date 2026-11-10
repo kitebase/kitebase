@@ -1,5 +1,5 @@
 import kitebase
-import kitebase.server_utils as server_utils
+from kitebase import tokens
 import kitebase.transforms
 import kitebase.media
 import kitebase.refsets
@@ -693,7 +693,7 @@ def authenticate(data: Dict[str, Any]) -> Dict[str, Any]:
         user_table = config.get('user_table', 'User')
         name_field = config.get('username_field', 'username')
         pass_field = config.get('password_field', 'password')
-        context_fields = server_utils.context_fields(config, default=['id'])
+        context_fields = tokens.context_fields(config, default=['id'])
 
         # Find the user
         user = kitebase.utils.seek(user_table, {name_field: username})
@@ -783,8 +783,8 @@ def update_context(data):
         # Same allowlist as the /auth/update_context route, and the same None
         # = remove the field.
         app = kitebase.utils.get_app()
-        allowed = set(server_utils.FRAMEWORK_UPDATABLE_FIELDS) | set(
-            server_utils.custom_context_fields(app.pm.config)
+        allowed = set(tokens.FRAMEWORK_UPDATABLE_FIELDS) | set(
+            tokens.custom_context_fields(app.pm.config)
         )
         for field in allowed:
             if field not in data:
