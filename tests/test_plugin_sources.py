@@ -1,8 +1,7 @@
 """The Python of the plugins: loaded in dependency order, each module once."""
 import yaml
 
-from kitebase.endpoints import CommandProcessor
-from kitebase.plugins import PluginsManager
+from kitebase.plugins import PluginsManager, load_modules
 
 
 def make_plugins(tmp_path, monkeypatch, plugins):
@@ -45,7 +44,7 @@ def test_a_module_imported_by_a_sibling_is_not_executed_again(tmp_path, monkeypa
     # The order the directory listing may give: the importer first.
     sources = sorted(pm.get_sources(), key=lambda p: p.name)
     assert [p.name for p in sources] == ['api.py', 'state.py']
-    CommandProcessor().resolve_endpoints(sources)
+    load_modules(sources)
 
     import sys
     assert sys.modules['shelf2.api'].REGISTRY is sys.modules['shelf2.state'].REGISTRY
@@ -60,7 +59,7 @@ def test_a_module_that_does_not_load_stops_the_start(tmp_path, monkeypatch):
     })
 
     with pytest.raises(ImportError) as raised:
-        CommandProcessor().resolve_endpoints(pm.get_sources())
+        pm.load_modules()
 
     message = str(raised.value)
     assert "Plugin module 'shelf3.broken'" in message

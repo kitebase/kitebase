@@ -456,14 +456,11 @@ class DB:
 
     def _calc_endpoints(self) -> None:
         """
-        Resolve all endpoints coming from plugins and the ones defined in package
+        Load the Python code of the plugins, then the dispatcher over what the
+        package and the plugins registered.
         """
+        self.pm.load_modules()
         self.cp = CommandProcessor()
-        # The package's own endpoints come with the processor; this loads what
-        # the plugins declare. (The previous line here passed the bare string
-        # 'endpoint_db.py', which iterates as its characters and loaded
-        # nothing — the built-ins were arriving by accident.)
-        self.cp.resolve_endpoints(self.pm.get_sources())
 
     def find_model_class(self, table_name: str) -> Any:
         """

@@ -1,4 +1,3 @@
-import importlib.util
 import logging
 import time
 import uuid
@@ -9,6 +8,7 @@ from pathlib import Path
 import kitebase
 import kitebase.context
 from kitebase.access import UNDECLARED, AccessDenied, check_endpoint
+from kitebase.plugins import load_modules
 
 # Global dictionary to register endpoints
 _ENDPOINTS: Dict[str, Callable] = {}
@@ -311,18 +311,15 @@ class CommandProcessor:
         """
         Initialize the command processor.
 
-        Starts from what the package itself registered — `auth`, `db`, `query`,
-        `get_page` and the rest are decorated at import time — and plugin files
-        add to it as they are loaded. They used to arrive only as a side effect
-        of `resolve_endpoints` having loaded at least one plugin file, which
-        copies the whole registry: an application whose plugins are pure YAML
-        therefore had no endpoints at all, not even the built-in ones.
+        Takes what is registered at this point: the package's own endpoints
+        (`auth`, `db`, `query`, `get_page` and the rest are decorated at import
+        time) and those of the plugin modules already loaded.
         """
         self.endpoints: Dict[str, Callable] = dict(_ENDPOINTS)
 
     def resolve_endpoints(self, file_paths: List[Union[str, Path]]) -> None:
         """
-        Load Python files and register their endpoints.
+        Load Python files and take the endpoints they register.
 
         Args:
             file_paths: List of paths to Python files containing endpoint definitions
@@ -330,93 +327,8 @@ class CommandProcessor:
         Raises:
             ImportError: If a file does not load, naming the module and the cause
         """
-        import sys
-        from pathlib import Path
-
-        for file_path in file_paths:
-            # Convert to Path if it's a string
-            path = Path(file_path) if isinstance(file_path, str) else file_path
-
-            if not path.exists():
-                # print(f"Error: file {path} does not exist.")
-                continue
-
-            # Determine package from file path
-            dir_path = path.parent
-            parent_dir = dir_path.parent
-
-            # Add parent directory to sys.path temporarily
-            sys_path_modified = False
-            parent_str = str(parent_dir)
-            if parent_str not in sys.path:
-                sys.path.insert(0, parent_str)
-                sys_path_modified = True
-
-            try:
-                # Calculate module name considering package structure
-                module_name = path.stem
-                package_name = dir_path.name
-                full_module_name = f"{package_name}.{module_name}"
-
-                # Already imported by a module loaded before it (a sibling, or
-                # a plugin depending on this one): executing it again would
-                # give its state, a registry for one, a second copy.
-                loaded = sys.modules.get(full_module_name)
-                if loaded is not None and getattr(loaded, '__file__', None) and \
-                        Path(loaded.__file__).resolve() == path.resolve():
-                    self.endpoints.update(_ENDPOINTS.copy())
-                    continue
-
-                # Load the module specifying the package
-                spec = importlib.util.spec_from_file_location(
-                    full_module_name,
-                    str(path),
-                    submodule_search_locations=[str(dir_path)]
-                )
-
-                if spec is None:
-                    # print(f"Error: unable to create spec for {path}")
-                    continue
-
-                module = importlib.util.module_from_spec(spec)
-                sys.modules[spec.name] = module  # Important for relative imports
-                spec.loader.exec_module(module)
-
-                # Bind the module onto its parent package so a later
-                # `import package.module` resolves the attribute correctly.
-                # Without this the submodule sits in sys.modules orphaned, and
-                # `package.module` attribute access (e.g. common.model.Archivable
-                # in the generated model) raises AttributeError.
-                if '.' in spec.name:
-                    parent_name, child_name = spec.name.rsplit('.', 1)
-                    if parent_name:
-                        try:
-                            parent_mod = importlib.import_module(parent_name)
-                            setattr(parent_mod, child_name, module)
-                        except ImportError:
-                            pass
-
-                # Add all endpoints found to the endpoints dictionary
-                self.endpoints.update(_ENDPOINTS.copy())
-
-                # print(f"Loaded {len(_ENDPOINTS)} endpoints from file {path}")
-
-            except Exception as e:
-                # A module that does not load stops the start: an app missing
-                # some of its endpoints fails later, and further from the cause.
-                sys.modules.pop(full_module_name, None)
-                hint = ''
-                if isinstance(e, ModuleNotFoundError):
-                    hint = (" (if the module exists only alongside another plugin, "
-                            "list it under `optional` in its plugin's config.yaml)")
-                raise ImportError(
-                    f"Plugin module '{full_module_name}' ({path}) does not load: "
-                    f"{type(e).__name__}: {e}{hint}") from e
-
-            finally:
-                # Remove the added path if necessary
-                if sys_path_modified:
-                    sys.path.remove(parent_str)
+        load_modules(file_paths)
+        self.endpoints.update(_ENDPOINTS)
 
     def _execute_command(self, command: Command) -> CommandResult:
         """
