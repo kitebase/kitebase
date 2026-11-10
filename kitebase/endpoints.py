@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional, Callable
 import kitebase
 import kitebase.context
 from kitebase.access import UNDECLARED, AccessDenied, check_endpoint
+from kitebase.errors import Refusal
 from kitebase.registry import Registry
 
 # The endpoints of the process, by name
@@ -306,13 +307,9 @@ class Dispatcher:
     """
     Processes commands by routing them to registered endpoints.
 
-    One command in, one result out, on the calling thread. It used to run each
-    command in a thread of its own and hand back a `request_id` to collect the
-    result with — but every caller passed `wait=True` and blocked on it, so the
-    thread bought no concurrency; it only kept a dictionary of results alive.
-    Concurrency belongs to the web server (a thread per request), and operations
-    that genuinely outlive a request belong in a subprocess, where they can also
-    be killed — see `docs/pending/jobs.md`.
+    One command in, one result out, on the calling thread. Concurrency belongs
+    to the web server (a thread per request); an operation that outlives a
+    request belongs in a subprocess, where it can also be killed.
     """
 
     def __init__(self) -> None:
@@ -331,8 +328,9 @@ class Dispatcher:
             command: The command to execute
 
         Returns:
-            The result, always as a CommandResult — an endpoint that raises
-            produces a 500 rather than an exception escaping to the server.
+            The result, always as a CommandResult. A refusal the endpoint
+            raises (kitebase.errors) becomes its error envelope; anything else
+            it raises becomes a 500 rather than escaping to the server.
         """
         # One line per request, and the traceback where it can be found again:
         # the client shows an error once and the dialog closes, the log is what
@@ -379,11 +377,15 @@ class Dispatcher:
                     request_id=command.request_id
                 )
 
-        except AccessDenied as e:
-            _log.warning('%s by %s: denied %s [%s]', command.operation, who,
-                         e.permission, command.request_id)
-            return CommandResult(status="error", message=str(e),
-                                 request_id=command.request_id, code=403,
+        except Refusal as e:
+            if isinstance(e, AccessDenied):
+                _log.warning('%s by %s: denied %s [%s]', command.operation, who,
+                             e.permission, command.request_id)
+            else:
+                _log.warning('%s by %s → %s %s: %s [%s]', command.operation, who,
+                             type(e).__name__, e.code, e, command.request_id)
+            return CommandResult(status="error", message=e.message, data=e.data,
+                                 request_id=command.request_id, code=e.code,
                                  error_type=type(e).__name__)
 
         except Exception as e:

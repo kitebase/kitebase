@@ -45,19 +45,23 @@ from typing import Any, BinaryIO, Callable, Dict, Iterable, List, Optional
 import yaml
 
 from kitebase import apptime
+from kitebase.errors import Invalid
 from kitebase.registry import Registry, caller
 
 
-class MediaError(ValueError):
+class MediaError(Invalid):
     """A media reference, template or operation the core refuses.
 
-    `status` is the HTTP answer it becomes at a route: 400 by default, 413 for
-    a file too large, 415 for one of a type the column does not take.
+    `status` is the HTTP answer it becomes: 400 by default, 413 for a file too
+    large, 415 for one of a type the column does not take.
     """
 
     def __init__(self, message: str, status: int = 400):
-        super().__init__(message)
-        self.status = status
+        super().__init__(message, code=status)
+
+    @property
+    def status(self) -> int:
+        return self.code
 
 
 # ── References ────────────────────────────────────────────────────────────────

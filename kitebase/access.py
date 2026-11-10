@@ -54,6 +54,7 @@ from contextvars import ContextVar
 from typing import Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Set, Tuple
 
 import kitebase.context
+from kitebase.errors import Refusal
 import kitebase.utils
 from kitebase.registry import Slot, caller
 
@@ -73,9 +74,11 @@ COLUMN_ACTIONS = ('read', 'write')
 DB_METHODS = {'get': 'read', 'create': 'create', 'update': 'update', 'delete': 'delete'}
 
 
-class AccessDenied(Exception):
+class AccessDenied(Refusal):
     """A port refused a permission. The dispatcher answers it with a 403;
     `message` says what was refused in the caller's words."""
+
+    code = 403
 
     def __init__(self, permission: str, message: Optional[str] = None) -> None:
         self.permission = permission

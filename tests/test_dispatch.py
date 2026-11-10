@@ -14,7 +14,11 @@ import logging
 import pytest
 
 import kitebase.context
+from kitebase.access import AccessDenied
 from kitebase.endpoints import Dispatcher, endpoint, _ENDPOINTS
+from kitebase.errors import Conflict, Invalid, NotFound, Unavailable
+from kitebase.media import MediaError
+from kitebase.transforms import ValidationError
 
 
 @pytest.fixture
@@ -212,3 +216,67 @@ def test_call_outside_a_request_runs_as_nobody(processor):
 
     assert processor.call('context')['data'] == {}
     assert kitebase.context.current() is None
+
+
+# ── Refusals ─────────────────────────────────────────────────────────────────
+
+def _raising(exc):
+    def run(params):
+        raise exc
+    return run
+
+
+@pytest.mark.parametrize('exc, code', [
+    (Invalid('A table is required'), 400),
+    (NotFound('No page x'), 404),
+    (Conflict('Already closed'), 409),
+    (Unavailable('The mail server does not answer'), 503),
+    (AccessDenied('Book.read'), 403),
+    (MediaError('Too large', 413), 413),
+    (NotFound('Gone', code=410), 410),
+])
+def test_a_refusal_becomes_its_envelope(processor, exc, code):
+    processor.endpoints['refuse'] = _raising(exc)
+    result = processor.send({'operation': 'refuse'})
+
+    assert result['status'] == 'error'
+    assert result['code'] == code
+    assert result['message'] == str(exc)
+    assert result['error_type'] == type(exc).__name__
+    assert 'traceback' not in result
+    assert 'data' not in result
+
+
+def test_a_refusal_carries_its_data(processor):
+    processor.endpoints['refuse'] = _raising(Invalid('Check the rows', data={'rows': [3]}))
+    result = processor.send({'operation': 'refuse'})
+
+    assert result['data'] == {'rows': [3]}
+
+
+def test_a_validation_error_answers_by_field(processor):
+    processor.endpoints['refuse'] = _raising(ValidationError({'email': 'Not a valid email address'}))
+    result = processor.send({'operation': 'refuse'})
+
+    assert result['code'] == 400
+    assert result['message'] == 'Some values are not valid'
+    assert result['data'] == {'errors': {'email': 'Not a valid email address'}}
+
+
+def test_a_refusal_is_logged_without_a_traceback(processor, caplog):
+    processor.endpoints['refuse'] = _raising(NotFound('No page x'))
+    with caplog.at_level(logging.WARNING, logger='kitebase'):
+        processor.send({'operation': 'refuse', 'context': {'username': 'ann'}})
+
+    record = next(r for r in caplog.records if 'refuse' in r.getMessage())
+    assert record.levelno == logging.WARNING
+    assert 'NotFound 404: No page x' in record.getMessage()
+    assert record.exc_info is None
+
+
+def test_the_refusals_keep_the_python_families():
+    """Code that catches ValueError or LookupError still catches them."""
+    assert isinstance(Invalid('x'), ValueError)
+    assert isinstance(ValidationError({}), ValueError)
+    assert isinstance(MediaError('x'), ValueError)
+    assert isinstance(NotFound('x'), LookupError)

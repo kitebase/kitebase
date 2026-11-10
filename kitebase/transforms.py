@@ -55,6 +55,8 @@ from typing import Callable, Dict, Optional, Set
 
 import bcrypt
 
+from kitebase.errors import Invalid
+from kitebase.i18n import _
 from kitebase.registry import Registry, caller
 
 # Prefixes of the bcrypt variants, used to tell a hash from a legacy plaintext
@@ -152,12 +154,21 @@ def transform_names() -> Set[str]:
 # contain the username). An empty value is not validated: whether it may be
 # empty is `nullable`'s business.
 
-class ValidationError(ValueError):
-    """Values that break a rule their column declares, as {field: message}."""
+class ValidationError(Invalid):
+    """Values that break a rule their column declares, as {field: message}.
+
+    The client gets the errors by field in `data`, and a message for the form
+    as a whole; the text of the exception, for the log, lists them all.
+    """
 
     def __init__(self, errors: Dict[str, str]):
         self.errors = errors
-        super().__init__('; '.join(f'{field}: {message}' for field, message in errors.items()))
+        super().__init__('; '.join(f'{field}: {message}' for field, message in errors.items()),
+                         data={'errors': errors})
+
+    @property
+    def message(self) -> str:
+        return _('Some values are not valid')
 
 
 def email_validator(value, values) -> Optional[str]:
@@ -166,7 +177,6 @@ def email_validator(value, values) -> Optional[str]:
     Deliberately loose: the only proof that an address works is a message that
     arrives, and a stricter pattern refuses real addresses (`poller@localhost`).
     """
-    from kitebase.i18n import _
     if not _EMAIL.match(str(value)):
         return _('Not a valid email address')
     return None
