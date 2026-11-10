@@ -1,16 +1,8 @@
 """A filter block whose conditions cannot be found is refused, not ignored.
 
-`apply_filters` used to return the query untouched when `filters` had no
-`conditions` key. The caller then got **every row** — and could not tell that
-apart from a query that legitimately matched everything, because nothing was
-said. It is the same family as the `is not None` guard already covered in
-test_build_filters.py: there the shape was right and one condition was dropped,
-here the shape is wrong and all of them are.
-
-The mistake is easy to make because kitebase has two filter dialects: the
-endpoint `db` takes flat filters under `query` ({'field': value}), the endpoint
-`query` takes them under `filters.conditions`. Writing one where the other
-belongs used to answer with the whole table.
+A `filters` with no `conditions` key, left as it is, would return every row,
+and the caller could not tell that apart from a query that matches
+everything. So the shape is checked, and a wrong one is said.
 """
 import pytest
 from sqlalchemy import Column, Integer, String

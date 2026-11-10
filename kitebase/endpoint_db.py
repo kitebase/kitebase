@@ -8,10 +8,10 @@ from kitebase import flow
 from kitebase import access
 from kitebase.access import AccessDenied
 from kitebase.endpoints import endpoint
-from kitebase.querybuilder import DynamicQueryBuilder, codeset_has, coerce_temporal, temporal_condition
+from kitebase.querybuilder import DynamicQueryBuilder
 from kitebase.i18n import _, _f
-from typing import Dict, Any, Optional
-from sqlalchemy import and_, or_, desc, asc
+from typing import Dict, Any
+from sqlalchemy import desc, asc
 from sqlalchemy import Date, DateTime, Integer, inspect as sa_inspect
 import datetime
 
@@ -26,7 +26,6 @@ def db_operations(data: Dict[str, Any]) -> Dict[str, Any]:
         - method: Operation to perform (get, create, update, delete)
         - id: Optional ID for single record operations
         - data: Data for create/update operations
-        - query: Query parameters for filtering (dict with field:value pairs)
         - start: Pagination start index (default: 0)
         - limit: Pagination limit (default: 100)
         - order_by: Field to order by
@@ -160,7 +159,10 @@ def handle_get(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[
     record_id = params.get(pk_field(db_table))
     start = int(params.get('start', 0))
     limit = int(params.get('limit', 100))
-    query_filters = params.get('query', {})
+    # A filter here would be a second dialect beside the endpoint `query`:
+    # refused, so a list never comes back whole when a filter was meant.
+    if params.get('query'):
+        raise ValueError("db get takes no filters: lists are read with the endpoint 'query'")
     order_by = params.get('order_by')
     order_dir = params.get('order_dir', 'asc')
 
@@ -182,14 +184,6 @@ def handle_get(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[
             rule = access.row_clause(model_class.__name__, 'read', app)
             if rule is not None:
                 query = query.filter(rule)
-
-            # Apply filters
-            if query_filters:
-                filter_conditions = build_filters(model_class, query_filters)
-                # `is not None`: a SQLAlchemy clause has no defined truth value
-                # (bool() raises), so a plain `if filter_conditions:` would crash.
-                if filter_conditions is not None:
-                    query = query.filter(filter_conditions)
 
             # Apply ordering: on a column the client could not read, the
             # order would tell what the values are.
@@ -476,123 +470,6 @@ def handle_delete(app, model_class, params: Dict[str, Any], db_table=None) -> Di
 
     return flow.finish(ctx, {"status": "success",
                              "message": _('Record deleted successfully'), "code": 200}, None)
-
-
-# build_filters spells some operators differently from the querybuilder
-_PERIOD_OPS = {'neq': 'ne', 'gte': 'ge', 'lte': 'le'}
-
-
-def build_filters(model_class, query_filters: Dict[str, Any]) -> Optional[Any]:
-    """
-    Build SQLAlchemy filter conditions from query parameters.
-
-    Supports:
-    - Exact match: {"field": value}
-    - Operators: {"field__op": value} where op can be:
-      - eq: Equal
-      - neq: Not equal
-      - gt: Greater than
-      - gte: Greater than or equal
-      - lt: Less than
-      - lte: Less than or equal
-      - like: LIKE pattern
-      - ilike: Case-insensitive LIKE
-      - in: IN a list of values
-      - has: a code set holds the code, or any of a list of codes
-      - between: Between two values (provide [min, max] list)
-    - Logical OR:  {"$or":  [{condition1}, {condition2}, ...]}
-    - Logical AND: {"$and": [{group1}, {group2}, ...]}
-
-    AND is the *implicit* default: sibling keys in a filter dict are AND-ed
-    together. The explicit "$and" is only needed to AND whole sub-groups —
-    e.g. (A OR B) AND (C OR D), which the flat form can't express because a
-    dict has at most one "$or" key. Its list of sub-filters is built
-    recursively and folded into the surrounding AND.
-    """
-    if not query_filters:
-        return None
-
-    # A column the table never sends is not filterable either: an equality
-    # filter on one is a way of guessing the value it would not return.
-    secrets = kitebase.utils.secret_columns(kitebase.utils.table_definition(model_class))
-
-    conditions = []
-
-    # Handle special $or operator
-    if "$or" in query_filters:
-        or_conditions = []
-        for or_filter in query_filters["$or"]:
-            or_condition = build_filters(model_class, or_filter)
-            if or_condition is not None:
-                or_conditions.append(or_condition)
-
-        if or_conditions:
-            conditions.append(or_(*or_conditions))
-
-        # Remove $or from further processing
-        query_filters = {k: v for k, v in query_filters.items() if k != "$or"}
-
-    # Handle special $and operator — each sub-group is built recursively and
-    # added to `conditions`, which are AND-ed together below (symmetric to $or).
-    if "$and" in query_filters:
-        for and_filter in query_filters["$and"]:
-            and_condition = build_filters(model_class, and_filter)
-            if and_condition is not None:
-                conditions.append(and_condition)
-
-        # Remove $and from further processing
-        query_filters = {k: v for k, v in query_filters.items() if k != "$and"}
-
-    # Process standard filters
-    for key, value in query_filters.items():
-        if '__' in key:
-            field, operator = key.split('__', 1)
-        else:
-            field, operator = key, 'eq'
-
-        if not hasattr(model_class, field):
-            continue
-
-        if field in secrets:
-            raise ValueError(f"Column '{field}' is not filterable")
-        access.check_columns(model_class.__name__, [field])
-
-        column = getattr(model_class, field)
-        period = temporal_condition(
-            column, _PERIOD_OPS.get(operator, operator), value)
-        if period is not None:
-            conditions.append(period)
-            continue
-        value = coerce_temporal(column, value)
-
-        if operator == 'eq':
-            conditions.append(column == value)
-        elif operator == 'neq':
-            conditions.append(column != value)
-        elif operator == 'gt':
-            conditions.append(column > value)
-        elif operator == 'gte':
-            conditions.append(column >= value)
-        elif operator == 'lt':
-            conditions.append(column < value)
-        elif operator == 'lte':
-            conditions.append(column <= value)
-        elif operator == 'like':
-            conditions.append(column.like(value))
-        elif operator == 'ilike':
-            conditions.append(column.ilike(value))
-        elif operator == 'in':
-            conditions.append(column.in_(value))
-        elif operator == 'has':
-            conditions.append(codeset_has(column, value))
-        elif operator == 'between':
-            # Value should be a list/tuple with exactly 2 elements [min, max]
-            if isinstance(value, (list, tuple)) and len(value) == 2:
-                conditions.append(column.between(value[0], value[1]))
-
-    if conditions:
-        return and_(*conditions)
-    return None
 
 
 @endpoint('query', access=access.PER_TABLE)

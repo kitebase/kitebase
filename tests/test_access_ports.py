@@ -294,6 +294,14 @@ def test_db_get_asks_read_by_id_and_as_a_list(app):
     assert guard.asked == ['Book.read', 'Book.read']
 
 
+def test_db_get_refuses_a_filter(app):
+    """Lists are filtered by the endpoint `query`; `db get` has no dialect of its own."""
+    guarded(app)
+    result = send('db', {'table': 'Book', 'method': 'get', 'query': {'title': 'x'}})
+    assert result['status'] == 'error'
+    assert 'query' in result['message']
+
+
 def test_export_file_reads_through_the_query(app):
     guarded(app, denied={'Book.read', 'Book.label'})
     result = send('export_file', {

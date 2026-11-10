@@ -641,8 +641,6 @@ def test_naming_them_in_a_query_is_refused(app):
 
 
 def test_a_list_of_db_get_refuses_them_too(app):
-    assert as_user('db', {'table': 'User', 'method': 'get', 'query': {'is_admin': True}},
-                   exceptions=KEEPER)['code'] == 403
     assert as_user('db', {'table': 'User', 'method': 'get', 'order_by': 'is_admin'},
                    exceptions=KEEPER)['code'] == 403
 

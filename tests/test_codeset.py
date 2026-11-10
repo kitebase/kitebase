@@ -16,7 +16,6 @@ import kitebase.utils
 from kitebase.app import App
 from kitebase.model_base import Base
 from kitebase.sqltypes import CodeSet, codeset_codes, codeset_text
-from kitebase.endpoint_db import build_filters
 from kitebase.plugins import PluginsManager
 from kitebase.querybuilder import DynamicQueryBuilder, codeset_has
 from kitebase.source import Generator
@@ -112,11 +111,6 @@ def test_has_in_the_querybuilder(session):
                                   'filters': {'conditions': [{'roles': ['has', 'S']}]}},
                                  result_format='records')
     assert sorted(r['name'] for r in rows) == ['Northwind', 'Riverside']
-
-
-def test_has_in_the_filter_dsl_of_db(session):
-    condition = build_filters(Partner, {'roles__has': 'C'})
-    assert names(session, condition) == ['Northwind', 'Smith']
 
 
 def test_equality_compares_the_stored_form(session):

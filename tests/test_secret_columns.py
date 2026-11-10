@@ -16,8 +16,8 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
 from kitebase import transforms
-from kitebase.endpoint_db import write_values, build_filters
-from kitebase.querybuilder import SelectBuilder
+from kitebase.endpoint_db import write_values
+from kitebase.querybuilder import DynamicQueryBuilder, SelectBuilder
 from kitebase.utils import secret_columns, serialize_model
 
 Base = declarative_base()
@@ -158,6 +158,12 @@ def select_builder():
     return SelectBuilder({'User': User}, 'User')
 
 
+def filter_query(conditions):
+    builder = DynamicQueryBuilder(session=None, models={'User': User})
+    return builder.build_query({'table': 'User', 'select': ['id'],
+                                'filters': {'conditions': conditions}})
+
+
 def selected_names(columns):
     return [getattr(col, 'key', getattr(col, 'name', None)) for col in columns]
 
@@ -191,15 +197,13 @@ def test_query_still_selects_ordinary_columns():
 
 def test_filtering_on_a_secret_column_is_refused():
     """A filter on a column that is never returned is a way of guessing it."""
-    with pytest.raises(ValueError, match='not filterable'):
-        build_filters(User, {'password': 'guess'})
-
-    with pytest.raises(ValueError, match='not filterable'):
-        build_filters(User, {'password__like': 'a%'})
+    for condition in ({'password': 'guess'}, {'password': ['like', 'a%']}):
+        with pytest.raises(ValueError, match='not readable'):
+            filter_query([condition])
 
 
 def test_filtering_on_ordinary_columns_still_works():
-    assert build_filters(User, {'username': 'admin'}) is not None
+    assert filter_query([{'username': 'admin'}]) is not None
 
 
 # ── Write path ───────────────────────────────────────────────────────────────

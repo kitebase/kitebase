@@ -12,7 +12,6 @@ from sqlalchemy import Column, Date, DateTime, Integer, Time, create_engine
 from sqlalchemy.orm import Session, declarative_base
 
 import kitebase.utils
-from kitebase.endpoint_db import build_filters
 from kitebase.querybuilder import DynamicQueryBuilder
 
 Base = declarative_base()
@@ -114,11 +113,3 @@ def test_date_and_time_columns(session):
 
 def test_null_checks_untouched(session):
     assert ids(session, [{'start': ['isnotnull']}]) == [1, 2, 3]
-
-
-def test_db_endpoint_filters(session):
-    clause = build_filters(Visit, {'start__gte': '2026-09-29T08:10', 'start__lte': '2026-09-30T23:10'})
-    found = session.query(Visit.id).filter(clause).order_by(Visit.id).all()
-    assert [r[0] for r in found] == [1, 2]
-    clause = build_filters(Visit, {'start': '2026-09-30'})
-    assert [r[0] for r in session.query(Visit.id).filter(clause)] == [2]
