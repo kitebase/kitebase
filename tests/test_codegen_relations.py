@@ -20,7 +20,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, configure_mappers
 
 import kitebase.utils
-from kitebase.db import DB, Base
+from kitebase.app import App
+from kitebase.model_base import Base
 from kitebase.plugins import PluginsManager
 from kitebase.source import Generator
 
@@ -57,7 +58,7 @@ def build(tmp_path, monkeypatch, tables, source=None, config=None, types=None):
     kitebase.utils.register_standard_handlers(manager)
     manager.load_plugins()
 
-    db = DB()
+    db = App()
     db.calc_db(manager)
     return db
 

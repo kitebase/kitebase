@@ -26,7 +26,7 @@ APP = textwrap.dedent('''
 
     import kitebase
     import kitebase.utils
-    from kitebase.db import DB
+    from kitebase.app import App
     from kitebase.diagnostics import run_checks
     from kitebase.endpoints import CommandProcessor
     from kitebase.plugins import PluginsManager
@@ -66,7 +66,7 @@ APP = textwrap.dedent('''
     kitebase.utils.register_standard_handlers(pm)
     pm.load_plugins()
 
-    app = DB()
+    app = App()
     app.calc_db(pm)
     source = root / 'model.py'
     Generator(app).generate(filename=str(source))

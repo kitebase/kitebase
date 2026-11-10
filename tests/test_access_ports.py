@@ -16,7 +16,8 @@ import yaml
 
 import kitebase.utils
 from kitebase import access
-from kitebase.db import DB, Base
+from kitebase.app import App
+from kitebase.model_base import Base
 from kitebase.endpoints import _ACCESS, _ENDPOINTS, CommandProcessor, endpoint
 from kitebase.plugins import PluginsManager
 from kitebase.source import Generator
@@ -147,7 +148,7 @@ def app(tmp_path, monkeypatch):
     kitebase.utils.register_standard_handlers(pm)
     pm.load_plugins()
 
-    instance = DB()
+    instance = App()
     instance.calc_db(pm)
 
     source = tmp_path / 'model.py'
@@ -588,7 +589,7 @@ def test_the_guard_is_handed_the_app_it_serves(tmp_path, monkeypatch):
     pm.load_config(str(cfg))
     kitebase.utils.register_standard_handlers(pm)
     pm.load_plugins()
-    instance = DB()
+    instance = App()
     instance.calc_db(pm)
 
     assert seen == [instance]

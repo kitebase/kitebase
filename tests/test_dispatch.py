@@ -13,7 +13,7 @@ set on every dispatch keeps one user's context out of the next user's request.
 import logging
 import pytest
 
-from kitebase.db import BaseApp
+import kitebase.context
 from kitebase.endpoints import CommandProcessor, endpoint, _ENDPOINTS
 
 
@@ -29,7 +29,7 @@ def processor():
     register('echo', lambda params: {'seen': params})
     register('boom', _raise)
     register('shaped', lambda params: {'status': 'error', 'message': 'nope', 'code': 422})
-    register('context', lambda params: BaseApp.get_context())
+    register('context', lambda params: kitebase.context.current())
 
     cp = CommandProcessor()
     cp.endpoints = dict(_ENDPOINTS)
@@ -37,7 +37,7 @@ def processor():
 
     for name in registered:
         _ENDPOINTS.pop(name, None)
-    BaseApp.set_context({})
+    kitebase.context.replace({})
 
 
 def _raise(params):

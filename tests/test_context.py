@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy import create_engine
 
 from kitebase import context
-from kitebase.db import DB
+from kitebase.app import App
 
 
 @pytest.fixture(autouse=True)
@@ -23,8 +23,8 @@ def clean_context():
 
 @pytest.fixture
 def db():
-    """A DB with just an engine — enough for get_session()."""
-    app = DB()
+    """An app with just an engine — enough for get_session()."""
+    app = App()
     app.engine = create_engine('sqlite:///:memory:')
     return app
 

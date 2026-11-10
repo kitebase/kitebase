@@ -12,7 +12,8 @@ import pytest
 import yaml
 
 import kitebase.utils
-from kitebase.db import DB, Base
+from kitebase.app import App
+from kitebase.model_base import Base
 from kitebase.plugins import PluginsManager
 from kitebase.source import Generator
 
@@ -49,7 +50,7 @@ def generate(tmp_path, monkeypatch, types, tables):
     kitebase.utils.register_standard_handlers(manager)
     manager.load_plugins()
 
-    db = DB()
+    db = App()
     db.calc_db(manager)
 
     out = tmp_path / 'generated_model.py'

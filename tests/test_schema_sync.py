@@ -247,7 +247,7 @@ def test_widening_a_decorated_string_is_still_a_widening(engine):
     widening a decision to take by hand — and with `on_startup: error` that
     stops the server over an ALTER that SQLite cannot even run.
     """
-    from kitebase.db import CaseString
+    from kitebase.sqltypes import CaseString
 
     md = base_metadata()
     md.tables['book'].c.title.type = CaseString(200, case='upper')
@@ -260,7 +260,7 @@ def test_widening_a_decorated_string_is_still_a_widening(engine):
 
 def test_narrowing_a_decorated_string_is_still_refused(engine):
     """The unwrapping must not cost the refusal in the other direction."""
-    from kitebase.db import CaseString
+    from kitebase.sqltypes import CaseString
 
     md = base_metadata()
     md.tables['book'].c.title.type = CaseString(10, case='upper')
@@ -577,11 +577,11 @@ class _AppStub:
 
 
 def _forced_schema(monkeypatch):
-    import kitebase.db
+    import kitebase.model_base
     from types import SimpleNamespace
     md = base_metadata()
     md.tables['book']._columns.remove(md.tables['book'].c.note)
-    monkeypatch.setattr(kitebase.db, 'Base', SimpleNamespace(metadata=md))
+    monkeypatch.setattr(kitebase.model_base, 'Base', SimpleNamespace(metadata=md))
     return md
 
 

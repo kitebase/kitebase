@@ -14,7 +14,7 @@ import sqlalchemy as sa
 
 from kitebase import secrets
 from kitebase.cli import db_backup, db_copy
-from kitebase.db import DB
+from kitebase.app import App
 from kitebase.store import Store
 from kitebase.db_copy import media_roots, snapshot_files
 from kitebase.plugins import PluginsManager, check_engine_name
@@ -101,7 +101,7 @@ def test_a_missing_media_folder_is_said_at_startup(app_dir, monkeypatch, caplog)
     monkeypatch.setenv('KITEBASE_ENGINE', 'demo')
     fake = SimpleNamespace(pm=manager(app_dir), media=SimpleNamespace(roots={'books': None}))
     with caplog.at_level(logging.WARNING):
-        DB._warn_missing_media_base(fake)
+        App._warn_missing_media_base(fake)
     assert "Media of engine 'demo'" in caplog.text and 'does not exist' in caplog.text
 
 

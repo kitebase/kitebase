@@ -17,7 +17,7 @@ DB_URL = f'postgresql://kite:{DB_PASSWORD}@db.example.org/kite'
 
 def _app(tmp_path, monkeypatch):
     import kitebase.utils
-    from kitebase.db import DB
+    from kitebase.app import App
     from kitebase.plugins import PluginsManager
 
     plugin = tmp_path / 'plugins' / 'mailer'
@@ -44,7 +44,7 @@ def _app(tmp_path, monkeypatch):
     pm.load_config(str(cfg))
     kitebase.utils.register_standard_handlers(pm)
     pm.load_plugins()
-    db = DB()
+    db = App()
     db.calc_db(pm)
     monkeypatch.setattr(kitebase.utils, 'get_app', lambda: db)
     return db

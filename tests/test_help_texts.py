@@ -6,7 +6,7 @@ import pytest
 import yaml
 
 import kitebase.utils
-from kitebase.db import DB
+from kitebase.app import App
 from kitebase.help import help_merge, render_html
 from kitebase.help_texts import catalog, declared_texts, diagnose, read_file, sync_help
 from kitebase.i18n import use_locale
@@ -54,14 +54,14 @@ def write_plugin(root: Path, name: str, files, depends=()):
     return plugin
 
 
-def load(path: Path, monkeypatch) -> DB:
+def load(path: Path, monkeypatch) -> App:
     monkeypatch.chdir(path)
     pm = PluginsManager()
     pm.load_config('config.yaml')
     kitebase.utils.register_standard_handlers(pm)
     pm.load_plugins()
     pm.load_all_locales()
-    app = DB()
+    app = App()
     app.calc_db(pm)
     app.cp = None
     return app

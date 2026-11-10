@@ -10,7 +10,8 @@ import yaml
 
 import kitebase.refsets
 import kitebase.utils
-from kitebase.db import DB, Base
+from kitebase.app import App
+from kitebase.model_base import Base
 from kitebase.endpoint_db import db_operations
 from kitebase.endpoint_tree import load_tree, save_tree
 from kitebase.plugins import PluginsManager
@@ -74,7 +75,7 @@ def app(tmp_path, monkeypatch):
     kitebase.utils.register_standard_handlers(pm)
     pm.load_plugins()
 
-    instance = DB()
+    instance = App()
     instance.calc_db(pm)
 
     source = tmp_path / 'model.py'

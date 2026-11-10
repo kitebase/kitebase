@@ -346,7 +346,7 @@ def db_check(app: Any) -> Tuple[str, bool]:
     Returns:
         (report, aligned) — read-only, nothing is written.
     """
-    from kitebase.db import Base
+    from kitebase.model_base import Base
     from kitebase.schema_sync import diff_schema, format_diff
 
     diff = diff_schema(app.engine, Base.metadata)
@@ -378,7 +378,7 @@ def db_sync(app: Any, dry_run: bool = False, force: bool = False,
     Returns:
         (report, aligned_after) — with dry_run, the DDL that would run.
     """
-    from kitebase.db import Base
+    from kitebase.model_base import Base
     from kitebase.schema_sync import apply_diff, diff_schema, format_diff, plan_sql
 
     diff = diff_schema(app.engine, Base.metadata)
@@ -507,7 +507,7 @@ def db_copy(app: Any, to: str, force: bool = False, dry_run: bool = False,
         (report, ok)
     """
     from sqlalchemy import create_engine
-    from kitebase.db import Base
+    from kitebase.model_base import Base
     from kitebase.db_copy import CopyError, MediaCopy, copy_database, media_roots
 
     metadata = Base.metadata if metadata is None else metadata

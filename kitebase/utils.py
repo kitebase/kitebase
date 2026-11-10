@@ -64,13 +64,13 @@ def deep_merge(a: Dict[str, Any], b: Dict[str, Any], path: Optional[List[str]] =
 
 def get_app():
     """
-    Get the current DB application instance.
+    Get the application of this process.
 
     This function centralizes access to the application instance,
     making it easier to change the implementation if needed.
 
     Returns:
-        The current DB application instance
+        The application instance
     """
     from kitebase.model_base import BaseApp
     return BaseApp.__kitebase_app__

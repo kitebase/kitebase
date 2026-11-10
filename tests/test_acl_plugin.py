@@ -13,9 +13,11 @@ import jwt
 import pytest
 import yaml
 
+import kitebase.context
 import kitebase.utils
 from kitebase import access, server_utils
-from kitebase.db import DB, Base
+from kitebase.app import App
+from kitebase.model_base import Base
 from kitebase.endpoints import _ACCESS, _ENDPOINTS, CommandProcessor, endpoint
 from kitebase.plugins import PluginsManager
 from kitebase.source import Generator
@@ -125,7 +127,7 @@ def app(tmp_path, monkeypatch):
     pm.load_config(str(cfg))
     kitebase.utils.register_standard_handlers(pm)
     pm.load_plugins()
-    instance = DB()
+    instance = App()
     monkeypatch.setattr(kitebase.utils, 'get_app', lambda: instance)
     # what a model asks for its definition (secret columns, groups), as in an app
     monkeypatch.setattr(Base, '__kitebase_app__', instance)
@@ -845,17 +847,16 @@ def test_save_tree_judges_the_root(loans):
 def guarded():
     """Open guarded sessions under a reader's context; all closed at the end."""
     from contextlib import ExitStack
-    from kitebase.db import BaseApp
     stack = ExitStack()
 
     def open_session(app, roles=READER, member=1, **context):
-        BaseApp.set_context({'id': member, 'username': 'x', 'roles': list(roles),
+        kitebase.context.replace({'id': member, 'username': 'x', 'roles': list(roles),
                              'is_admin': False, 'acl_exceptions': [], **context})
         return access.guard_session(stack.enter_context(app.get_session()))
 
     yield open_session
     stack.close()
-    BaseApp.set_context(None)
+    kitebase.context.replace(None)
 
 
 def _relation(app, owner, target):

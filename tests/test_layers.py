@@ -19,14 +19,14 @@ SPINE = [
     {'context', 'registry', 'sqltypes'},
     {'plugins', 'model_base'},
     {'schema', 'store'},
-    {'db'},
+    {'app'},
 ]
 
 # importer -> the higher modules it reaches from inside a function.
 KNOWN_UPWARD = {
     'access': {'endpoints'},
     'catalog': {'defaults', 'vocabulary'},
-    'cli': {'db', 'db_copy', 'dev', 'diagnostics', 'help', 'help_texts', 'inspector',
+    'cli': {'model_base', 'db_copy', 'dev', 'diagnostics', 'help', 'help_texts', 'inspector',
             'pages', 'scaffold', 'schema_sync'},
     'db_copy': {'schema_sync'},
     'dev': {'plugins'},

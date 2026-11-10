@@ -2,6 +2,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 sys.path.append("..")
+import kitebase.context
 import kitebase  # noqa: E402
 import kitebase.plugins  # noqa: E402
 from kitebase import access  # noqa: E402
@@ -15,7 +16,7 @@ def add_numbers(data):
     b = data.get("b", 0)
 
     # the context manager is working
-    print(kitebase.db.BaseApp.get_context())
+    print(kitebase.context.current())
     return {
         "status": "success",
         "data": a + b
@@ -141,7 +142,7 @@ def main():
     result = cp.send(command)
     print(result)
     # the context manager works within the command thread
-    print(kitebase.db.BaseApp.get_context())
+    print(kitebase.context.current())
 
     command = {
         "operation": "sayhello",
@@ -240,7 +241,7 @@ def main():
     }
     result = cp.send(command)
     print(result)
-    print(kitebase.db.BaseApp.get_context())
+    print(kitebase.context.current())
 
     # get id from just created book
     book_id = result['data']['id']

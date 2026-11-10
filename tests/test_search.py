@@ -18,7 +18,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship
 
 import kitebase.utils
-from kitebase.db import DB
+from kitebase.app import App
 from kitebase.plugins import PluginsManager
 from kitebase.querybuilder import DynamicQueryBuilder
 
@@ -28,7 +28,7 @@ from kitebase.querybuilder import DynamicQueryBuilder
 # merge and app config, so a stub would be testing the stub.
 
 def schema(tmp_path, monkeypatch, tables, app_config=None):
-    """Build a one-plugin app declaring `tables`, and return its DB."""
+    """Build a one-plugin app declaring `tables`, and return its app."""
     plugin = tmp_path / 'plugins' / 'app'
     plugin.mkdir(parents=True, exist_ok=True)
     (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'app', 'version': '0.0.1'}))
@@ -43,7 +43,7 @@ def schema(tmp_path, monkeypatch, tables, app_config=None):
     kitebase.utils.register_standard_handlers(manager)
     manager.load_plugins()
 
-    db = DB()
+    db = App()
     db.calc_db(manager)
     return db
 

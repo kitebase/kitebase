@@ -5,18 +5,13 @@ import kitebase.access
 import kitebase.media
 import kitebase.refsets
 from kitebase.endpoints import INHERIT, CommandProcessor
-from kitebase.model_base import Base, BaseApp  # noqa: F401
+from kitebase.model_base import Base, BaseApp
 from kitebase.plugins import PluginsManager
-from kitebase.schema import (  # noqa: F401
-    DbColumn, DbTable, DbType, RefSet, Schema, merge_columns_by_name,
-)
-from kitebase.sqltypes import (  # noqa: F401
-    CODESET_DELIMITER, CaseString, CodeSet, codeset_codes, codeset_text,
-)
+from kitebase.schema import DbTable, DbType, Schema
 from kitebase.store import Store
 
 
-class DB:
+class App:
     """
     The application: what its plugins declare, and the database it runs on.
 
@@ -281,4 +276,4 @@ class DB:
 
 
 # The application of this process, where the models and get_app() find it.
-BaseApp.__kitebase_app__ = DB()
+BaseApp.__kitebase_app__ = App()

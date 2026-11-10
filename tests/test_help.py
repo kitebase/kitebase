@@ -6,7 +6,7 @@ import yaml
 
 import kitebase.utils
 from kitebase import access
-from kitebase.db import DB
+from kitebase.app import App
 from kitebase.endpoint_help import get_help
 from kitebase.help import (BESIDE, INSIDE, SELECTING, guide_root, help_manual, help_merge,
                            render_html, render_manual)
@@ -245,13 +245,13 @@ def open_guard():
     access._GUARD = access.OPEN
 
 
-def load(path: Path, monkeypatch) -> DB:
+def load(path: Path, monkeypatch) -> App:
     monkeypatch.chdir(path)
     pm = PluginsManager()
     pm.load_config('config.yaml')
     kitebase.utils.register_standard_handlers(pm)
     pm.load_plugins()
-    app = DB()
+    app = App()
     app.calc_db(pm)
     # No endpoint is loaded here: None keeps the commands that name one
     app.cp = None

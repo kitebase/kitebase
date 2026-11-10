@@ -4,7 +4,7 @@ from kitebase import access, settings
 from kitebase.endpoints import endpoint
 from kitebase.outbound import to_client
 from kitebase.pages import load_page, page_permissions, restrict_page
-# Note: context is set globally via BaseApp.set_context() before each call —
+# Note: context is set globally via kitebase.context.replace() before each call —
 # endpoint functions receive only (data).
 
 

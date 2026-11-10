@@ -443,7 +443,7 @@ class DbTable:
             name: Table class name
             plugin: Plugin that initially defines this table
             attributes: Table configuration and columns
-            db: Parent DB instance (for mixin/type resolution)
+            db: The schema the table belongs to (for mixin/type resolution)
         """
         self.db = db
         self.name: str = name

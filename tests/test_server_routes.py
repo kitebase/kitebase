@@ -19,9 +19,9 @@ from types import SimpleNamespace
 import jwt
 import pytest
 
+import kitebase.context
 import kitebase.server_utils as srv
 from kitebase.access import AccessDenied
-from kitebase.db import BaseApp
 from kitebase.endpoints import CommandProcessor, FileResult, _ENDPOINTS
 
 SECRET = 'test-secret-key-long-enough-for-hs256'
@@ -52,7 +52,7 @@ def kitebase_app():
     register('denied', _deny)
     register('gone', lambda params: {'status': 'error', 'code': 404, 'message': 'no such row'})
     register('no_code', lambda params: {'status': 'error', 'message': 'not now'})
-    register('who', lambda params: BaseApp.get_context())
+    register('who', lambda params: kitebase.context.current())
     # A refusal with something to say: the field errors of a form.
     register('refuse', lambda params: {
         'status': 'error', 'code': 400, 'message': 'not changed',
@@ -68,7 +68,7 @@ def kitebase_app():
 
     for name in registered:
         _ENDPOINTS.pop(name, None)
-    BaseApp.set_context(None)
+    kitebase.context.replace(None)
 
 
 def _raise(params):
@@ -207,10 +207,10 @@ def test_the_thread_is_left_as_it_was_found(flask_client):
     sets its own. It is a guest that pays for it — the host's next page on that
     thread would inherit a user nobody chose.
     """
-    BaseApp.set_context(None)
+    kitebase.context.replace(None)
     flask_client.post('/kitebase/endpoint/who', json={}, headers=bearer())
 
-    assert not BaseApp.get_context()
+    assert not kitebase.context.current()
 
 
 # ── Flask, as a guest ─────────────────────────────────────────────────────────
@@ -378,7 +378,7 @@ def test_a_fastapi_host_route_after_a_kitebase_one_has_no_identity(kitebase_app,
 
     @app.get('/api/v1/whoami')
     def whoami():
-        return {'thread': threading.get_ident(), 'context': BaseApp.get_context()}
+        return {'thread': threading.get_ident(), 'context': kitebase.context.current()}
 
     srv.register_fastapi(app, kitebase_app, plugins, SECRET)
     _ENDPOINTS['where'] = lambda params: threading.get_ident()
@@ -407,7 +407,7 @@ def test_the_host_route_after_a_kitebase_one_has_no_identity(host_app):
 
     client.post('/kitebase/endpoint/who', json={}, headers=bearer())
 
-    assert not BaseApp.get_context()
+    assert not kitebase.context.current()
     assert client.get('/api/v1/status').get_json()['ok'] is True
 
 

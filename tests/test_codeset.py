@@ -13,7 +13,9 @@ from sqlalchemy import Column, Integer, String, create_engine, select, text
 from sqlalchemy.orm import Session, configure_mappers, declarative_base
 
 import kitebase.utils
-from kitebase.db import DB, Base, CodeSet, codeset_codes, codeset_text
+from kitebase.app import App
+from kitebase.model_base import Base
+from kitebase.sqltypes import CodeSet, codeset_codes, codeset_text
 from kitebase.endpoint_db import build_filters
 from kitebase.plugins import PluginsManager
 from kitebase.querybuilder import DynamicQueryBuilder, codeset_has
@@ -146,14 +148,14 @@ def test_the_generated_model_uses_the_core_type(tmp_path, monkeypatch, fresh_reg
     manager.load_config(str(cfg))
     kitebase.utils.register_standard_handlers(manager)
     manager.load_plugins()
-    db = DB()
+    db = App()
     db.calc_db(manager)
     out = tmp_path / 'generated_model.py'
     Generator(db).generate(filename=str(out))
     source = out.read_text()
 
     assert 'roles: Mapped[list] = mapped_column(CodeSet(length=255), nullable=True)' in source
-    assert 'CodeSet' in source.split('from kitebase.db import')[1].splitlines()[0]
+    assert 'CodeSet' in source.split('from kitebase.sqltypes import')[1].splitlines()[0]
 
     spec = importlib.util.spec_from_file_location('generated_model', out)
     module = importlib.util.module_from_spec(spec)

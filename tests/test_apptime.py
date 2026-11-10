@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 import pytest
 import yaml
 
+import kitebase.context
 from kitebase import apptime
 
 
@@ -172,9 +173,8 @@ def test_op_date_falls_back_to_the_organisations_today(monkeypatch):
     from datetime import date as date_type
 
     from kitebase import defaults
-    from kitebase.db import BaseApp
 
-    BaseApp.set_context(None)
+    kitebase.context.replace(None)
     monkeypatch.setattr(apptime, 'today', lambda: date_type(1999, 12, 31))
 
     assert defaults.op_date() == date_type(1999, 12, 31)
@@ -182,8 +182,7 @@ def test_op_date_falls_back_to_the_organisations_today(monkeypatch):
 
 def test_an_explicit_op_date_still_wins():
     from kitebase import defaults
-    from kitebase.db import BaseApp
 
     apptime.set_app_timezone('Asia/Tokyo')
-    with BaseApp.context({'op_date': '2026-03-15'}):
+    with kitebase.context.use({'op_date': '2026-03-15'}):
         assert defaults.op_date().isoformat() == '2026-03-15'

@@ -11,8 +11,8 @@ from types import SimpleNamespace
 import jwt
 import pytest
 
+import kitebase.context
 import kitebase.server_utils as srv
-from kitebase.db import BaseApp
 from kitebase.endpoints import CommandProcessor, _ENDPOINTS
 from kitebase.media import Media, UploadedFile
 
@@ -27,7 +27,7 @@ def fake_upload(params):
     if params.get('field') == 'refused':
         return {'status': 'error', 'code': 415, 'message': 'this field takes pdf'}
     return {'name': upload.filename, 'bytes': len(b''.join(upload.chunks)),
-            'fields': params, 'user': (BaseApp.get_context() or {}).get('username')}
+            'fields': params, 'user': (kitebase.context.current() or {}).get('username')}
 
 
 def fake_import(params):
@@ -37,7 +37,7 @@ def fake_import(params):
         return {'status': 'error', 'code': 409, 'message': 'Add or replace?',
                 '$flow': {'ask': {'key': 'mode', 'kind': 'choose', 'text': 'Add or replace?'}}}
     return {'name': upload.filename, 'bytes': len(upload.read(1000)), 'params': params,
-            'user': (BaseApp.get_context() or {}).get('username')}
+            'user': (kitebase.context.current() or {}).get('username')}
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ def stub(tmp_path):
     cp = CommandProcessor()
     cp.endpoints = {**_ENDPOINTS, 'media_upload': fake_upload, 'sheet_import': fake_import}
     yield SimpleNamespace(cp=cp, media=media)
-    BaseApp.set_context(None)
+    kitebase.context.replace(None)
 
 
 def bearer():

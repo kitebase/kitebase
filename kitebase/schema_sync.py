@@ -39,7 +39,7 @@ Entry points:
     format_diff()     human-readable report
     plan_sql()        the DDL a sync would run, rendered without touching the DB
     apply_diff()      run the safe subset, return the SQL executed
-    check_on_startup() the deploy-time guard wired into DB.initialize_db()
+    check_on_startup() the deploy-time guard wired into Store.open()
 """
 from __future__ import annotations
 

@@ -11,7 +11,7 @@ import copy
 import yaml
 
 import kitebase.utils
-from kitebase.db import DB
+from kitebase.app import App
 from kitebase.plugins import PluginsManager
 
 TYPES = {
@@ -55,7 +55,7 @@ def test_schema_calculation_leaves_the_declarations_alone(tmp_path, monkeypatch)
     merged = copy.deepcopy(manager.data)
     sources = copy.deepcopy(manager.plugins['app'].data)
 
-    db = DB()
+    db = App()
     db.calc_db(manager)
 
     # The schema did resolve: the column has what its type says, the derived

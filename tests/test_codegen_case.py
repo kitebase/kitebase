@@ -14,7 +14,8 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, configure_mappers
 
 import kitebase.utils
-from kitebase.db import DB, Base
+from kitebase.app import App
+from kitebase.model_base import Base
 from kitebase.plugins import PluginsManager
 from kitebase.source import Generator
 
@@ -46,7 +47,7 @@ def generate(tmp_path, monkeypatch, tables, types=None):
     kitebase.utils.register_standard_handlers(manager)
     manager.load_plugins()
 
-    db = DB()
+    db = App()
     db.calc_db(manager)
 
     out = tmp_path / 'generated_model.py'
@@ -94,7 +95,7 @@ def test_generates_the_normalising_type_only_where_asked(tmp_path, monkeypatch):
     assert "CaseString(length=16, case='lower')" in source
     # No attribute means the plain type, not CaseString with a neutral setting.
     assert "name: Mapped[str] = mapped_column(String(length=32), nullable=True)" in source
-    assert 'from kitebase.db import Base, BaseApp, CaseString' in source
+    assert 'from kitebase.sqltypes import CaseString' in source
 
 
 def test_value_is_stored_normalised(tmp_path, monkeypatch):

@@ -3,9 +3,10 @@ import importlib.util
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Any, Tuple
-from kitebase.db import DB, DbColumn, DbTable
+from kitebase.app import App
+from kitebase.schema import DbColumn, DbTable
 
-# Column types the core defines itself: imported from kitebase.db, not sqlalchemy
+# Column types the core defines itself: imported from kitebase.sqltypes, not sqlalchemy
 KITEBASE_TYPES = {'CodeSet'}
 
 
@@ -15,7 +16,7 @@ class ModelImportManager:
     Collects and organizes different types of imports.
     """
 
-    def __init__(self, db: DB) -> None:
+    def __init__(self, db: App) -> None:
         """
         Initialize import manager.
 
@@ -26,7 +27,7 @@ class ModelImportManager:
         self.standard_imports: Set[str] = set()  # Python standard imports
         self.column_imports: Set[str] = set()  # SQLAlchemy Column types
         self.orm_imports: Set[str] = {"Mapped", "mapped_column"}  # SQLAlchemy ORM features
-        self.kitebase_imports: Set[str] = {"Base", "BaseApp"}  # names taken from kitebase.db
+        self.type_imports: Set[str] = set()  # column types taken from kitebase.sqltypes
 
         # Add configured imports from plugins
         self._add_configured_imports()
@@ -86,7 +87,10 @@ class ModelImportManager:
             import_statements.append(f"from sqlalchemy.orm import {', '.join(sorted(self.orm_imports))}")
 
         # Add Base import and kitebase utilities
-        import_statements.append(f"from kitebase.db import {', '.join(sorted(self.kitebase_imports))}")
+        import_statements.append("from kitebase.model_base import Base, BaseApp")
+        if self.type_imports:
+            import_statements.append(
+                f"from kitebase.sqltypes import {', '.join(sorted(self.type_imports))}")
         import_statements.append('import kitebase')
 
         return '\n'.join(import_statements)
@@ -509,7 +513,7 @@ class ColumnGenerator:
     Handles column types, attributes, and relationships.
     """
 
-    def __init__(self, db: DB, imports: ModelImportManager, relationships: RelationshipManager) -> None:
+    def __init__(self, db: App, imports: ModelImportManager, relationships: RelationshipManager) -> None:
         """
         Initialize column generator.
 
@@ -562,11 +566,11 @@ class ColumnGenerator:
                 raise ValueError(
                     f"Column {table.name}.{column.name}: case applies to strings, "
                     f"not to {py_type}")
-            self.imports.kitebase_imports.add('CaseString')
+            self.imports.type_imports.add('CaseString')
             sa_type = 'CaseString'
             type_args.append(f"case='{case}'")
         elif sa_type in KITEBASE_TYPES:
-            self.imports.kitebase_imports.add(sa_type)
+            self.imports.type_imports.add(sa_type)
         else:
             self.imports.column_imports.add(sa_type)
 
@@ -687,7 +691,7 @@ class Generator:
     Coordinates the generation process and writes the final output.
     """
 
-    def __init__(self, db: DB):
+    def __init__(self, db: App):
         """
         Initialize the generator.
 

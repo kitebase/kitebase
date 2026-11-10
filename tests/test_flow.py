@@ -10,9 +10,11 @@ import importlib.util
 import pytest
 import yaml
 
+import kitebase.context
 import kitebase.utils
 from kitebase import flow
-from kitebase.db import DB, Base
+from kitebase.app import App
+from kitebase.model_base import Base
 from kitebase.endpoints import CommandProcessor
 from kitebase.plugins import PluginsManager
 from kitebase.source import Generator
@@ -113,7 +115,7 @@ def app(tmp_path, monkeypatch):
     kitebase.utils.register_standard_handlers(pm)
     pm.load_plugins()
 
-    instance = DB()
+    instance = App()
     instance.calc_db(pm)
     source = tmp_path / 'model.py'
     Generator(instance).generate(filename=str(source))
@@ -745,22 +747,21 @@ def test_run_form_calls_as_its_caller_and_leaves_the_context_as_it_was(app):
     """The dispatcher replaces the context with the command's: run_form passes
     its caller's on, or each step would run as nobody, and so would the rest
     of the caller's own endpoint once run_form returned."""
-    from kitebase.db import BaseApp
     from kitebase.endpoints import endpoint
     seen = []
 
     @endpoint('test_loan_doc_head')
     @flow.proposal('Loan')
     def loan_doc_head(ctx):
-        seen.append((BaseApp.get_context() or {}).get('username'))
+        seen.append((kitebase.context.current() or {}).get('username'))
 
-    BaseApp.set_context({'username': 'erin'})
+    kitebase.context.replace({'username': 'erin'})
     try:
         assert flow.run_form('loan_doc', new_loan())['status'] == 'success'
         assert seen == ['erin']
-        assert BaseApp.get_context() == {'username': 'erin'}
+        assert kitebase.context.current() == {'username': 'erin'}
     finally:
-        BaseApp.set_context(None)
+        kitebase.context.replace(None)
 
 
 # ── run_forms: many documents, one act ──────────────────────────────────────

@@ -5,32 +5,15 @@ from typing import Any
 
 from sqlalchemy.orm import declarative_base
 
-import kitebase.context
-
 
 class BaseApp:
     """
     Base class for all SQLAlchemy models.
     Provides access to the database schema information.
-
-    The context of the request is kitebase.context: the three methods below
-    are aliases of its verbs.
     """
     # The application these models belong to: one per process, set by
-    # kitebase.db when it creates it.
+    # kitebase.app when it creates it.
     __kitebase_app__: Any = None
-
-    @classmethod
-    def get_context(cls):
-        return kitebase.context.current()
-
-    @classmethod
-    def set_context(cls, context):
-        kitebase.context.replace(context)
-
-    @classmethod
-    def context(cls, context):
-        return kitebase.context.use(context)
 
     # ==========================================
     # Model ↔ DB Definition Bridge

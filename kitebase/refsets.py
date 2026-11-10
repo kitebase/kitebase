@@ -1,7 +1,7 @@
 """A junction read and written as a value of the record: the RefSets of a table.
 
 A table holds a RefSet for each junction end that declares `field: true`
-(kitebase.db.RefSet): the field carries the keys of the other end, in the order
+(kitebase.schema.RefSet): the field carries the keys of the other end, in the order
 the links were written. The junction rows never leave the server.
 """
 from collections import defaultdict
