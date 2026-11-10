@@ -6,6 +6,7 @@ See kitebase.http_common for what the two adapters have in common.
 
 from typing import Any, Callable, Dict, Optional
 
+import kitebase.context
 from kitebase.endpoints import FileResult
 from kitebase.http_common import (
     _prefixes, file_headers, get_app_info, handle_download, handle_generic_endpoint,
@@ -49,7 +50,6 @@ def register_flask(target, kitebase_app, plugins, secret_key: str, *,
     from functools import wraps
     from flask import Response, g, request
 
-    from kitebase.db import BaseApp
     from kitebase.i18n import set_locale
     from kitebase.querybuilder import JSONEncoder
 
@@ -85,7 +85,7 @@ def register_flask(target, kitebase_app, plugins, secret_key: str, *,
         inherits a user nobody chose, with the query behaviors filtering
         accordingly.
         """
-        BaseApp.set_context(None)
+        kitebase.context.replace(None)
 
     @target.after_request
     def kitebase_token_refresh(response):

@@ -7,6 +7,7 @@ from functools import wraps
 from typing import Dict, List, Any, Optional, Union, Callable
 from pathlib import Path
 import kitebase
+import kitebase.context
 from kitebase.access import UNDECLARED, AccessDenied, check_endpoint
 
 # Global dictionary to register endpoints
@@ -451,7 +452,7 @@ class CommandProcessor:
             # Set the context before executing the function. Unconditional, and it
             # replaces the whole value: request threads are reused by the server's
             # pool, so anything left behind would be read by the next user.
-            kitebase.db.BaseApp.set_context(command.context)
+            kitebase.context.replace(command.context)
 
             check_endpoint(command.operation, _ACCESS.get(command.operation, UNDECLARED))
             result_data = self.endpoints[command.operation](command.parameters)

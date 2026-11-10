@@ -53,6 +53,8 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Set, Tuple
 
+import kitebase.context
+
 # What an endpoint declares with `@endpoint(name, access=...)`, besides a
 # permission code. `$` marks them as framework values, never a permission.
 PER_TABLE = '$per_table'           # the endpoint checks each table it touches
@@ -203,8 +205,7 @@ def _guard() -> Guard:
 
 
 def _context() -> Optional[Dict[str, Any]]:
-    from kitebase.db import BaseApp
-    return BaseApp.get_context()
+    return kitebase.context.current()
 
 
 def can(permission: str) -> bool:

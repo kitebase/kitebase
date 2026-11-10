@@ -23,8 +23,8 @@ from datetime import date, datetime
 from typing import Callable, Optional, Set
 from uuid import uuid4
 
+import kitebase.context
 from kitebase import apptime
-from kitebase.db import BaseApp
 
 
 def op_date() -> date:
@@ -34,7 +34,7 @@ def op_date() -> date:
     On a server running in UTC the two differ for the first hours after
     midnight, and an op_date a day out produces documents that look right.
     """
-    ctx = BaseApp.get_context() or {}
+    ctx = kitebase.context.current() or {}
     raw = ctx.get('op_date')
     if raw:
         try:

@@ -1,4 +1,5 @@
 import kitebase
+import kitebase.context
 from kitebase import tokens
 import kitebase.transforms
 import kitebase.media
@@ -768,7 +769,7 @@ def update_context(data):
     """
     try:
         # Get current context
-        current_context = kitebase.db.BaseApp.get_context()
+        current_context = kitebase.context.current()
 
         # Verify user is authenticated
         if not current_context or 'id' not in current_context:
@@ -795,7 +796,7 @@ def update_context(data):
                 current_context[field] = data[field]
 
         # Update the context in the current thread
-        kitebase.db.BaseApp.set_context(current_context)
+        kitebase.context.replace(current_context)
 
         return {
             "status": "success",

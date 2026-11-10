@@ -1,6 +1,5 @@
 import copy
 import inspect
-import contextvars
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Union, Iterator
 from types import ModuleType
@@ -10,6 +9,7 @@ import sqlalchemy.types
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 import kitebase.access
+import kitebase.context
 import kitebase.media
 import kitebase.refsets
 from kitebase.plugins import PluginsManager, Plugin
@@ -719,9 +719,9 @@ class DB:
 
         with ExitStack() as stack:
             # Scoped: the previous context comes back on exit whatever it was,
-            # None included — see BaseApp.context().
+            # None included — see kitebase.context.use().
             if context is not None:
-                stack.enter_context(BaseApp.context(context))
+                stack.enter_context(kitebase.context.use(context))
 
             session = self._sessions()
             try:
@@ -1382,64 +1382,22 @@ class BaseApp:
     Base class for all SQLAlchemy models.
     Provides access to the database schema information.
 
-    The context (who is asking: user, tenant, locale, op_date) lives in one
-    ContextVar, which serves both execution models. A WSGI thread has a context
-    of its own that lasts across the requests it serves, so whoever sets it
-    clears it on the way out (the Flask adapter's teardown). An ASGI server runs
-    a sync handler on a copy of the request's context, so what the handler sets
-    is discarded with the copy. A thread or a process started by hand begins
-    with no context: background work sets its own with BaseApp.context().
+    The context of the request is kitebase.context: the three methods below
+    are aliases of its verbs.
     """
     __kitebase_app__: DB = DB()
 
-    _context_var: contextvars.ContextVar = contextvars.ContextVar('kitebase_context', default=None)
-
     @classmethod
     def get_context(cls):
-        """
-        Get the current context.
-
-        Returns:
-            Current context dictionary or None
-        """
-        return cls._context_var.get()
+        return kitebase.context.current()
 
     @classmethod
     def set_context(cls, context):
-        """
-        Set the current context, replacing the whole value.
-
-        Args:
-            context: Context dictionary with user/tenant info, or None to clear
-        """
-        cls._context_var.set(context)
+        kitebase.context.replace(context)
 
     @classmethod
-    @contextmanager
     def context(cls, context):
-        """
-        Set the context for the duration of the block, then restore it.
-
-        The scoped form of set_context(), for code that runs outside an HTTP
-        request — background threads, batch scripts, server-rendered pages of a
-        host application — where nothing else sets the context on the way in.
-        Restores unconditionally, including back to None: leaving a context
-        behind means the next user of that thread inherits an identity nobody
-        chose, and query behaviors filter by it. The block must close in the
-        context it was opened in; closing it elsewhere raises ValueError
-        instead of restoring the wrong value.
-
-        Args:
-            context: Context dictionary with user/tenant info
-
-        Yields:
-            The context that was set
-        """
-        token = cls._context_var.set(context)
-        try:
-            yield context
-        finally:
-            cls._context_var.reset(token)
+        return kitebase.context.use(context)
 
     # ==========================================
     # Model ↔ DB Definition Bridge

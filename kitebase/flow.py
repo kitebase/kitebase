@@ -49,6 +49,7 @@ from typing import Any, Callable, Dict, List, NoReturn, Optional, Tuple
 from sqlalchemy import event, inspect as sa_inspect
 
 import kitebase
+import kitebase.context
 from kitebase.i18n import _f
 
 _log = logging.getLogger('kitebase')
@@ -528,7 +529,7 @@ def _sender() -> Callable[[Dict[str, Any]], Dict[str, Any]]:
     replaces the context with the command's, and without it a call would run as
     nobody and leave nobody behind."""
     from kitebase.endpoints import CommandProcessor
-    context = kitebase.db.BaseApp.get_context()
+    context = kitebase.context.current()
     processor = CommandProcessor()
     return lambda command: processor.send({**command, 'context': context})
 
