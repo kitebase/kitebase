@@ -67,3 +67,66 @@ def test_a_module_that_does_not_load_stops_the_start(tmp_path, monkeypatch):
     assert '`optional`' in message           # the likely fix, for a missing module
     import sys
     assert 'shelf3.broken' not in sys.modules
+
+
+def _copies(stem: str):
+    """The names a file of a plugin was imported under."""
+    import sys
+    return sorted(name for name, module in sys.modules.items()
+                  if name.split('.')[-1] == stem and module is not None)
+
+
+def test_a_relative_import_reaches_the_same_module(tmp_path, monkeypatch):
+    """`from .state import ...` in a plugin is `<plugin>.state`, not a copy
+    of the file under the name of the module that asked."""
+    pm = make_plugins(tmp_path, monkeypatch, {
+        'shelf4': ([], {
+            'api4.py': 'from .state4 import REGISTRY\nREGISTRY.append("api")\n',
+            'state4.py': 'REGISTRY = []\n',
+        }),
+    })
+
+    pm.load_modules()
+
+    assert _copies('state4') == ['shelf4.state4']
+    assert _copies('api4') == ['shelf4.api4']
+
+
+def test_a_package_that_imports_its_modules_loads_them_once(tmp_path, monkeypatch):
+    """A plugin whose __init__ imports its own modules: the loader reaches the
+    same files afterwards and finds them loaded, under the same names."""
+    pm = make_plugins(tmp_path, monkeypatch, {
+        'shelf5': ([], {
+            '__init__.py': 'from kitebase import autoimport\nautoimport(__file__, __package__)\n',
+            'count5.py': 'RUNS = []\nRUNS.append(__name__)\n',
+        }),
+    })
+
+    pm.load_modules()
+
+    import sys
+    assert _copies('count5') == ['shelf5.count5']
+    assert sys.modules['shelf5.count5'].RUNS == ['shelf5.count5']
+    assert 'shelf5.__init__' not in sys.modules
+
+
+def test_the_chosen_root_is_the_one_whose_code_runs(tmp_path, monkeypatch):
+    """Two roots hold a plugin of one name: `include` names the root, and the
+    package is made from that directory whatever sys.path would find first."""
+    for root, mark in (('first', 'FIRST'), ('second', 'SECOND')):
+        plugin = tmp_path / root / 'shelf6'
+        plugin.mkdir(parents=True)
+        (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'shelf6'}))
+        (plugin / 'which6.py').write_text(f'ROOT = "{mark}"\n')
+    cfg = tmp_path / 'config.yaml'
+    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': [
+        {'path': 'first', 'include': []}, {'path': 'second', 'include': ['shelf6']}]}))
+    monkeypatch.chdir(tmp_path)
+    pm = PluginsManager()
+    pm.load_config(str(cfg))
+    pm.load_plugins()
+
+    pm.load_modules()
+
+    import sys
+    assert sys.modules['shelf6.which6'].ROOT == 'SECOND'

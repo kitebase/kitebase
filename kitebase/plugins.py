@@ -2,6 +2,7 @@ import re
 import sys
 import os
 import importlib
+import importlib.machinery
 import importlib.util
 import logging
 from datetime import datetime
@@ -166,9 +167,43 @@ def compose_config(path: Union[str, Path]) -> Tuple[Dict[str, Any], List[Path]]:
     return base, [base_path, path]
 
 
+def _plugin_package(directory: Path) -> str:
+    """
+    The package of a plugin directory, made from that directory and no other.
+
+    Not left to sys.path: two roots may hold a plugin of the same name, and the
+    one the application chose is the one whose code runs.
+    """
+    name = directory.name
+    package = sys.modules.get(name)
+    if package is not None:
+        if str(directory) in [str(Path(p).resolve()) for p in getattr(package, '__path__', [])]:
+            return name
+        raise ImportError(
+            f"'{name}' is already imported from "
+            f"{getattr(package, '__file__', None) or list(getattr(package, '__path__', []))}: "
+            f"the plugin in {directory} cannot be loaded under the same name")
+
+    init = directory / '__init__.py'
+    spec = importlib.util.spec_from_file_location(
+        name, str(init) if init.exists() else None,
+        loader=None if init.exists() else importlib.machinery.NamespaceLoader(
+            name, [str(directory)], None),
+        submodule_search_locations=[str(directory)])
+    package = importlib.util.module_from_spec(spec)
+    sys.modules[name] = package
+    try:
+        spec.loader.exec_module(package)
+    except BaseException:
+        sys.modules.pop(name, None)
+        raise
+    return name
+
+
 def load_module(path: Union[str, Path]) -> None:
     """
-    Import one Python file of a plugin as `<plugin>.<module>`.
+    Import one Python file of a plugin as `<plugin>.<module>`, the name any
+    other module imports it by: one file, one module, whoever asks first.
 
     What the module registers on import (endpoints, write rules, a guard) is
     registered by then; a file that does not exist is skipped.
@@ -176,53 +211,20 @@ def load_module(path: Union[str, Path]) -> None:
     Raises:
         ImportError: If the file does not load, naming the module and the cause
     """
-    path = Path(path)
+    path = Path(path).resolve()
     if not path.exists():
         return
 
-    dir_path = path.parent
-    parent_str = str(dir_path.parent)
-    full_module_name = f"{dir_path.name}.{path.stem}"
-
-    # Already imported by a module loaded before it (a sibling, or a plugin
-    # depending on this one): executing it again would give its state, a
-    # registry for one, a second copy.
-    loaded = sys.modules.get(full_module_name)
-    if loaded is not None and getattr(loaded, '__file__', None) and \
-            Path(loaded.__file__).resolve() == path.resolve():
-        return
-
-    # The parent directory on sys.path while the module loads, for its imports
-    sys_path_modified = parent_str not in sys.path
-    if sys_path_modified:
-        sys.path.insert(0, parent_str)
-
+    directory = path.parent
+    is_init = path.stem == '__init__'
+    full_module_name = directory.name if is_init else f"{directory.name}.{path.stem}"
     try:
-        spec = importlib.util.spec_from_file_location(
-            full_module_name, str(path), submodule_search_locations=[str(dir_path)])
-        if spec is None:
-            return
-
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = module  # Important for relative imports
-        spec.loader.exec_module(module)
-
-        # Bind the module onto its parent package so a later
-        # `import package.module` resolves the attribute correctly.
-        # Without this the submodule sits in sys.modules orphaned, and
-        # `package.module` attribute access (e.g. common.model.Archivable
-        # in the generated model) raises AttributeError.
-        parent_name, _, child_name = spec.name.rpartition('.')
-        if parent_name:
-            try:
-                setattr(importlib.import_module(parent_name), child_name, module)
-            except ImportError:
-                pass
-
+        _plugin_package(directory)
+        if not is_init:
+            importlib.import_module(full_module_name)
     except Exception as e:
         # A module that does not load stops the start: an app missing
         # some of its endpoints fails later, and further from the cause.
-        sys.modules.pop(full_module_name, None)
         hint = ''
         if isinstance(e, ModuleNotFoundError):
             hint = (" (if the module exists only alongside another plugin, "
@@ -230,10 +232,6 @@ def load_module(path: Union[str, Path]) -> None:
         raise ImportError(
             f"Plugin module '{full_module_name}' ({path}) does not load: "
             f"{type(e).__name__}: {e}{hint}") from e
-
-    finally:
-        if sys_path_modified:
-            sys.path.remove(parent_str)
 
 
 def load_modules(paths: List[Union[str, Path]]) -> None:
