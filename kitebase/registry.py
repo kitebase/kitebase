@@ -12,9 +12,9 @@ Two shapes cover them:
 
 Both know who registered what, by module, and both answer a collision the same
 way: a name belongs to the module that took it. That module registering again
-replaces its own entry (a reload); another module is refused, unless it says
-`replace=True`, and then the registry remembers whom it replaced. Nothing is
-overwritten in silence.
+replaces its own entry (a reload); another module is refused, unless the
+registration says `replace=True` where the registry offers it, and then the
+registry remembers whom it replaced. Nothing is overwritten in silence.
 
 Every registry has a name and is listed by `catalog()`, which is what a tool
 reads to show what is registered, and by whom.
@@ -48,6 +48,12 @@ def owner_of(value: Any, depth: int = 2) -> str:
     return sys._getframe(depth).f_globals.get('__name__', '?')
 
 
+def caller(depth: int = 2) -> str:
+    """The module calling the function that asks: who is registering, when
+    the value registered may come from somewhere else."""
+    return sys._getframe(depth).f_globals.get('__name__', '?')
+
+
 class Collision(ValueError):
     """Two modules claim the same name of a registry."""
 
@@ -76,7 +82,7 @@ class Registry(MutableMapping, Generic[T]):
             if not replace:
                 raise Collision(
                     f"{self.what} '{key}' is already registered by {current}; "
-                    f"{owner} cannot register it too (replace=True to take its place)")
+                    f"{owner} cannot register it too")
             self._replaced.setdefault(key, []).append(current)
         self._entries[key] = value
         self._owners[key] = owner
@@ -141,7 +147,7 @@ class Slot(Generic[T]):
         if self._owner is not None and self._owner != owner and not replace:
             raise Collision(
                 f"{self.what} is already registered by {self._owner}; "
-                f"{owner} cannot register another (replace=True to take its place)")
+                f"{owner} cannot register another")
         self._value, self._owner = value, owner
 
     @property

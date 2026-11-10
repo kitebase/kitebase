@@ -45,6 +45,7 @@ from typing import Any, BinaryIO, Callable, Dict, Iterable, List, Optional
 import yaml
 
 from kitebase import apptime
+from kitebase.registry import Registry, caller
 
 
 class MediaError(ValueError):
@@ -244,14 +245,15 @@ def _segment(value: str) -> str:
 
 # name -> callable(name, ctx) -> relative path. For the layouts a template
 # cannot express; the core applies the same guarantees to what they return.
-_STRATEGIES: Dict[str, Callable[[str, AllocContext], str]] = {}
+_STRATEGIES: Registry[Callable[[str, AllocContext], str]] = Registry('media_allocators', 'allocator')
 
 
-def register_allocator(name: str, func: Callable[[str, AllocContext], str]) -> None:
+def register_allocator(name: str, func: Callable[[str, AllocContext], str], *,
+                       replace: bool = False) -> None:
     """Register a layout written in Python, named in a root as `allocate: <name>`."""
     if name in NAMED_TEMPLATES or '{' in name:
         raise MediaError(f'Allocator name {name!r} clashes with a template')
-    _STRATEGIES[name] = func
+    _STRATEGIES.add(name, func, owner=caller(), replace=replace)
 
 
 # ── Provider: the filesystem ──────────────────────────────────────────────────

@@ -22,6 +22,8 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import yaml
 
+from kitebase.registry import Registry, caller
+
 
 # ── Plain data ─────────────────────────────────────────────────────────────────
 
@@ -441,14 +443,13 @@ def node(app: Any, path: str, subject: Optional[str] = None) -> Dict[str, Any]:
 # A cell is a text, or {'text', 'path'?, 'subject'?, 'tone'?, 'title'?}: `path`
 # opens that node (seen by `subject`), `tone` is ok, cond, no or faint, and
 # `title` is what the cell says when pointed at.
-_DETAILS: Dict[str, Callable[[Any, str], List[Dict[str, Any]]]] = {}
+_DETAILS: Registry[Callable[[Any, str], List[Dict[str, Any]]]] = Registry(
+    'inspector_details', 'detail of the nodes of')
 
 
 def add_detail(root: str, fn: Callable[[Any, str], List[Dict[str, Any]]]) -> None:
     """Register what the nodes `<root>.<key>` show beyond the tree: one per root."""
-    if _DETAILS.get(root, fn) is not fn:
-        raise ValueError(f"The nodes of '{root}' already have a detail")
-    _DETAILS[root] = fn
+    _DETAILS.add(root, fn, owner=caller())
 
 
 def _detail(app: Any, steps: Sequence[Step]) -> Optional[List[Dict[str, Any]]]:

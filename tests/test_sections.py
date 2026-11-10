@@ -23,10 +23,9 @@ class FakeApp:
 @pytest.fixture(autouse=True)
 def registry():
     """Each test registers on a copy, so the process registry stays as it was."""
-    saved = dict(sections._SECTIONS)
+    saved = sections._SECTIONS.snapshot()
     yield
-    sections._SECTIONS.clear()
-    sections._SECTIONS.update(saved)
+    sections._SECTIONS.restore(saved)
 
 
 def register_from(module, name, **kwargs):
@@ -52,7 +51,7 @@ def test_the_owner_may_register_again_another_module_may_not():
     register_from('acme.reader', 'gadgets')
     register_from('acme.reader', 'gadgets', descriptor=True)
     assert get_section('gadgets').descriptor
-    with pytest.raises(ValueError, match='already owned by acme.reader'):
+    with pytest.raises(ValueError, match='already registered by acme.reader'):
         register_from('other.reader', 'gadgets')
 
 

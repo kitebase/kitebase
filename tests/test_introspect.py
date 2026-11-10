@@ -187,9 +187,11 @@ def test_a_page_comes_resolved_and_no_subject_without_a_policy(tmp_path, monkeyp
         introspect.node(app, 'pages.book_detail', 'shop.desk')
 
 
-def test_a_plugin_adds_to_the_nodes_of_its_root(tmp_path, monkeypatch):
+def test_a_plugin_adds_to_the_nodes_of_its_root(tmp_path, monkeypatch, request):
     app = _app(tmp_path, monkeypatch)
-    monkeypatch.setattr(introspect, '_DETAILS', {})
+    saved = introspect._DETAILS.snapshot()
+    request.addfinalizer(lambda: introspect._DETAILS.restore(saved))
+    introspect._DETAILS.clear()
 
     def detail(app, key):
         return [{'title': 'Seen', 'links': [{'text': key, 'path': f'roles.{key}'}],
@@ -197,8 +199,9 @@ def test_a_plugin_adds_to_the_nodes_of_its_root(tmp_path, monkeypatch):
 
     introspect.add_detail('roles', detail)
     introspect.add_detail('roles', detail)          # the same, again: a module loaded twice
-    with pytest.raises(ValueError):
-        introspect.add_detail('roles', lambda app, key: [])
+    with pytest.raises(ValueError):                 # another module: one detail per root
+        exec("introspect.add_detail('roles', lambda app, key: [])",
+             {'__name__': 'other.plugin', 'introspect': introspect})
     blocks = introspect.node(app, 'roles.shop.desk')['detail']
     assert blocks[0]['links'] == [{'text': 'shop.desk', 'path': 'roles.shop.desk'}]
     assert 'key-91f3' not in json.dumps(blocks)

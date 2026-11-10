@@ -40,6 +40,7 @@ import kitebase
 from kitebase import access
 from kitebase.endpoints import endpoint
 from kitebase.i18n import _, _f
+from kitebase.registry import Registry, owner_of
 
 
 class _Duplicator:
@@ -48,7 +49,7 @@ class _Duplicator:
         self.values: Optional[Callable] = None
 
 
-_DUPLICATORS: Dict[str, _Duplicator] = {}
+_DUPLICATORS: Registry[_Duplicator] = Registry('duplicators', 'duplicator of page')
 
 
 def duplicator(page: str, options: Optional[str] = None):
@@ -63,7 +64,7 @@ def duplicator(page: str, options: Optional[str] = None):
     """
     def register(fn: Callable) -> Callable:
         entry = _Duplicator(fn, options)
-        _DUPLICATORS[page] = entry
+        _DUPLICATORS.add(page, entry, owner=owner_of(fn))
 
         def options_values(values: Callable) -> Callable:
             entry.values = values

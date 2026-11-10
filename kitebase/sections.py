@@ -22,11 +22,11 @@ A root nobody registers is read by nobody: `check` warns about it, and it is
 neither walked nor dumped. The registry is per process, like the validators'
 (kitebase.transforms): a plugin registers at import, which happens once.
 """
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from kitebase.registry import Registry, caller
 from kitebase.vocabulary import VOCABULARY_FILE
 
 Check = Callable[[Any], List[Dict[str, Any]]]
@@ -41,7 +41,7 @@ class Section:
     vocabulary: Optional[Path] = None
 
 
-_SECTIONS: Dict[str, Section] = {}
+_SECTIONS: Registry[Section] = Registry('sections', 'root')
 
 
 def register_section(name: str, *, descriptor: bool = False,
@@ -54,12 +54,8 @@ def register_section(name: str, *, descriptor: bool = False,
     """
     if name.startswith('$'):
         raise ValueError(f"'{name}': `$` keys are framework metadata, not roots")
-    owner = sys._getframe(1).f_globals.get('__name__', '?')
-    current = _SECTIONS.get(name)
-    if current is not None and current.owner != owner:
-        raise ValueError(f"root '{name}' is already owned by {current.owner}; "
-                         f"{owner} cannot register it too")
-    _SECTIONS[name] = Section(name, owner, descriptor, check, vocabulary)
+    owner = caller()
+    _SECTIONS.add(name, Section(name, owner, descriptor, check, vocabulary), owner=owner)
 
 
 def get_section(name: str) -> Optional[Section]:

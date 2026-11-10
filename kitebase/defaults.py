@@ -25,6 +25,7 @@ from uuid import uuid4
 
 import kitebase.context
 from kitebase import apptime
+from kitebase.registry import Registry, caller
 
 
 def op_date() -> date:
@@ -70,16 +71,14 @@ def uuid() -> str:
 
 # Registry: token name (without the leading '$') -> callable used as a
 # SQLAlchemy column default.
-_DEFAULTS: dict = {
-    'op_date': op_date,
-    'now': now,
-    'uuid': uuid,
-}
+_DEFAULTS: Registry[Callable] = Registry('defaults', 'default')
+for _name, _func in (('op_date', op_date), ('now', now), ('uuid', uuid)):
+    _DEFAULTS.add(_name, _func, owner=__name__)
 
 
-def register_default(name: str, func: Callable) -> None:
+def register_default(name: str, func: Callable, *, replace: bool = False) -> None:
     """Register a system default callable, referenced in YAML as `$<name>`."""
-    _DEFAULTS[name] = func
+    _DEFAULTS.add(name, func, owner=caller(), replace=replace)
 
 
 def get_default(name: str) -> Optional[Callable]:

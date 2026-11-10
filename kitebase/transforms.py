@@ -55,6 +55,8 @@ from typing import Callable, Dict, Optional, Set
 
 import bcrypt
 
+from kitebase.registry import Registry, caller
+
 # Prefixes of the bcrypt variants, used to tell a hash from a legacy plaintext
 # value. Anything else stored in a password column predates hashing.
 _BCRYPT_PREFIXES = ('$2a$', '$2b$', '$2x$', '$2y$')
@@ -118,14 +120,13 @@ def verify_password(plain: str, stored: Optional[str]) -> bool:
 
 
 # Registry: name used in YAML as `on_write:` -> callable applied to the value.
-_TRANSFORMS: dict = {
-    'password_hash': hash_password,
-}
+_TRANSFORMS: Registry[Callable] = Registry('write_transforms', 'write transform')
+_TRANSFORMS.add('password_hash', hash_password, owner=__name__)
 
 
-def register_write_transform(name: str, func: Callable) -> None:
+def register_write_transform(name: str, func: Callable, *, replace: bool = False) -> None:
     """Register a write transform, referenced in YAML as `on_write: <name>`."""
-    _TRANSFORMS[name] = func
+    _TRANSFORMS.add(name, func, owner=caller(), replace=replace)
 
 
 def get_write_transform(name: str) -> Optional[Callable]:
@@ -173,14 +174,13 @@ def email_validator(value, values) -> Optional[str]:
 
 _EMAIL = re.compile(r'^[^@\s]+@[^@\s]+$')
 
-_VALIDATORS: dict = {
-    'email_validator': email_validator,
-}
+_VALIDATORS: Registry[Callable] = Registry('validators', 'validator')
+_VALIDATORS.add('email_validator', email_validator, owner=__name__)
 
 
-def register_validator(name: str, func: Callable) -> None:
+def register_validator(name: str, func: Callable, *, replace: bool = False) -> None:
     """Register a validator, referenced in YAML as `validate: <name>`."""
-    _VALIDATORS[name] = func
+    _VALIDATORS.add(name, func, owner=caller(), replace=replace)
 
 
 def get_validator(name: str) -> Optional[Callable]:

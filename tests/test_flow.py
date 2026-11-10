@@ -990,8 +990,10 @@ from kitebase import duplicate as dup  # noqa: E402
 
 
 @pytest.fixture
-def stored_loan(app, monkeypatch):
-    monkeypatch.setattr(dup, '_DUPLICATORS', {})
+def stored_loan(app, request):
+    saved = dup._DUPLICATORS.snapshot()
+    request.addfinalizer(lambda: dup._DUPLICATORS.restore(saved))
+    dup._DUPLICATORS.clear()
     with app.get_session() as session:
         loan = app.models['Loan'](title='Dune', note='n', member_id=1, code='C1', ref='R1', serial='S1')
         session.add(loan)
