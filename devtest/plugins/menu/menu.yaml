@@ -27,5 +27,7 @@ menu_items:
   users:    { label: Users,         icon: users,     parent: masters, order: 10, action: stack_push, panel: user_list }
   userlogs: { label: User logs,     icon: file-text, parent: masters, order: 20, action: stack_push, panel: userlog_list }
   settings: { label: Settings,      icon: settings,  parent: masters, order: 90, action: stack_push, panel: settings_admin }
+  # Every table through its generated list and form, for maintenance (commons `tables`)
+  tables:   { label: Tables,        icon: table,     parent: masters, order: 95, action: stack_push, panel: tables_browser }
   # One's own password: every user, whatever the roles, since the page reads no table.
   password: { label: Change password, icon: lock,  parent: account, order: 10, action: stack_push, panel: password_change }

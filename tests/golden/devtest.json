@@ -408,6 +408,15 @@
    "panel": "settings_admin",
    "$plugin": "menu"
   },
+  "tables": {
+   "label": "Tables",
+   "icon": "table",
+   "parent": "masters",
+   "order": 95,
+   "action": "stack_push",
+   "panel": "tables_browser",
+   "$plugin": "menu"
+  },
   "password": {
    "label": "Change password",
    "icon": "lock",
@@ -1697,6 +1706,16 @@
     "$plugin": "users"
    },
    "$plugin": "users"
+  },
+  "tables_browser": {
+   "title": "Tables",
+   "access": "tables.browse",
+   "content": {
+    "type": "plugin",
+    "component": "tables.browser",
+    "$plugin": "tables"
+   },
+   "$plugin": "tables"
   },
   "book_with_reviews": {
    "title": "Books & Reviews",
@@ -3144,6 +3163,17 @@
     "$plugin": "acquisitions"
    },
    "$plugin": "acquisitions"
+  }
+ },
+ "permissions": {
+  "tables.browse": {
+   "label": "Browse every table",
+   "$plugin": "tables"
+  },
+  "$plugin": "tables",
+  "playground.demos": {
+   "label": "Playground demos",
+   "$plugin": "panels"
   }
  },
  "views": {
@@ -4631,13 +4661,6 @@
    ],
    "$plugin": "acquisitions"
   }
- },
- "permissions": {
-  "playground.demos": {
-   "label": "Playground demos",
-   "$plugin": "panels"
-  },
-  "$plugin": "panels"
  },
  "schemas": {
   "payment_wizard_data": {
