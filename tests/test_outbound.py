@@ -154,7 +154,7 @@ def test_no_port_sends_doc(tmp_path, monkeypatch):
 
 
 def test_the_dump_keeps_doc(tmp_path, monkeypatch):
-    from kitebase.diagnostics import dump_app
+    from kitebase.dump import dump_app
 
     dump = dump_app(_app(tmp_path, monkeypatch))
     found = _docs(dump)

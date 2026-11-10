@@ -24,6 +24,7 @@ import yaml
 
 from kitebase import access, vocabulary
 from kitebase import catalog as cat_mod
+from kitebase.diagnostics import mask_secrets, mask_yaml_text, run_checks
 from kitebase.endpoints import _ENDPOINTS
 from kitebase.pages import load_page, page_permissions, restrict_page
 from kitebase.registry import Registry, caller
@@ -51,7 +52,6 @@ def plain(value: Any) -> Any:
 
 
 def _masked(data: Any) -> Any:
-    from kitebase.diagnostics import mask_secrets
     return mask_secrets(plain(data))
 
 
@@ -69,7 +69,6 @@ def plugin_files(app: Any) -> List[Tuple[str, Path, Any]]:
 
 def read_source(path: Path) -> Optional[str]:
     """The file as it may be shown: masked, each line where it was."""
-    from kitebase.diagnostics import mask_yaml_text
     raw = _read(path)
     return None if raw is None else mask_yaml_text(raw)
 
@@ -153,7 +152,6 @@ def layer(plugin: str, path: Path, steps: Sequence[Step], declared: Any) -> Dict
     masked one: masking keeps every line where it is, but what it writes
     (`***`) is not always valid YAML.
     """
-    from kitebase.diagnostics import mask_yaml_text
     out: Dict[str, Any] = {'plugin': plugin, 'file': str(path), 'declared': _masked(_no_meta(declared))}
     raw = _read(path)
     lines = locate(raw, steps) if raw is not None else None
@@ -237,7 +235,6 @@ def _count(section: Any) -> int:
 
 
 def issues(app: Any) -> List[Dict[str, Any]]:
-    from kitebase.diagnostics import run_checks
     return run_checks(app)
 
 

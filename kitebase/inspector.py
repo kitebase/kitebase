@@ -40,6 +40,7 @@ from typing import Any, Callable, Dict, Iterable, Optional, Tuple
 from urllib.parse import parse_qs, unquote, urlparse
 
 import kitebase
+from kitebase import introspect
 
 DEFAULT_PORT = 8400
 DEV_PORT = 5190
@@ -131,8 +132,6 @@ def sources_signature(app: Any) -> Tuple[int, float]:
 
 def routes(app: Any) -> Dict[str, Callable[..., Any]]:
     """`/api/<name>` -> what answers it; the rest of the path is its argument."""
-    from kitebase import introspect
-
     return {
         'app': lambda: introspect.app_summary(app),
         'issues': lambda: introspect.issues(app),

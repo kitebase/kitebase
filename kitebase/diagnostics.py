@@ -1,8 +1,5 @@
 """
-kitebase.diagnostics — post-load validation and effective-state dump.
-
-Two entry points (run_checks is pure; dump_app reads the plugin source files
-to embed them; neither uses argparse):
+kitebase.diagnostics: post-load validation, and the masking of secrets.
 
   run_checks(app)  -> List[issue]
       Validate the merged plugin data after everything is loaded
@@ -12,23 +9,17 @@ to embed them; neither uses argparse):
       others registered. Merge-time issues collected by PluginsManager (value
       overlaps, positional anchors not found) are included first.
 
-  dump_app(app)    -> Dict
-      Complete JSON-serializable snapshot of the effective application
-      state: plugins, issues, tables, types, every owned root of the
-      merged tree (pages, views, menus, … with $ref resolved), endpoints,
-      merge history, and source_files (raw pre-merge YAML per plugin/file).
-      Secret values and URL credentials are masked (mask_secrets).
-      $plugin attribution keys are kept so an external viewer (web app,
-      tkinter, jq, ...) can show which plugin contributed each piece.
-      DB/type roots (tables/types/schemas) are special-cased; the other
-      owned roots are treated uniformly (owners: kitebase.sections).
+  mask_secrets(obj), mask_yaml_text(text)
+      What leaves for tools and developers holds no secret: values hidden by
+      the name of their key, and the credentials of a URL wherever it is.
+
+The full snapshot of an application is `kitebase.dump`.
 
 Issue format (shared with PluginsManager.add_issue):
   {severity: 'error'|'warning'|'info', code, path, message, plugin}
 """
 
 import re
-from datetime import datetime
 from typing import Any, Dict, List, Optional, Set
 
 from kitebase import access, help_texts, media, settings
@@ -39,12 +30,8 @@ from kitebase.sections import get_section
 # functions) is passed through to the querybuilder untouched.
 _CHECKABLE_FIELD = re.compile(r'^[A-Za-z_]\w*(\.[A-Za-z_]\w*)?$')
 
-# Roots with dumpers of their own (tables via _table_dict, types via the schema
-# registry): every other owned root is dumped as it was merged.
-_DB_SECTIONS = frozenset({'tables', 'types', 'schemas'})
 
-
-def _owned_sections(pm: Any) -> List[str]:
+def owned_sections(pm: Any) -> List[str]:
     """The roots of the merged tree that a registered module owns."""
     return [k for k, v in pm.data.items()
             if get_section(k) is not None and isinstance(v, dict)]
@@ -52,7 +39,7 @@ def _owned_sections(pm: Any) -> List[str]:
 
 def _descriptor_sections(pm: Any) -> List[str]:
     """The roots that are trees of descriptors (pages, views, menus, ...)."""
-    return [k for k in _owned_sections(pm) if get_section(k).descriptor]
+    return [k for k in owned_sections(pm) if get_section(k).descriptor]
 
 
 def _check_sections(app: Any, issues: List[Dict[str, Any]]) -> None:
@@ -68,7 +55,7 @@ def _check_sections(app: Any, issues: List[Dict[str, Any]]) -> None:
             f"no loaded plugin owns '{root}': load the plugin that reads it, "
             f"or remove the declaration",
             ', '.join(declared_by) or None))
-    for root in _owned_sections(pm):
+    for root in owned_sections(pm):
         check = get_section(root).check
         if check is not None:
             issues.extend(check(app))
@@ -711,94 +698,3 @@ def mask_yaml_text(text: str) -> str:
                 line = m.group(1) + m.group(2) + m.group(3) + m.group(2) + m.group(4) + MASK + eol
         out.append(_URL_CREDENTIALS.sub(rf'\1:{MASK}@', line))
     return ''.join(out)
-
-
-# ── Full dump ──────────────────────────────────────────────────────────────────
-
-def dump_app(app: Any) -> Dict[str, Any]:
-    """
-    Build the complete effective-state snapshot of a loaded app.
-
-    Everything is JSON-serializable (write with json.dumps(..., default=str)
-    to be safe with dates or other stray objects).
-    """
-    from kitebase import introspect
-    from kitebase.cli import _table_dict
-
-    pm = app.plugins
-
-    # Every owned root, dumped uniformly with $ref resolved and $plugin
-    # attribution kept (pages, views, menus, menu_items, the plugins' roots).
-    # DB/type roots have dedicated dumpers below; unowned roots are left out,
-    # the section-unowned warning among the issues says they are there.
-    sections: Dict[str, Dict[str, Any]] = {}
-    for name in _owned_sections(pm):
-        if name in _DB_SECTIONS:
-            continue
-        out: Dict[str, Any] = {}
-        for item_id, item in pm.data[name].items():
-            if item_id.startswith('$'):
-                continue
-            try:
-                out[item_id] = pm.resolve_refs(item)
-            except ValueError as e:  # circular $ref
-                out[item_id] = {'$error': str(e)}
-        sections[name] = out
-
-    # Keys contributed by more than one plugin — the interesting slice of history
-    contested = {k: sorted(set(v)) for k, v in pm.history.items()
-                 if len(set(v)) > 1}
-
-    # Raw pre-merge YAML per plugin/file. Lossless where the merged snapshot is
-    # not: comments, ordering, $after/$remove directives before they are consumed,
-    # types before mixin flattening. Provenance is free — each file is attributed
-    # by its plugin + path. The inspector searches/diffs these instead of walking
-    # the filesystem, and never has to re-run the merge (it stays a viewer).
-    # `content` = parsed (in-memory, structured search); `text` = raw (comments,
-    # textual search), best-effort.
-    source_files: Dict[str, Any] = {}
-    for name in pm.sorted:
-        p = pm.plugins[name]
-        files: Dict[str, Any] = {}
-        entries = [(p.plugin_dir / 'config.yaml', p.config)]
-        entries += list(zip(p.data_files, p.data))
-        for path, parsed in entries:
-            try:
-                text = path.read_text(encoding='utf-8')
-            except OSError:
-                text = None
-            files[path.name] = {'content': parsed,
-                                'text': mask_yaml_text(text) if text is not None else None}
-        source_files[name] = {'dir': str(p.plugin_dir), 'files': files}
-
-    # Masked as a whole: a secret written in a data root reaches the merged
-    # sections too, not only source_files.
-    return mask_secrets({
-        # Contract version for external consumers (inspector, tooling).
-        # Bump on any structural change to the sections below.
-        # v2: descriptor sections are generic (pages/views + menus/menu_items/…)
-        #     and + source_files (raw pre-merge YAML per plugin/file).
-        'dump_version': 2,
-        'generated': datetime.now().isoformat(timespec='seconds'),
-        'app': {k: pm.config.get(k) for k in ('name', 'version', 'description')},
-        'plugins': [
-            {
-                'name': name,
-                'version': pm.plugins[name].config.get('version'),
-                'depends_on': pm.plugins[name].config.get('depends_on'),
-                'dir': str(pm.plugins[name].plugin_dir),
-                'data_files': [f.name for f in pm.plugins[name].data_files],
-                'sources': [f.name for f in pm.plugins[name].sources],
-            }
-            for name in pm.sorted
-        ],
-        'issues': run_checks(app),
-        'tables': {name: _table_dict(t) for name, t in app.tables.items()},
-        'types': app.get_type_schema(include_builtin=False),
-        **sections,
-        'endpoints': introspect.endpoints(),
-        'catalog': introspect.catalog(app),
-        'contested_keys': contested,
-        'merge_history': dict(sorted(pm.history.items())),
-        'source_files': source_files,
-    })

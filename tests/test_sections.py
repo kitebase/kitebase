@@ -9,7 +9,7 @@ with the core's checks.
 import pytest
 
 from kitebase import sections, vocabulary
-from kitebase.diagnostics import _descriptor_sections, _owned_sections, run_checks
+from kitebase.diagnostics import _descriptor_sections, owned_sections, run_checks
 from kitebase.plugins import PluginsManager
 from kitebase.sections import get_section, register_section
 
@@ -70,7 +70,7 @@ def test_a_root_nobody_owns_is_a_warning_and_is_not_walked():
     assert [(i['severity'], i['path'], i['plugin']) for i in unowned] == \
         [('warning', 'gadgets', 'shop')]
     assert by_code(issues, 'panel-missing') == []
-    assert _owned_sections(pm) == []
+    assert owned_sections(pm) == []
 
 
 def test_an_owned_root_without_descriptor_is_not_walked():
@@ -82,7 +82,7 @@ def test_an_owned_root_without_descriptor_is_not_walked():
 
     assert by_code(issues, 'section-unowned') == []
     assert by_code(issues, 'panel-missing') == []
-    assert _owned_sections(pm) == ['gadgets']
+    assert owned_sections(pm) == ['gadgets']
     assert _descriptor_sections(pm) == []
 
 

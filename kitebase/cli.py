@@ -35,6 +35,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import yaml
 
+from kitebase.dump import dump_app, table_dict
+
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -109,67 +111,6 @@ def dump_page(app: Any, page_id: str, auto: bool = False, raw: bool = False) -> 
 
 # ── dump_table ─────────────────────────────────────────────────────────────────
 
-# Column attributes exposed in the dump (superset of what get_table_schema sends
-# to the client — here we want the full developer view).
-_COL_ATTRS = (
-    'type', 'label', 'help', 'doc',
-    'primary_key', 'autoincrement',
-    'nullable', 'unique', 'index', 'default',
-    'virtual', 'secret', 'editable',
-    'widget',
-)
-
-
-def _column_dict(col: Any) -> Dict[str, Any]:
-    """Serialize a DbColumn to a dict for developer inspection."""
-    d: Dict[str, Any] = {'name': col.name}
-
-    for attr in _COL_ATTRS:
-        if attr in col.attributes:
-            d[attr] = col.attributes[attr]
-        elif attr == 'type' and col.db_type:
-            d['type'] = col.db_type.name
-
-    # Foreign key — show as "Table.field" string instead of resolved objects
-    fk = col.attributes.get('foreign_key')
-    if fk and isinstance(fk, dict) and 'table' in fk:
-        d['foreign_key'] = f"{fk['table'].name}.{fk['id']}"
-
-    return d
-
-
-def _table_dict(table: Any) -> Dict[str, Any]:
-    """Serialize a DbTable to a dict for developer inspection."""
-    # PK fields (same logic as get_table_schema)
-    m2m = table.attributes.get('many_to_many')
-    pk_fields = [
-        col.name for col in table.effective_columns
-        if col.attributes.get('primary_key')
-    ]
-
-    d: Dict[str, Any] = {'pk_fields': pk_fields}
-
-    # Table-level metadata
-    for attr in ('label', 'help', 'doc', 'tags', 'mixins'):
-        val = table.attributes.get(attr)
-        if val:
-            d[attr] = val
-
-    # M2M targets summary
-    if m2m:
-        d['many_to_many'] = {
-            'target1': f"{m2m['target1']['table'].name}.{m2m['target1']['id']} → {m2m['target1']['column']}",
-            'target2': f"{m2m['target2']['table'].name}.{m2m['target2']['id']} → {m2m['target2']['column']}",
-        }
-
-    d['columns'] = [_column_dict(col) for col in table.effective_columns]
-
-    # Plugins that contributed to this table
-    d['defined_in'] = [p.name for p in table.plugins]
-
-    return d
-
-
 def dump_table(app: Any, table_names: Optional[List[str]] = None) -> Tuple[str, str]:
     """
     Generate a YAML snapshot of one or more tables after all plugin merges.
@@ -197,7 +138,7 @@ def dump_table(app: Any, table_names: Optional[List[str]] = None) -> Tuple[str, 
         tables = dict(app.tables)
         label = 'all tables'
 
-    output = {name: _table_dict(table) for name, table in tables.items()}
+    output = {name: table_dict(table) for name, table in tables.items()}
     return _to_yaml(output), label
 
 
@@ -985,7 +926,7 @@ def run_cli(app: Any, args: argparse.Namespace, output_dir: Path = Path('.')) ->
 
     elif args.command == 'check':
         import json
-        from kitebase.diagnostics import run_checks, dump_app
+        from kitebase.diagnostics import run_checks
 
         issues = run_checks(app)
         n_errors = print_issues(issues)

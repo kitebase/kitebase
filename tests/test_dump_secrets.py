@@ -7,7 +7,8 @@ import json
 
 import yaml
 
-from kitebase.diagnostics import dump_app, mask_secrets
+from kitebase.diagnostics import mask_secrets
+from kitebase.dump import dump_app
 
 SMTP_PASSWORD = 'smtp-pw-4f9a'
 API_KEY = 'apikey-7c21'
