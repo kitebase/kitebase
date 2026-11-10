@@ -15,6 +15,7 @@ import sqlalchemy as sa
 from kitebase import secrets
 from kitebase.cli import db_backup, db_copy
 from kitebase.db import DB
+from kitebase.store import Store
 from kitebase.db_copy import media_roots, snapshot_files
 from kitebase.plugins import PluginsManager, check_engine_name
 
@@ -136,7 +137,7 @@ def app(app_dir, metadata):
     target.parent.mkdir(parents=True)
     metadata.create_all(sa.create_engine(f'sqlite:///{target}'))
 
-    resolve = lambda url: DB._resolve_db_url(SimpleNamespace(pm=pm), url)
+    resolve = lambda url: Store._resolve_db_url(SimpleNamespace(pm=pm), url)
     return SimpleNamespace(pm=pm, engine=engine, _resolve_db_url=resolve)
 
 

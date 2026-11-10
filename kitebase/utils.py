@@ -72,9 +72,8 @@ def get_app():
     Returns:
         The current DB application instance
     """
-    # Import here to avoid circular dependency
-    from kitebase.db import Base
-    return Base.__kitebase_app__
+    from kitebase.model_base import BaseApp
+    return BaseApp.__kitebase_app__
 
 
 def table_definition(model_class, db_table=None):
