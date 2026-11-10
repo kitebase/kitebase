@@ -249,7 +249,6 @@ def load(path: Path, monkeypatch) -> App:
     monkeypatch.chdir(path)
     pm = PluginsManager()
     pm.load_config('config.yaml')
-    kitebase.utils.register_standard_handlers(pm)
     pm.load_plugins()
     app = App()
     app.calc_db(pm)

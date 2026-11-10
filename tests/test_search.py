@@ -40,7 +40,6 @@ def schema(tmp_path, monkeypatch, tables, app_config=None):
 
     manager = PluginsManager()
     manager.load_config(str(cfg))
-    kitebase.utils.register_standard_handlers(manager)
     manager.load_plugins()
 
     db = App()

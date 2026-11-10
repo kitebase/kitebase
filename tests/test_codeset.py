@@ -146,7 +146,6 @@ def test_the_generated_model_uses_the_core_type(tmp_path, monkeypatch, fresh_reg
 
     manager = PluginsManager()
     manager.load_config(str(cfg))
-    kitebase.utils.register_standard_handlers(manager)
     manager.load_plugins()
     db = App()
     db.calc_db(manager)

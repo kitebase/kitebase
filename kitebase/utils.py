@@ -1,7 +1,7 @@
 import datetime
 import importlib
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional
 from sqlalchemy import inspection
 
 
@@ -272,14 +272,3 @@ def json_to_model_types(data, table_name):
                 pass
 
     return result
-
-
-def register_standard_handlers(pm) -> None:
-    """
-    Nothing to register: columns merge by name like every other list whose
-    items carry an identity (kitebase.plugins, IDENTITY_KEYS), directives
-    included. Kept while applications still call it at startup.
-
-    Args:
-        pm: PluginsManager instance
-    """

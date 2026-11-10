@@ -46,7 +46,6 @@ def generate(tmp_path, monkeypatch, tables, types=None):
 
     manager = PluginsManager()
     manager.load_config(str(cfg))
-    kitebase.utils.register_standard_handlers(manager)
     manager.load_plugins()
 
     db = App()

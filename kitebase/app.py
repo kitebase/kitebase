@@ -5,7 +5,7 @@ import kitebase.access
 import kitebase.media
 import kitebase.refsets
 from kitebase.endpoints import INHERIT, Dispatcher
-from kitebase.model_base import Base, BaseApp
+from kitebase.model_base import BaseApp
 from kitebase.plugins import PluginsManager
 from kitebase.schema import DbTable, DbType, Schema
 from kitebase.store import Store
@@ -133,10 +133,72 @@ class App:
         """
         self.query_behaviors.append(behavior_class)
 
+    # ── Starting up, in three stages ─────────────────────────────────────
+    #
+    #     app = kitebase.utils.get_app()
+    #     app.declare("config.yaml")     what the plugins declare
+    #     app.generate()                 model.py, when the declarations moved
+    #     app.open(model)                the database
+    #
+    # Each is enough for some use: `check` and the inspector stop after the
+    # first, a server goes through all three.
+
+    def declare(self, config: Any = "config.yaml") -> 'App':
+        """
+        Stage one: the plugins named by `config`, composed, and what they
+        declare: schema, media, their Python code, the dispatcher. No database
+        and no generated model, which is all the introspection commands need.
+
+        Args:
+            config: Path of the application's config.yaml
+
+        Returns:
+            The app itself
+        """
+        plugins = PluginsManager()
+        plugins.load_config(config)
+        plugins.load_plugins()
+        self.calc_db(plugins)
+        return self
+
+    def generate(self, filename: str = "model.py") -> bool:
+        """
+        Stage two: write the models, if the declarations or the generator
+        changed since the file was written.
+
+        Returns:
+            True if the file was written
+        """
+        if not self.plugins.should_regenerate(filename):
+            return False
+        from kitebase.source import Generator
+        Generator(self).generate(filename=filename)
+        return True
+
+    def open(self, model: ModuleType, create_all: bool = True,
+             check_schema: bool = True) -> Any:
+        """
+        Stage three: the database the configuration names (`db_engine`), on
+        the generated models, and the translations.
+
+        Args:
+            model: The module of the generated models
+            create_all: Create missing tables
+            check_schema: Run the startup schema check
+
+        Returns:
+            The engine
+        """
+        engine = self.initialize_db(self.plugins.config["db_engine"], model,
+                                    create_all=create_all, check_schema=check_schema)
+        self.plugins.load_all_locales()
+        return engine
+
     def calc_db(self, plugins: PluginsManager) -> None:
         """
-        Build the application from the plugin definitions: the schema, the
+        Build the application from plugins already loaded: the schema, the
         media, then the Python code of the plugins and the dispatcher over it.
+        `declare()` is this, starting from the path of a config.yaml.
 
         Args:
             plugins: Instance containing all loaded plugins

@@ -54,7 +54,6 @@ def build(tmp_path, monkeypatch, address_column):
 
     manager = PluginsManager()
     manager.load_config(str(cfg))
-    kitebase.utils.register_standard_handlers(manager)
     manager.load_plugins()
 
     db = App()

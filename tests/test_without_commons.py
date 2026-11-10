@@ -63,7 +63,6 @@ APP = textwrap.dedent('''
 
     pm = PluginsManager()
     pm.load_config(str(root / 'config.yaml'))
-    kitebase.utils.register_standard_handlers(pm)
     pm.load_plugins()
 
     app = App()

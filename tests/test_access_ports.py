@@ -145,7 +145,6 @@ def app(tmp_path, monkeypatch):
 
     pm = PluginsManager()
     pm.load_config(str(cfg))
-    kitebase.utils.register_standard_handlers(pm)
     pm.load_plugins()
 
     instance = App()
@@ -587,7 +586,6 @@ def test_the_guard_is_handed_the_app_it_serves(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     pm = PluginsManager()
     pm.load_config(str(cfg))
-    kitebase.utils.register_standard_handlers(pm)
     pm.load_plugins()
     instance = App()
     instance.calc_db(pm)

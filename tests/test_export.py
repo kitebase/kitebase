@@ -68,7 +68,6 @@ def build_app(tmp_path, monkeypatch, app_config=None):
 
     pm = PluginsManager()
     pm.load_config(str(cfg))
-    kitebase.utils.register_standard_handlers(pm)
     pm.load_plugins()
 
     instance = App()

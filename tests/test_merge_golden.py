@@ -52,7 +52,6 @@ def merged_tree(app_dir: Path, monkeypatch) -> dict:
     monkeypatch.chdir(app_dir)
     pm = PluginsManager()
     pm.load_config('config.yaml')
-    kitebase.utils.register_standard_handlers(pm)
     pm.load_plugins()
     return pm.data
 
