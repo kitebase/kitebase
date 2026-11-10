@@ -66,3 +66,19 @@ def test_schema_calculation_leaves_the_declarations_alone(tmp_path, monkeypatch)
 
     assert manager.data == merged
     assert manager.plugins['app'].data == sources
+
+
+def test_a_schema_is_built_without_an_application(tmp_path, monkeypatch):
+    """Types and tables need the plugins and nothing else: no engine, no
+    dispatcher, no plugin code loaded."""
+    from kitebase.schema import Schema
+
+    manager = _manager(tmp_path, monkeypatch)
+    schema = Schema()
+    schema.calc(manager)
+
+    assert schema.tables_list == ['Book', 'Publisher']    # the order of the file
+    assert [c.name for c in schema.tables['Publisher'].columns] == [
+        'id', 'name', 'seat_street', 'seat_city']
+    book = schema.tables['Book']
+    assert next(c for c in book.columns if c.name == 'publisher_id').db_type.name == 'ID'
