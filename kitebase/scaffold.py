@@ -287,7 +287,7 @@ FASTAPI_SERVER_PY = '''"""{{name}} — the FastAPI process.
     uv run server_fastapi.py                   (development)
 
 `app` is at module level, so an ASGI server takes it as it is. The twin of
-`server_flask.py`: same four routes, registered by the same call on the other
+`server_flask.py`: the same routes, registered by the same call on the other
 framework, and answering byte for byte the same. Keeping the pair is what makes
 double support a property that is checked rather than an intention — delete the
 one you do not serve with, and drop its extra from pyproject.toml.
@@ -327,7 +327,7 @@ fastapi_app = FastAPI(
 
 # ── Kitebase — /kitebase/* ─────────────────────────────────────────────────────
 #
-# `register_fastapi` registers four routes and nothing application-wide: no
+# `register_fastapi` registers its routes and nothing application-wide: no
 # CORS, no exception handler, no encoder of its own. An APIRouter would do as
 # a target just as well, the day this process also serves something else.
 
@@ -611,7 +611,7 @@ RUN = {
     "flask": "    uv run server_flask.py      the API on http://localhost:8300",
     "fastapi": "    uv run server_fastapi.py    the API on http://localhost:8300",
     "both": ("    uv run server_flask.py      Flask   — the API on http://localhost:8300\n"
-             "    uv run server_fastapi.py    FastAPI — the same four routes, /docs too"),
+             "    uv run server_fastapi.py    FastAPI — the same routes, /docs too"),
 }
 
 FILES = [

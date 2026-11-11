@@ -102,3 +102,24 @@ def test_the_files_written_are_the_ones_the_commands_name(app):
     for line in RUN["both"].splitlines():
         entry = line.split("uv run ")[1].split()[0]
         assert (target / entry).is_file()
+
+
+def test_a_new_application_checks_clean(app, monkeypatch):
+    """The first `kitebase check` of an application nobody has touched yet says
+    nothing to fix: a warning there would teach to ignore warnings."""
+    import kitebase.utils
+    from kitebase.app import App
+    from kitebase.diagnostics import run_checks
+    from kitebase.plugins import PluginsManager
+
+    target = app()
+    monkeypatch.chdir(target)
+    pm = PluginsManager()
+    pm.load_config(str(target / "config.yaml"))
+    pm.load_plugins()
+    application = App()
+    application.calc_db(pm)
+    monkeypatch.setattr(kitebase.utils, 'get_app', lambda: application)
+
+    issues = run_checks(application)
+    assert [(i['severity'], i['path']) for i in issues if i['severity'] != 'info'] == []
