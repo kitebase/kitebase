@@ -185,8 +185,9 @@ and run in its environment: `uv run kite.py db-sync` is the same thing, spelled
 out. What each generated file is for, and why it is split that way, is in
 [APPLICATION.md](APPLICATION.md).
 
-`db-sync` prints the SQL it ran — one `CREATE TABLE users`, because an
-application is born knowing only who logs into it. Then, at
+`db-sync` prints the SQL it ran: two `CREATE TABLE`, `users` for who logs in, and
+`items`, an example table, there so that the first start has something to show;
+the server fills it with a few rows the first time it runs. Then, at
 <http://localhost:8300/>, the server says what it is and what it hasn't got:
 
 ```json
@@ -240,15 +241,12 @@ and only ever looks at the schema, so a schema about to change wants it down;
 you will start it again in a moment.
 
 Everything an application *does* lives in its plugins. Open
-`plugins/myapp/model.yaml`: it holds a commented-out example and an empty
-`tables: {}`. **Replace the whole file** — that line included, and not by adding
-your tables above it: YAML keeps the last of two keys with the same name without
-complaining, so the table you wrote would lose to the empty one and `db-sync`
-would report nothing to do.
+`plugins/myapp/model.yaml`: it holds `Item`, the example. **Add your table below
+it, inside the same `tables:`**, not under a second `tables:` key: YAML keeps the
+last of two keys with the same name without complaining, so one of the two
+groups of tables would silently disappear.
 
 ```yaml
-tables:
-
   Book:
     name: books
     label: "Book"
@@ -328,11 +326,11 @@ only what differs: the generated page is its base (`PLUGIN_MODEL.md` § 5.7).
 
 A table is reachable by the API the moment it is declared, but nothing puts it in
 front of a person: that is the menu's job, and the generated one only knows about
-users. `plugins/myapp/menu.yaml` ends with a commented example — replace that
-line with:
+users and the example items. `plugins/myapp/menu.yaml` ends with the `items`
+line; add one below it:
 
 ```yaml
-  books: { label: Books, icon: book, parent: masters, order: 20, action: stack_push, panel: book_list }
+  books: { label: Books, icon: book, parent: masters, order: 30, action: stack_push, panel: book_list }
 ```
 
 `panel: book_list` is the id of the page you just asked for, `parent: masters`
@@ -348,6 +346,7 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/
 {"label": "myapp", "id": "main", "items": [
   {"label": "Masters", "icon": "database", "children": [
     {"label": "Users", "panel": "user_list", "action": "stack_push", …},
+    {"label": "Items", "panel": "item_list", "action": "stack_push", …},
     {"label": "Books", "panel": "book_list", "action": "stack_push", …}]}]}
 ```
 
@@ -383,14 +382,15 @@ uv run kitebase dev
 ```
 
 **Open <http://localhost:5174> and log in with `admin` / `admin`.** This is the
-first page of the whole road: the menu, and the list and form of the table you
-declared, drawn from the descriptors the server sends.
+first page of the whole road: the menu, the example items with their rows, and
+the list and form of the table you declared, all drawn from the descriptors the
+server sends.
 
 Those credentials are seeded by a generated application the first time it runs,
-and only while the `users` table is empty — so that there is a way in, not as a
-mechanism: in service the first account is made by hand and the seed does
-nothing. Which also means it is a development password, and until you replace it
-it is the whole security of this application.
+with the example rows, and only while the tables are empty. They are there so
+that there is a way in, not as a mechanism: in service the first account is made
+by hand and the seed does nothing. Which also means it is a development
+password, and until you replace it it is the whole security of this application.
 
 The client is served by vite on a port of its own, but the browser never sees
 two origins: vite proxies `/kitebase/*` to the backend, on the port `config.yaml`
@@ -497,6 +497,24 @@ follows the same list: the components of a plugin left out are not compiled in.
 > Not `users`: a generated application has a `users` plugin of its own, and a
 > plugin name provided by two roots is refused, by name and by both paths.
 
+### Starting with them
+
+An application can also be born with the shared users instead of its own. From
+`apps/`, with the workstation venv active as for `kitebase new myapp`:
+
+```bash
+cd ..                                        # from apps/myapp to apps/
+kitebase new otherapp --commons ../commons
+```
+
+The path names the `kitebase-commons` checkout (or its `plugins/` directory),
+and is recognised by what the application takes from it: a `users` plugin, and
+the plugins it depends on, in the same root. If they are not there, nothing is
+written. The `config.yaml` it writes takes them with `include: [users]`, which
+brings `common` along, and keeps the path relative to the application as it was
+given; the application gets no `users` plugin of its own. The example table, its
+rows and the menu are the same as above.
+
 ### What arrives
 
 Mostly a **vocabulary of types**. The generated application spells a column out:
@@ -532,15 +550,13 @@ stays as it is:
 
 ```
 $ uv run kitebase db-check
-Applicable automatically (3):
-  + configs                                  new table (6 columns)
+Applicable automatically (2):
   + books.isbn                               type VARCHAR(20) -> VARCHAR(32)
   + books                                    new index ix_books_isbn (isbn)
 ```
 
-Three things happened that nobody asked for by hand: the shared plugin brought
-its own table, the type brought its index, and the column was widened to the
-width the vocabulary declares.
+Two things happened that nobody asked for by hand: the type brought its index,
+and the column was widened to the width the vocabulary declares.
 
 `uv run kitebase db-sync` applies them, and the book you may have entered in
 chapter 3 is still there.
