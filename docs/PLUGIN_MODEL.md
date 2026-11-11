@@ -522,7 +522,6 @@ request* against runtime state, not during the merge:
 |-------|---------|
 | `$props.*` | Bind to props passed via `stack.push` (§ 6.4). |
 | `$trigger.*` | Bind to the payload of the event that fired the load (§ 5.5, § 6.4). |
-| `$or` / `$and` | Logical operators in the `db` endpoint's filter DSL — an API-request concept, not plugin YAML. AND is the implicit default (sibling conditions are AND-ed); `$or`/`$and` are needed only to build explicit groups, e.g. `(A OR B) AND (C OR D)`. |
 
 **C. System defaults** — a `default:` (or `onupdate:`) on a *column* whose value
 is a `$` token names a callable registered in the core registry
@@ -952,8 +951,8 @@ types:
 - the query `select` drops it from `*` expansions and **refuses** a query that
   names it (an omitted column would read downstream as an empty value, which is
   the kind of answer that gets mistaken for data);
-- it is not addressable in `filters` or `order_by` either, from the `db`
-  endpoint or the querybuilder — an equality filter on a column that is never
+- it is not addressable in the querybuilder's `filters`, nor in `order_by`
+  (of `query` and of `db`): an equality filter on a column that is never
   returned is a way of guessing what it holds;
 - the auto-generated list and form descriptors skip it.
 

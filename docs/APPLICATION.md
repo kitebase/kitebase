@@ -258,6 +258,37 @@ plugins/myapp/
   *.py             endpoints and behaviour mixins
 ```
 
+An endpoint returns its result, and refuses by raising: the dispatcher turns a
+refusal into the error answer, with its HTTP status, the same under Flask and
+FastAPI.
+
+```python
+from kitebase.endpoints import endpoint
+from kitebase.errors import Invalid, NotFound
+
+@endpoint('loan_close')
+def loan_close(data):
+    if data.get('id') is None:
+        raise Invalid('Select a loan first')                    # 400
+    ...
+    if loan is None:
+        raise NotFound(f"No loan {data['id']}")                 # 404
+    return {'closed': loan.id}
+```
+
+| raise | status | when |
+|---|---|---|
+| `Invalid` | 400 | the request is wrong: a parameter is missing, a value breaks a rule |
+| `AccessDenied` | 403 | a permission is missing (`kitebase.access`) |
+| `NotFound` | 404 | what the request names is not there, or the caller may not see it |
+| `Conflict` | 409 | the request is right, but the state of the data does not allow it now |
+| `Unavailable` | 503 | something the server depends on does not answer |
+
+`data=` carries what a refusal has to say beyond its message (the field errors
+of a form, `data={'errors': {...}}`), and `code=` a more precise status. Any
+other exception is a failure: a 500, with the traceback in the log and in the
+answer. So an endpoint does not wrap its body in `try/except Exception`.
+
 A table gets, with no further declaration, its model, its CRUD through `db`,
 and a generated list and form (`item_list`, `item_form`). The full model is the
 subject of [PLUGIN_MODEL.md](PLUGIN_MODEL.md).
