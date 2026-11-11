@@ -2466,10 +2466,12 @@ position attributes.
 
 1. **Compose** — the merged `menus` / `menu_items` (done by the loader).
 2. **Resolve defaults** — fill `root` / `parent` via the cascade (§ 9.5).
-3. **Auth filter** *(planned)* — recursively drop entries whose `access:` the
-   caller does not satisfy (server-side, non-bypassable).
+3. **Auth filter** — server-side, non-bypassable: an entry that opens a page
+   needs what opening the page asks, one that calls an endpoint needs to be
+   allowed to call it, and the entry's own `access:` can only narrow. A group
+   left without children goes too.
 4. **Build tree** — nest by `parent`, order by `order`.
-5. **Resolve `$ref`** — expand entries reused across roots.
+5. **Resolve `$ref`** — expand the references inside an entry's props.
 
 The client receives a composed, filtered, ordered tree and does not know how it
 was built — the same contract as `get_page`. **Menu is semantic, not visual:**

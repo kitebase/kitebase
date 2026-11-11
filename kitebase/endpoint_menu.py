@@ -5,9 +5,9 @@ The plugin loader composes the flat `menus:` (roots) and `menu_items:` sections
 via deep_merge (multi-plugin). This endpoint turns that flat, layout-agnostic
 data into a rendered tree for one named root:
 
-  get_menu(id) pipeline (docs/pending/menu.md §6):
+  get_menu(id) pipeline (server/docs/PLUGIN_MODEL.md §9.6):
     1. Compose         — already done by the loader (multi-plugin merge)
-    2. Resolve default — root/parent filled via the config cascade (§4)
+    2. Resolve default — root/parent filled via the config cascade (§9.5)
     3. Auth filter    — drop items the user cannot use (`_passes_access`), and
                          the groups left without any of their children
     4. Build tree      — nest items by their effective `parent`, order by `order`
@@ -16,9 +16,8 @@ data into a rendered tree for one named root:
 The client (Chrome sidebar) receives a composed, filtered, ordered tree and does
 not know how it was built, like the `get_page` contract.
 
-Cross-root placement of the *same* item in multiple roots (§7, `menus.<id>.items`
-with `$ref`) is a follow-up: this first slice implements the flat `parent` model
-that the devtest walking skeleton exercises (§9).
+An item is placed in one root, by its `parent`: the same item in several roots
+(`menus.<id>.items` with `$ref`) is not supported.
 """
 from typing import Any, Dict, List, Optional
 
@@ -73,7 +72,7 @@ def _effective_parent(app: Any, item: Dict[str, Any]) -> Optional[str]:
 
 
 def _passes_access(app: Any, item: Dict[str, Any]) -> bool:
-    """Auth filter (§6 step 3): an item that opens a page needs
+    """Auth filter: an item that opens a page needs
     what opening it asks — read on its model, the page's own `access:` — and
     one that calls an endpoint needs to be allowed to call it; the item's own
     `access:` can only narrow. An item with none of these is visible.
@@ -119,7 +118,7 @@ def menu_tree(app: Any, root_id: str, for_user: bool = True) -> Optional[Dict[st
 
     # 4. Build the parent → children map. An item whose effective parent is not a
     #    selected node of this root (missing, self, or belongs elsewhere) attaches
-    #    at top level — a graceful fallback; diagnostics flags the real orphan.
+    #    at top level: a graceful fallback, which `check` does not report.
     children_of: Dict[Optional[str], List[str]] = {}
     for item_id, item in selected.items():
         parent = _effective_parent(app, item)
