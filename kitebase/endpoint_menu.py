@@ -154,6 +154,27 @@ def menu_tree(app: Any, root_id: str, for_user: bool = True) -> Optional[Dict[st
     return root_out
 
 
+def menu_item(app: Any, item_id: str) -> Optional[Dict[str, Any]]:
+    """An item as `get_menu` sends it inside the tree of its root, children
+    included, with every item kept; None when the tree leaves it out (a group
+    with no children, an item that is not there)."""
+    item = (app.plugins.data.get('menu_items') or {}).get(item_id)
+    if not isinstance(item, dict):
+        return None
+    tree = menu_tree(app, _effective_root(app, item), for_user=False)
+
+    def find(nodes: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        for node in nodes:
+            if node.get('id') == item_id:
+                return node
+            found = find(node.get('children') or [])
+            if found is not None:
+                return found
+        return None
+
+    return find(tree['items']) if tree else None
+
+
 @endpoint('get_menu', access=access.AUTHENTICATED)
 def get_menu(data: Dict[str, Any]) -> Dict[str, Any]:
     """

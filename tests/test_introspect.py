@@ -51,6 +51,32 @@ roles:
   shop.desk:
     label: Desk
     grants: [Book.read, Loan.read]
+
+schemas:
+  loan_data:
+    id: Integer
+    note: String
+
+menus:
+  main:
+    label: Main
+
+menu_items:
+  books:
+    root: main
+    label: Books
+  shelf:
+    root: main
+    parent: books
+    label: Shelf
+    panel: book_detail
+  stray:
+    root: nowhere
+    label: Stray
+
+# a root no module of this application reads
+ledger:
+  opening: 100
 """
 
 SHOP_MODEL = """\
@@ -184,6 +210,55 @@ def test_a_page_comes_resolved_and_no_subject_without_a_policy(tmp_path, monkeyp
     assert introspect.node(app, 'pages.book_detail.panels')['resolved'] is None
     with pytest.raises(KeyError):
         introspect.node(app, 'pages.book_detail', 'shop.desk')
+
+
+def test_the_roots_of_the_core_come_as_the_client_receives_them(tmp_path, monkeypatch):
+    app = _app(tmp_path, monkeypatch)
+
+    def resolved(path):
+        return introspect.node(app, path)['resolved']
+
+    book = resolved('tables.Book')
+    assert book['via'] == 'get_server_config' and book['subjects'] == []
+    assert [c['name'] for c in book['value']['columns']] == ['id', 'title', 'code', 'token']
+    code = resolved('types.Code')
+    assert code['value']['base'] == 'String' and code['value']['length'] == 8
+    assert set(resolved('schemas.loan_data')['value']) == {'id', 'note'}
+
+    main = resolved('menus.main')
+    assert main['via'] == 'get_menu'
+    assert [i['id'] for i in main['value']['items']] == ['books']
+    books = resolved('menu_items.books')['value']
+    assert [c['id'] for c in books['children']] == ['shelf']
+    # its root is not a menu: get_menu never sends it
+    assert resolved('menu_items.stray')['value'] is None
+
+
+def test_a_root_says_who_reads_it_and_what_its_nodes_show(tmp_path, monkeypatch):
+    app = _app(tmp_path, monkeypatch)
+    roots = {r['name']: r for r in introspect.roots(app)}
+    assert roots['tables']['owner'] == 'kitebase.sections'
+    assert roots['tables']['resolved'] and not roots['tables']['detail']
+    assert roots['ledger']['owner'] is None
+    assert not roots['ledger']['resolved'] and not roots['ledger']['detail']
+
+
+def test_a_plugin_tells_how_its_root_reaches_the_client(tmp_path, monkeypatch, request):
+    app = _app(tmp_path, monkeypatch)
+    saved = introspect._RESOLVERS.snapshot()
+    request.addfinalizer(lambda: introspect._RESOLVERS.restore(saved))
+
+    def role(app, key, holds):
+        return {'value': {'code': key, 'api_key': 'key-91f3'}}
+
+    introspect.add_resolved('roles', role, via='acl_roles')
+    with pytest.raises(ValueError):                 # a root the core already resolves
+        exec("introspect.add_resolved('pages', lambda app, key, holds: {}, via='x')",
+             {'__name__': 'other.plugin', 'introspect': introspect})
+    resolved = introspect.node(app, 'roles.shop.desk')['resolved']
+    assert resolved['via'] == 'acl_roles' and resolved['value']['code'] == 'shop.desk'
+    assert 'key-91f3' not in json.dumps(resolved)
+    assert {r['name']: r for r in introspect.roots(app)}['roles']['resolved']
 
 
 def test_a_plugin_adds_to_the_nodes_of_its_root(tmp_path, monkeypatch, request):

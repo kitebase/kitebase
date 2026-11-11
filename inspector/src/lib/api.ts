@@ -108,6 +108,12 @@ export interface RootSummary {
 	kind: 'map' | 'list' | 'value';
 	count: number;
 	plugins: string[];
+	/** The module that reads the root; null when no loaded module does. */
+	owner: string | null;
+	/** Its nodes come as the client receives them (introspect.add_resolved). */
+	resolved: boolean;
+	/** Its nodes come with what the owner makes of them (introspect.add_detail). */
+	detail: boolean;
 }
 
 export interface NodeChild {
@@ -142,8 +148,10 @@ export interface NodeInfo {
 	children: NodeChild[];
 	layers: Layer[];
 	layers_of: string;
-	/** A page or a view resolved, and as a subject of the guard receives it. */
+	/** The node as the client receives it, and as a subject of the guard receives it. */
 	resolved: {
+		/** The endpoint that sends it. */
+		via: string;
 		subjects: string[];
 		subject: string | null;
 		refused?: string[];

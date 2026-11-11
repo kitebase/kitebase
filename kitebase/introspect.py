@@ -16,7 +16,10 @@ What leaves here never holds a secret: the files are masked as the dump masks
 them (`diagnostics.mask_yaml_text`, which keeps the lines where they are), and
 the data as a whole goes through `mask_secrets`.
 """
+import contextlib
+import copy
 import inspect
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
@@ -25,9 +28,12 @@ import yaml
 from kitebase import access, vocabulary
 from kitebase import catalog as cat_mod
 from kitebase.diagnostics import mask_secrets, mask_yaml_text, run_checks
+from kitebase.endpoint_menu import menu_item, menu_tree
 from kitebase.endpoints import _ENDPOINTS
+from kitebase.outbound import to_client
 from kitebase.pages import load_page, page_permissions, restrict_page
 from kitebase.registry import Registry, caller
+from kitebase.sections import get_section
 from kitebase.utils import identity_key
 
 
@@ -393,13 +399,24 @@ def _children(app: Any, steps: List[Step], value: Any) -> List[Dict[str, Any]]:
 
 
 def roots(app: Any) -> List[Dict[str, Any]]:
-    """The roots of the merge, with how many entries and who writes them."""
-    return [{
-        'name': name,
-        'kind': _kind(value),
-        'count': _summary(value),
-        'plugins': writers(app, [name]),
-    } for name, value in app.plugins.data.items() if not str(name).startswith('$')]
+    """The roots of the merge, with how many entries, who writes them and who
+    reads them (`owner`, None when no loaded module does), and whether their
+    nodes come resolved or with a detail."""
+    out = []
+    for name, value in app.plugins.data.items():
+        if str(name).startswith('$'):
+            continue
+        section = get_section(name)
+        out.append({
+            'name': name,
+            'kind': _kind(value),
+            'count': _summary(value),
+            'plugins': writers(app, [name]),
+            'owner': section.owner if section is not None else None,
+            'resolved': name in _RESOLVERS,
+            'detail': name in _DETAILS,
+        })
+    return out
 
 
 def node(app: Any, path: str, subject: Optional[str] = None) -> Dict[str, Any]:
@@ -455,45 +472,98 @@ def _detail(app: Any, steps: Sequence[Step]) -> Optional[List[Dict[str, Any]]]:
     return _masked(fn(app, steps[1])) if fn else None
 
 
-# The descriptors the client receives resolved: a page by `get_page`, a view
-# inside the pages that take it
-_RESOLVED = ('pages', 'views')
+# ── As the client receives it ──────────────────────────────────────────────────
+#
+# A node of a root can come with the form the client receives (`resolved`):
+# `fn(app, key, holds)` returns {'value': ...}, and may add 'refused' (the
+# permissions a subject is refused at the door). `via` names the endpoint that
+# sends it. With `subject=True` the node can be seen by a subject of the guard
+# (`access.subjects`: a role, with acl): `fn` runs inside `access.holding`, so
+# what that subject would not get is taken out. The core registers its own
+# roots here; a plugin registers the roots it owns.
+
+@dataclass(frozen=True)
+class Resolver:
+    fn: Callable[[Any, str, Optional[Callable[[str], bool]]], Dict[str, Any]]
+    via: str
+    subject: bool = False
+
+
+_RESOLVERS: Registry[Resolver] = Registry('inspector_resolvers', 'resolved form of')
+
+
+def add_resolved(root: str, fn: Callable[[Any, str, Optional[Callable[[str], bool]]], Dict[str, Any]],
+                 *, via: str, subject: bool = False) -> None:
+    """Register how the nodes `<root>.<key>` reach the client: one per root."""
+    _RESOLVERS.add(root, Resolver(fn, via, subject), owner=caller())
 
 
 def _resolved(app: Any, steps: Sequence[Step], subject: Optional[str]) -> Optional[Dict[str, Any]]:
-    """A page or a view with its `$ref`s resolved, as `load_page` makes it.
-
-    With a subject of the guard (`access.subjects`: a role, for `acl`), what
-    `get_page` would take out for it is taken out (`pages.restrict_page`), and a
-    page says the permissions it would be refused at the door. Without one
-    nothing is taken out: there is no user here to judge.
-    """
-    import copy
-
-    if len(steps) != 2 or steps[0] not in _RESOLVED or not isinstance(steps[1], str):
+    """The node as the client receives it, when its root says how, and, for a
+    `subject` of the guard, as that subject would receive it. Without one
+    nothing is taken out: there is no user here to judge."""
+    if len(steps) != 2 or not isinstance(steps[1], str):
         return None
-    root, ident = steps
-    subjects = access.subjects(app)
+    resolver = _RESOLVERS.get(steps[0])
+    if resolver is None:
+        return None
+    subjects = access.subjects(app) if resolver.subject else {}
     holds = None
-    if subject:
+    if subject and resolver.subject:
         holds = subjects.get(subject)
         if holds is None:
             raise KeyError(subject)
-    out: Dict[str, Any] = {'subjects': list(subjects), 'subject': subject or None}
+    out: Dict[str, Any] = {'via': resolver.via, 'subjects': list(subjects),
+                           'subject': subject if holds is not None else None}
     try:
-        if root == 'pages':
-            obj = load_page(app, ident)
-        else:
-            obj = app.plugins.resolve_refs(copy.deepcopy(app.plugins.data[root][ident]))
+        with access.holding(holds) if holds is not None else contextlib.nullcontext():
+            found = resolver.fn(app, steps[1], holds)
     except ValueError as e:
         return {**out, 'error': str(e)}
-    if holds is not None:
-        if root == 'pages':
-            out['refused'] = [p for p in page_permissions(app, ident) or [] if not holds(p)]
-        with access.holding(holds):
-            restrict_page(app, obj)
-    out['value'] = _masked(_drop_plugin(obj))
+    out.update(found)
+    out['value'] = _masked(_drop_plugin(out.get('value')))
     return out
+
+
+def _page(app: Any, key: str, holds: Optional[Callable[[str], bool]]) -> Dict[str, Any]:
+    page = load_page(app, key)
+    out: Dict[str, Any] = {}
+    if holds is not None:
+        out['refused'] = [p for p in page_permissions(app, key) or [] if not holds(p)]
+        restrict_page(app, page)
+    return {**out, 'value': page}
+
+
+def _view(app: Any, key: str, holds: Optional[Callable[[str], bool]]) -> Dict[str, Any]:
+    view = app.plugins.resolve_refs(copy.deepcopy(app.plugins.data['views'][key]))
+    if holds is not None:
+        restrict_page(app, view)
+    return {'value': view}
+
+
+def _from_config(read: Callable[[Any], Dict[str, Any]], fields: bool = False):
+    """An entry of what `get_server_config` sends, through the gate as it is
+    sent: whole, or field by field for a schema."""
+    def fn(app: Any, key: str, holds: Any) -> Dict[str, Any]:
+        entry = read(app).get(key)
+        if entry is None:
+            return {'value': None}
+        if fields:
+            return {'value': {name: to_client(f) for name, f in entry.items()}}
+        return {'value': to_client(entry)}
+    return fn
+
+
+add_resolved('pages', _page, via='get_page', subject=True)
+add_resolved('views', _view, via='get_page', subject=True)
+add_resolved('tables', _from_config(lambda app: app.get_table_schema()), via='get_server_config')
+add_resolved('types', _from_config(lambda app: app.get_type_schema(include_builtin=False)),
+             via='get_server_config')
+add_resolved('schemas', _from_config(lambda app: app.get_schema_registry(), fields=True),
+             via='get_server_config')
+add_resolved('menus', lambda app, key, holds: {'value': menu_tree(app, key, for_user=False)},
+             via='get_menu')
+add_resolved('menu_items', lambda app, key, holds: {'value': menu_item(app, key)}, via='get_menu')
 
 
 def _drop_plugin(value: Any) -> Any:

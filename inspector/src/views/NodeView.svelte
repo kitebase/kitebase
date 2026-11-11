@@ -7,9 +7,10 @@
 
 	// A node of the merged tree, as it runs and as each plugin writes it: its
 	// children to go down, the lines of every file that writes it beside them.
-	// A page or a view also as the client receives it, resolved, and, through
-	// a subject of the guard (a role, with acl), with what it would not get
-	// taken out. The subject is in the address, so that view is a link too.
+	// A node also as the client receives it, when its root says how (a page, a
+	// table, a menu), and, for a page or a view, through a subject of the guard
+	// (a role, with acl), with what it would not get taken out. The subject is
+	// in the address, so that view is a link too.
 
 	let { path, subject }: { path: string; subject?: string } = $props();
 
@@ -97,8 +98,12 @@
 					{#if r.refused?.length}
 						<p class="small refused">It does not open for {r.subject}: refused {r.refused.join(', ')}. Below, what it would receive if it did.</p>
 					{/if}
-					<p class="small muted">The <code>$ref</code>s resolved{#if r.subject}, and what {r.subject} cannot use taken out, as <code>get_page</code> does{/if}.</p>
-					<pre class="value">{JSON.stringify(r.value, null, 2)}</pre>
+					<p class="small muted">As <code>{r.via}</code> sends it{#if r.subject}, with what {r.subject} cannot use taken out{/if}.</p>
+					{#if r.value == null}
+						<p class="small muted">It does not reach the client: <code>{r.via}</code> leaves it out.</p>
+					{:else}
+						<pre class="value">{JSON.stringify(r.value, null, 2)}</pre>
+					{/if}
 				{/if}
 			{/if}
 		</div>
