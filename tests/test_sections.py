@@ -60,7 +60,8 @@ def test_a_dollar_key_is_not_a_root():
         register_section('$plugin')
 
 
-def test_a_root_nobody_owns_is_a_warning_and_is_not_walked():
+def test_a_root_nobody_owns_is_said_and_is_not_walked():
+    """A plugin the application does not load: a choice, told as an info."""
     pm = PluginsManager()
     pm.merge_dicts({'gadgets': {'g': {'action': 'stack_push', 'panel': 'nowhere'}}},
                    'shop')
@@ -68,9 +69,21 @@ def test_a_root_nobody_owns_is_a_warning_and_is_not_walked():
 
     unowned = by_code(issues, 'section-unowned')
     assert [(i['severity'], i['path'], i['plugin']) for i in unowned] == \
-        [('warning', 'gadgets', 'shop')]
+        [('info', 'gadgets', 'shop')]
+    assert 'not load' in unowned[0]['message']
     assert by_code(issues, 'panel-missing') == []
     assert owned_sections(pm) == []
+
+
+def test_a_root_named_like_an_owned_one_is_a_typo():
+    register_from('acme.reader', 'gadgets')
+    pm = PluginsManager()
+    pm.merge_dicts({'gadgets': {}, 'gadegts': {'g': {}}}, 'shop')
+    issues = run_checks(FakeApp(pm))
+
+    unowned = by_code(issues, 'section-unowned')
+    assert [(i['severity'], i['path']) for i in unowned] == [('warning', 'gadegts')]
+    assert "did you mean 'gadgets'?" in unowned[0]['message']
 
 
 def test_an_owned_root_without_descriptor_is_not_walked():

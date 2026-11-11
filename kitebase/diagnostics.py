@@ -19,11 +19,12 @@ Issue format (shared with PluginsManager.add_issue):
   {severity: 'error'|'warning'|'info', code, path, message, plugin}
 """
 
+import difflib
 import re
 from typing import Any, Dict, List, Optional, Set
 
 from kitebase import access, help_texts, media, settings
-from kitebase.sections import get_section
+from kitebase.sections import get_section, sections
 
 # Only plain identifiers ('title') and dotted fields ('Publisher.name') are
 # checkable against the schema; anything else (SQL expressions, aliases,
@@ -43,18 +44,28 @@ def _descriptor_sections(pm: Any) -> List[str]:
 
 
 def _check_sections(app: Any, issues: List[Dict[str, Any]]) -> None:
-    """A root nobody owns is read by nobody: a typo, or the plugin that reads it
-    is not loaded. The owned ones bring their own checks."""
+    """A root nobody owns is read by nobody. Named like an owned root, it is
+    most likely a typo: a warning, with the name it resembles. Otherwise it
+    usually belongs to a plugin the application does not load, which is a
+    choice the application made (a plugin declaring permissions for acl, in an
+    application without acl): said as an info, not questioned. The owned ones
+    bring their own checks."""
     pm = app.plugins
+    owned = [section.name for section in sections()]
     for root in pm.data:
         if root.startswith('$') or get_section(root) is not None:
             continue
-        declared_by = sorted(set(pm.history.get(root, [])))
-        issues.append(make_issue(
-            'warning', 'section-unowned', root,
-            f"no loaded plugin owns '{root}': load the plugin that reads it, "
-            f"or remove the declaration",
-            ', '.join(declared_by) or None))
+        declared_by = ', '.join(sorted(set(pm.history.get(root, [])))) or None
+        near = difflib.get_close_matches(root, owned, n=1, cutoff=0.8)
+        if near:
+            issues.append(make_issue(
+                'warning', 'section-unowned', root,
+                f"no plugin reads '{root}': did you mean '{near[0]}'?", declared_by))
+        else:
+            issues.append(make_issue(
+                'info', 'section-unowned', root,
+                f"no loaded plugin reads '{root}': a plugin this application does "
+                f"not load, or a root nobody reads", declared_by))
     for root in owned_sections(pm):
         check = get_section(root).check
         if check is not None:
