@@ -1,6 +1,7 @@
 import kitebase
 from kitebase import access
 from kitebase.endpoints import endpoint
+from kitebase.errors import Invalid, NotFound
 
 
 def ok():
@@ -41,15 +42,14 @@ def book_stats(data):
     """
     book_id = data.get('id')
     if not book_id or (isinstance(book_id, int) and book_id < 0):
-        return {'status': 'error', 'message': 'Save the book first — it has no key yet',
-                'code': 400}
+        raise Invalid('Save the book first — it has no key yet')
 
     app = kitebase.utils.get_app()
     with app.get_session() as session:
         access.guard_session(session)
         book = session.get(app.model.Book, book_id)
         if book is None:
-            return {'status': 'error', 'message': f'No book {book_id}', 'code': 404}
+            raise NotFound(f'No book {book_id}')
 
         loans = session.query(app.model.Loan).filter_by(book_id=book_id).count()
         out = session.query(app.model.Loan).filter_by(book_id=book_id, returned_at=None).count()

@@ -13,6 +13,7 @@ from datetime import datetime
 import kitebase
 from kitebase import access
 from kitebase.endpoints import FileResult, endpoint
+from kitebase.errors import Invalid, NotFound
 from kitebase.flow import on_write
 
 OPEN_LIMIT = 3
@@ -61,7 +62,7 @@ def loan_print_ticket(data):
     """The list's command: the ticket again, for a print that did not come out."""
     access.check_table('Loan', 'read')
     if data.get('id') is None:
-        return {'status': 'error', 'message': 'Select a loan first', 'code': 400}
+        raise Invalid('Select a loan first')
     return {'status': 'success',
             'data': {'action': 'download', 'op': 'loan_ticket', 'params': {'id': data['id']}}}
 
@@ -74,7 +75,7 @@ def loan_ticket(data):
         access.guard_session(session)
         loan = session.get(app.model.Loan, data.get('id'))
         if loan is None:
-            return {'status': 'error', 'message': f"No loan {data.get('id')}", 'code': 404}
+            raise NotFound(f"No loan {data.get('id')}")
         book = session.get(app.model.Book, loan.book_id)
         member = session.get(app.model.LibraryUser, loan.library_user_id)
         rows = [('Loan', f'#{loan.id}'), ('Member', member.name), ('Book', book.title),

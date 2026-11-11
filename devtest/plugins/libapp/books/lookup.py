@@ -18,6 +18,7 @@ import urllib.request
 
 import kitebase
 from kitebase import access
+from kitebase import errors
 from kitebase.endpoints import endpoint
 
 TIMEOUT = 10
@@ -45,13 +46,13 @@ def _fetch(table: str, data: dict, column: str, what: str, find) -> dict:
     access.check_table(table, 'update')
     record_id = data.get('id')
     if record_id is None:
-        return {'status': 'error', 'code': 400, 'message': 'Select a row first'}
+        raise errors.Invalid('Select a row first')
     app = kitebase.utils.get_app()
     with app.get_session() as session:
         access.guard_session(session)
         record = session.get(getattr(app.model, table), record_id)
         if record is None:
-            return {'status': 'error', 'code': 404, 'message': f'No {table.lower()} {record_id}'}
+            raise errors.NotFound(f'No {table.lower()} {record_id}')
         if getattr(record, column) and not data.get('replace'):
             return {'status': 'success', 'data': {
                 'action': 'endpoint', 'op': data['$op'],
@@ -60,13 +61,12 @@ def _fetch(table: str, data: dict, column: str, what: str, find) -> dict:
         try:
             text, source = find(record)
         except NotFound:
-            return {'status': 'error', 'code': 404, 'message': f'No {what.lower()} found'}
+            raise errors.NotFound(f'No {what.lower()} found') from None
         except LookupError as e:
-            return {'status': 'error', 'code': 400, 'message': str(e)}
+            raise errors.Invalid(str(e)) from None
         except (urllib.error.URLError, TimeoutError, OSError) as e:
             reason = getattr(e, 'reason', None) or e
-            return {'status': 'error', 'code': 502,
-                    'message': f'The source did not answer: {reason}'}
+            raise errors.Unavailable(f'The source did not answer: {reason}', code=502) from None
         setattr(record, column, text)
         session.commit()
     return {'status': 'success', 'data': {

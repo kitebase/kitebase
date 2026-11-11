@@ -1,6 +1,7 @@
 import random
 from datetime import date, timedelta
 from kitebase.endpoints import endpoint
+from kitebase.errors import Invalid
 from kitebase.memoryset import MemorySet
 
 
@@ -122,4 +123,4 @@ def payment_wizard(data: dict) -> dict:
             'code':      200,
         }
 
-    return {'status': 'error', 'message': f'Unknown step: {step!r}', 'code': 400}
+    raise Invalid(f'Unknown step: {step!r}')
