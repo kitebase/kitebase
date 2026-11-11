@@ -7,11 +7,13 @@ a file, and that the three things which must agree — the servers written, the
 extras installed and the commands printed — cannot drift apart, because they
 are chosen once.
 """
+import os
 from pathlib import Path
 
 import pytest
+import yaml
 
-from kitebase.scaffold import EXTRAS, RUN, SERVERS, create_app
+from kitebase.scaffold import EXTRAS, RUN, SERVERS, commons_root, create_app
 
 
 @pytest.fixture
@@ -104,15 +106,29 @@ def test_the_files_written_are_the_ones_the_commands_name(app):
         assert (target / entry).is_file()
 
 
-def test_a_new_application_checks_clean(app, monkeypatch):
-    """The first `kitebase check` of an application nobody has touched yet says
-    nothing to fix: a warning there would teach to ignore warnings."""
+@pytest.fixture(autouse=True)
+def plugins_unloaded(tmp_path):
+    """The plugins of an application loaded here leave nothing behind: their
+    modules and their endpoints go, so the next application may reuse a name."""
+    import sys
+    from kitebase.endpoints import _ENDPOINTS
+    saved, modules = _ENDPOINTS.snapshot(), set(sys.modules)
+    yield
+    _ENDPOINTS.restore(saved)
+    for name in set(sys.modules) - modules:
+        module = sys.modules[name]
+        places = [getattr(module, '__file__', None) or '', *getattr(module, '__path__', [])]
+        if any(str(p).startswith((str(tmp_path), str(COMMONS))) for p in places):
+            del sys.modules[name]
+
+
+def _checked(target, monkeypatch):
+    """The issues `kitebase check` finds in the application at `target`, and the app."""
     import kitebase.utils
     from kitebase.app import App
     from kitebase.diagnostics import run_checks
     from kitebase.plugins import PluginsManager
 
-    target = app()
     monkeypatch.chdir(target)
     pm = PluginsManager()
     pm.load_config(str(target / "config.yaml"))
@@ -120,6 +136,94 @@ def test_a_new_application_checks_clean(app, monkeypatch):
     application = App()
     application.calc_db(pm)
     monkeypatch.setattr(kitebase.utils, 'get_app', lambda: application)
-
     issues = run_checks(application)
-    assert [(i['severity'], i['path']) for i in issues if i['severity'] != 'info'] == []
+    return [(i['severity'], i['path']) for i in issues if i['severity'] != 'info'], application
+
+
+def test_a_new_application_checks_clean(app, monkeypatch):
+    """The first `kitebase check` of an application nobody has touched yet says
+    nothing to fix: a warning there would teach to ignore warnings."""
+    issues, application = _checked(app(), monkeypatch)
+    assert issues == []
+    assert {'User', 'Item'} <= set(application.tables)
+
+
+def test_there_is_something_to_see_at_the_first_start(app):
+    target = app()
+    assert yaml.safe_load((target / "config.yaml").read_text())['title'] == 'Sample'
+    menu = yaml.safe_load((target / "plugins/sample/menu.yaml").read_text())
+    assert menu['menu_items']['items']['panel'] == 'item_list'
+    assert "raise NotFound" in (target / "plugins/sample/endpoints.py").read_text()
+    assert "def seed(" in (target / "kite.py").read_text()
+    assert "kite.seed(" in (target / "server_flask.py").read_text()
+
+
+# ── With the shared plugins ──────────────────────────────────────────────────
+
+COMMONS = Path(__file__).resolve().parent.parent.parent / 'commons'
+needs_commons = pytest.mark.skipif(
+    not (COMMONS / 'plugins' / 'users').is_dir(),
+    reason=f'needs the kitebase-commons checkout at {COMMONS}')
+
+
+@needs_commons
+@pytest.mark.parametrize("given", [COMMONS, COMMONS / 'plugins'])
+def test_the_commons_are_recognised_from_the_checkout_or_its_root(given):
+    assert commons_root(given) == COMMONS / 'plugins'
+
+
+def test_a_directory_without_users_is_not_the_commons(tmp_path):
+    with pytest.raises(ValueError, match='kitebase-commons checkout'):
+        commons_root(tmp_path)
+
+
+def test_users_without_what_it_depends_on_is_refused(tmp_path):
+    users = tmp_path / 'plugins' / 'users'
+    users.mkdir(parents=True)
+    (users / 'config.yaml').write_text('name: users\ndepends_on: [common]\n')
+    with pytest.raises(ValueError, match='common'):
+        commons_root(tmp_path)
+
+
+def _fake_commons(where):
+    for name, deps in (('users', ['common']), ('common', [])):
+        plugin = where / 'plugins' / name
+        plugin.mkdir(parents=True)
+        (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': name, 'depends_on': deps}))
+
+
+def test_a_relative_path_stays_relative_from_the_application(tmp_path, monkeypatch):
+    _fake_commons(tmp_path / 'commons')
+    monkeypatch.chdir(tmp_path)
+    target = create_app("sample", Path("apps") / "sample", commons=Path("commons"))
+    root = yaml.safe_load((target / "config.yaml").read_text())['plugins'][0]
+    assert root['path'] == '../../commons/plugins'
+
+
+def test_an_absolute_path_stays_absolute(tmp_path):
+    _fake_commons(tmp_path / 'commons')
+    target = create_app("sample", tmp_path / "sample", commons=tmp_path / "commons")
+    root = yaml.safe_load((target / "config.yaml").read_text())['plugins'][0]
+    assert root['path'] == str(tmp_path / 'commons' / 'plugins')
+
+
+def test_nothing_is_written_when_the_commons_are_not_there(tmp_path):
+    with pytest.raises(ValueError):
+        create_app("sample", tmp_path / "sample", commons=tmp_path / "nowhere")
+    assert not (tmp_path / "sample").exists()
+
+
+@needs_commons
+def test_with_the_commons_users_are_theirs_and_it_checks_clean(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    target = create_app("sample", Path("apps") / "sample",
+                        commons=Path(os.path.relpath(COMMONS, tmp_path)))
+    assert not (target / "plugins" / "users").exists()
+    config = yaml.safe_load((target / "config.yaml").read_text())
+    root = config['plugins'][0]
+    assert root['include'] == ['users']
+    assert (target / root['path']).resolve() == COMMONS / 'plugins'
+
+    issues, application = _checked(target, monkeypatch)
+    assert issues == []
+    assert {'User', 'Item'} <= set(application.tables)

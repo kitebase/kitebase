@@ -743,6 +743,9 @@ examples:
                    help='Write into a directory that already holds files')
     p.add_argument('--server', choices=('flask', 'fastapi', 'both'), default='both',
                    help='Which server to write (default: both — they answer the same)')
+    p.add_argument('--commons', metavar='PATH',
+                   help='A kitebase-commons checkout: its `users` plugin instead of '
+                        'one of the application\'s own')
 
     # ── dev ────────────────────────────────────────────────────────────────────
     # Also without an application loaded: it starts processes, it does not
@@ -1022,7 +1025,8 @@ def main(argv: Optional[List[str]] = None) -> None:
         try:
             target = create_app(args.name,
                                 Path(args.directory) if args.directory else None,
-                                force=args.force, server=args.server)
+                                force=args.force, server=args.server,
+                                commons=Path(args.commons) if args.commons else None)
         except (ValueError, FileExistsError) as e:
             print(f'Error: {e}', file=sys.stderr)
             sys.exit(1)

@@ -27,9 +27,12 @@ No Svelte is written: an application does not own a client. It contributes UI
 through the `.svelte` files of its plugins, and the generic shell builds it.
 """
 
+import os
 import sys
 from pathlib import Path
 from typing import Optional
+
+import yaml
 
 # ── Templates ─────────────────────────────────────────────────────────────────
 #
@@ -44,23 +47,16 @@ CONFIG_YAML = '''# {{name}} — app-instance kitebase.
 name: {{name}}
 version: 0.1.0
 description: ""
+# The name the client shows, in its top bar and its tab.
+title: {{title}}
 
 # Plugin roots, in order. Each entry is a directory holding plugin directories,
 # named as a path or as `{ path, include }` — which takes part of a root and
 # leaves the rest of it inert.
 #
 # A path is relative to this file, or absolute: this application is free to live
-# anywhere, and says where the roots it uses are. Add the shared plugins by
-# replacing the line below, e.g.
-#
-#   plugins:
-#     - path: /path/to/kitebase-commons/plugins
-#       include: [common, partners]
-#     - plugins
-#
-# Not `users`: this application has one of its own, and a name provided by two
-# roots is refused.
-plugins: [plugins]
+# anywhere, and says where the roots it uses are.
+{{plugins}}
 
 db_engine: "sqlite:///data/{{name}}.sqlite"
 
@@ -188,6 +184,28 @@ def seed_admin(app, model, username: str = "admin", password: str = "admin") -> 
         print(f"Created the initial user: {username}/{password}")
 
 
+def seed_items(app, model) -> None:
+    """A few rows of the example table, if it is empty: something to look at."""
+    if not hasattr(model, "Item"):
+        return
+    with app.get_session() as session:
+        if session.query(model.Item).first():
+            return
+        session.add_all([
+            model.Item(code="A-100", description="Notebook, squared", quantity=40),
+            model.Item(code="A-200", description="Pencil, HB", quantity=120),
+            model.Item(code="B-100", description="Stapler", quantity=6),
+            model.Item(code="B-200", description="Paper clips, box", quantity=0),
+        ])
+        session.commit()
+
+
+def seed(app, model) -> None:
+    """Development data: a way in, and the example rows. Nothing once filled."""
+    seed_admin(app, model)
+    seed_items(app, model)
+
+
 if __name__ == "__main__":
     from kitebase.cli import DB_COMMANDS, make_parser, run_cli
 
@@ -236,7 +254,7 @@ srv.setup_logging(os.environ.get("LOG_LEVEL", "INFO"), os.environ.get("LOG_FILE"
 # ── Application ──────────────────────────────────────────────────────────────
 
 kitebase_app, plugins, model = kite.setup_db()
-kite.seed_admin(kitebase_app, model)
+kite.seed(kitebase_app, model)
 
 APP_DIR = kite.APP_DIR
 
@@ -313,7 +331,7 @@ srv.setup_logging(os.environ.get("LOG_LEVEL", "INFO"), os.environ.get("LOG_FILE"
 # ── Application ──────────────────────────────────────────────────────────────
 
 kitebase_app, plugins, model = kite.setup_db()
-kite.seed_admin(kitebase_app, model)
+kite.seed(kitebase_app, model)
 
 # From the environment in production: changing it invalidates the tokens
 # already issued, which is exactly what a key is for.
@@ -419,42 +437,40 @@ depends_on: [users]
 
 PLUGIN_MODEL = '''# The schema of {{name}}, declared once and only here.
 #
-# A table generates its SQLAlchemy model, its CRUD endpoints and — with no
-# further declaration — an auto-generated list and form. Uncomment to start:
-#
-# tables:
-#
-#   Item:
-#     name: items
-#     label: "Item"
-#     columns:
-#       - name: id
-#         type: Integer
-#         primary_key: true
-#         autoincrement: true
-#
-#       - name: code
-#         type: String
-#         length: 20
-#         unique: true
-#         nullable: false
-#         label: "Code"
-#         searchable: true
-#
-#       - name: description
-#         type: String
-#         length: 200
-#         label: "Description"
-#
-#       - name: quantity
-#         type: Integer
-#         default: 0
-#         label: "Quantity"
+# A table generates its SQLAlchemy model, its CRUD endpoints and, with no
+# further declaration, a list and a form. `Item` is an example, there to see
+# something at the first start: change it, or replace it with your own tables.
+# One `tables:` key per file: YAML keeps the last of two and says nothing.
 
-# Replace this line — do not add a second `tables:` above it. YAML keeps the
-# last of two keys with the same name and says nothing, so the tables you wrote
-# would be silently discarded in favour of this empty one.
-tables: {}
+tables:
+
+  Item:
+    name: items
+    label: "Item"
+    columns:
+      - name: id
+        type: Integer
+        primary_key: true
+        autoincrement: true
+
+      - name: code
+        type: String
+        length: 20
+        unique: true
+        nullable: false
+        label: "Code"
+        searchable: true
+
+      - name: description
+        type: String
+        length: 200
+        label: "Description"
+
+      - name: quantity
+        type: Integer
+        default: 0
+        nullable: false
+        label: "Quantity"
 '''
 
 USERS_CONFIG = '''# The seed: enough of a user table to have a way in.
@@ -526,6 +542,38 @@ tables:
         label: "Administrator"
 '''
 
+PLUGIN_ENDPOINTS = '''"""The domain operations of {{name}}: what the client, a command or another
+module calls by name, through the dispatcher.
+
+An endpoint returns its result, and refuses by raising (kitebase.errors):
+`Invalid` (400), `NotFound` (404), `Conflict` (409), `Unavailable` (503). The
+dispatcher turns a refusal into the error answer, with its HTTP status; any
+other exception is a failure, a 500 with its traceback in the log.
+"""
+import kitebase.utils
+from kitebase import access
+from kitebase.endpoints import endpoint
+from kitebase.errors import Invalid, NotFound
+
+
+@endpoint('item_restock', access=access.PER_TABLE)
+def item_restock(data):
+    """Add `quantity` to the stock of the item `id`."""
+    access.check_table('Item', 'update')
+    quantity = data.get('quantity')
+    if not isinstance(quantity, int) or quantity <= 0:
+        raise Invalid('A positive quantity is needed')
+
+    app = kitebase.utils.get_app()
+    with app.get_session() as session:
+        item = session.get(app.models['Item'], data.get('id'))
+        if item is None:
+            raise NotFound(f"No item {data.get('id')}")
+        item.quantity += quantity
+        session.commit()
+        return {'id': item.id, 'quantity': item.quantity}
+'''
+
 README = '''# {{name}}
 
 Application built on [kitebase](https://github.com/kitebase/kitebase).
@@ -586,8 +634,8 @@ menu_items:
 
   users: { label: Users, icon: users, parent: masters, order: 10, action: stack_push, panel: user_list }
 
-  # Your own tables go here, e.g.:
-  # items: { label: Items, icon: package, parent: masters, order: 20, action: stack_push, panel: item_list }
+  # The example table; your own tables go beside it.
+  items: { label: Items, icon: package, parent: masters, order: 20, action: stack_push, panel: item_list }
 '''
 
 # What each choice writes, and what it costs in dependencies. `both` is the
@@ -623,10 +671,37 @@ FILES = [
     ("plugins/{{name}}/config.yaml", PLUGIN_CONFIG),
     ("plugins/{{name}}/model.yaml", PLUGIN_MODEL),
     ("plugins/{{name}}/menu.yaml", PLUGIN_MENU),
-    ("plugins/users/config.yaml", USERS_CONFIG),
-    ("plugins/users/model.yaml", USERS_MODEL),
+    ("plugins/{{name}}/endpoints.py", PLUGIN_ENDPOINTS),
     ("data/.gitkeep", ""),
 ]
+
+# The users of an application on its own: a plugin of its own. With the
+# shared plugins they are theirs, and a name provided by two roots is refused.
+OWN_USERS = [
+    ("plugins/users/config.yaml", USERS_CONFIG),
+    ("plugins/users/model.yaml", USERS_MODEL),
+]
+
+OWN_PLUGINS = """#
+# Add the shared plugins (kitebase-commons) by replacing the line below,
+# e.g. with `kitebase new <name> --commons <path>`, or by hand:
+#
+#   plugins:
+#     - path: /path/to/kitebase-commons/plugins
+#       include: [users]
+#     - plugins
+#
+# Not `users` from there while this application has one of its own: a name
+# provided by two roots is refused.
+plugins: [plugins]"""
+
+COMMONS_PLUGINS = """#
+# The shared plugins (kitebase-commons): `users` is theirs, and brings what it
+# depends on. Add more of them to `include`.
+plugins:
+  - path: {root}
+    include: [users]
+  - plugins"""
 
 
 # ── Writing it out ────────────────────────────────────────────────────────────
@@ -675,8 +750,38 @@ def _dependencies(server: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+def commons_root(path: Path) -> Path:
+    """The plugin root of a kitebase-commons checkout: `path` itself when it
+    holds `users`, or its `plugins/` when that does.
+
+    Recognised by what the new application takes from it: a `users` plugin,
+    and the plugins it depends on, in the same root.
+
+    Raises:
+        ValueError: naming what was looked for, and where
+    """
+    path = Path(path).expanduser().resolve()
+    for root in (path / "plugins", path):
+        config = root / "users" / "config.yaml"
+        if not config.is_file():
+            continue
+        declared = yaml.safe_load(config.read_text(encoding="utf-8")) or {}
+        if declared.get("name") != "users":
+            raise ValueError(f"{config} is not the `users` plugin: it is named "
+                             f"'{declared.get('name')}'")
+        missing = [dep for dep in declared.get("depends_on") or []
+                   if not (root / dep / "config.yaml").is_file()]
+        if missing:
+            raise ValueError(f"{root}: `users` depends on {', '.join(missing)}, "
+                             f"which is not there")
+        return root
+    raise ValueError(f"{path}: no plugins/users/config.yaml there (nor "
+                     f"users/config.yaml): is it a kitebase-commons checkout?")
+
+
 def create_app(name: str, directory: Optional[Path] = None,
-               force: bool = False, server: str = "both") -> Path:
+               force: bool = False, server: str = "both",
+               commons: Optional[Path] = None) -> Path:
     """
     Write a new application.
 
@@ -685,12 +790,17 @@ def create_app(name: str, directory: Optional[Path] = None,
         directory: where to write it (default: ./<name>)
         force:     write into a directory that already has files
         server:    which server to write — 'flask', 'fastapi' or 'both'
+        commons:   a kitebase-commons checkout, or its plugin root: its `users`
+                   takes the place of the application's own. A relative path
+                   stays relative in config.yaml, from the application, unless
+                   the two share nothing but the root of the disk.
 
     Returns:
         The directory written to
 
     Raises:
-        ValueError: if the name is not usable as a Python package name
+        ValueError: if the name is not usable as a Python package name, or
+            `commons` is not a kitebase-commons checkout
         FileExistsError: if the directory holds files and force is False
     """
     if not name.isidentifier() or name != name.lower():
@@ -710,14 +820,29 @@ def create_app(name: str, directory: Optional[Path] = None,
         raise ValueError(f"'{server}' is not a server: "
                          f"{', '.join(SERVERS)}")
 
+    files = FILES + SERVERS[server]
+    if commons is None:
+        plugins = OWN_PLUGINS
+        files = files + OWN_USERS
+    else:
+        root = commons_root(Path(commons))
+        # As it was given; relative only while the two share more than the
+        # root of the disk, where it would read as a ladder of `../`
+        shared = Path(os.path.commonpath([root, target]))
+        relative = not Path(commons).expanduser().is_absolute() and shared != Path(shared.anchor)
+        written = Path(os.path.relpath(root, target)) if relative else root
+        plugins = COMMONS_PLUGINS.format(root=written.as_posix())
+
     substitutions = {
         "{{name}}": name,
         "{{sources}}": _kitebase_source(),
         "{{dependencies}}": _dependencies(server),
         "{{run}}": RUN[server],
+        "{{plugins}}": plugins,
+        "{{title}}": name.replace("_", " ").capitalize(),
     }
 
-    for relative, template in FILES + SERVERS[server]:
+    for relative, template in files:
         path = target / _fill(relative, substitutions)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(_fill(template, substitutions), encoding="utf-8")
