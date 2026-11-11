@@ -16,6 +16,7 @@ from openpyxl import load_workbook
 
 import kitebase.endpoint_export as export
 import kitebase.utils
+from kitebase.errors import Invalid
 from kitebase.app import App
 from kitebase.model_base import Base
 from kitebase.endpoints import FileResult
@@ -250,10 +251,9 @@ def test_the_file_is_named_after_the_table_and_the_day(app):
 # ── Refusals ──────────────────────────────────────────────────────────────────
 
 def test_an_unknown_format_is_refused(app):
-    result = export.export_file(situation([1], fmt='ods'))
-
-    assert result['status'] == 'error'
-    assert result['code'] == 400
+    with pytest.raises(Invalid) as refused:
+        export.export_file(situation([1], fmt='ods'))
+    assert refused.value.code == 400
 
 
 @pytest.mark.parametrize('broken', [
@@ -262,18 +262,16 @@ def test_an_unknown_format_is_refused(app):
     {'query': {}},
 ])
 def test_an_incomplete_situation_is_refused(app, broken):
-    result = export.export_file({**situation([1]), **broken})
-
-    assert result['status'] == 'error'
+    with pytest.raises(Invalid):
+        export.export_file({**situation([1]), **broken})
 
 
 def test_the_ceiling_is_the_installations(tmp_path, monkeypatch):
     build_app(tmp_path, monkeypatch, {'dataview': {'export_max_rows': 2}})
 
-    result = export.export_file(situation([1, 2, 3]))
-
-    assert result['status'] == 'error'
-    assert '3' in result['message'] and '2' in result['message']
+    with pytest.raises(Invalid) as refused:
+        export.export_file(situation([1, 2, 3]))
+    assert '3' in refused.value.message and '2' in refused.value.message
 
 
 # ── The menu ──────────────────────────────────────────────────────────────────
@@ -295,4 +293,5 @@ def test_the_menu_carries_the_situation_back_with_the_format(app):
 def test_the_menu_refuses_what_the_file_would(tmp_path, monkeypatch):
     build_app(tmp_path, monkeypatch, {'dataview': {'export_max_rows': 1}})
 
-    assert export.export_menu(situation([1, 2]))['status'] == 'error'
+    with pytest.raises(Invalid):
+        export.export_menu(situation([1, 2]))

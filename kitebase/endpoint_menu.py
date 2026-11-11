@@ -25,6 +25,7 @@ from typing import Any, Dict, List, Optional
 import kitebase.utils
 from kitebase import access
 from kitebase.endpoints import endpoint
+from kitebase.errors import NotFound
 from kitebase.outbound import to_client
 from kitebase.pages import can_open
 
@@ -174,5 +175,5 @@ def get_menu(data: Dict[str, Any]) -> Dict[str, Any]:
     root_id = data.get('id') or _app_default_root(app)
     tree = menu_tree(app, root_id)
     if tree is None:
-        return {'status': 'error', 'message': f"Menu not found: '{root_id}'", 'code': 404}
+        raise NotFound(f"Menu not found: '{root_id}'")
     return {'status': 'success', 'data': tree, 'code': 200}

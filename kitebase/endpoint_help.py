@@ -12,6 +12,7 @@ from typing import Any, Dict
 import kitebase.utils
 from kitebase import access
 from kitebase.endpoints import FileResult, endpoint
+from kitebase.errors import Invalid, NotFound
 from kitebase.help import (focus_anchor, guide_root, help_manual, help_merge, render_html,
                            render_manual, target_page)
 from kitebase.i18n import _, current_locale
@@ -47,7 +48,7 @@ def get_help(data: Dict[str, Any]) -> Dict[str, Any]:
     if isinstance(ref, str) and ref:
         root = target_page(app, ref)
         if root is None:
-            return {'status': 'error', 'message': f"Nothing answers to '{ref}'", 'code': 404}
+            raise NotFound(f"Nothing answers to '{ref}'")
         focus = focus or ref
     elif stack == []:
         return _head(app)
@@ -55,10 +56,10 @@ def get_help(data: Dict[str, Any]) -> Dict[str, Any]:
         root = guide_root(app, stack)
         focus = focus or stack[-1]
     else:
-        return {'status': 'error', 'message': 'stack or ref is required', 'code': 400}
+        raise Invalid('stack or ref is required')
 
     if load_page(app, root) is None:
-        return {'status': 'error', 'message': f"Page not found: '{root}'", 'code': 404}
+        raise NotFound(f"Page not found: '{root}'")
     for permission in page_permissions(app, root) or []:
         access.check(permission)
 

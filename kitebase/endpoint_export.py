@@ -36,6 +36,7 @@ from kitebase.apptime import today
 from kitebase.endpoint_db import pk_field
 from kitebase import access
 from kitebase.endpoints import FileResult, endpoint
+from kitebase.errors import Invalid
 from kitebase.i18n import _, _f
 from kitebase.querybuilder import DynamicQueryBuilder, JSONEncoder
 
@@ -69,17 +70,17 @@ def _situation(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     query = data.get('query')
     if not isinstance(query, dict) or not query.get('table'):
-        raise ValueError(_('Query not defined'))
+        raise Invalid(_('Query not defined'))
     ids = data.get('ids')
     if not isinstance(ids, list) or not ids:
-        raise ValueError(_('No rows to export'))
+        raise Invalid(_('No rows to export'))
     columns = data.get('columns')
     if not isinstance(columns, list) or not columns or not all(
             isinstance(c, dict) and isinstance(c.get('field'), str) for c in columns):
-        raise ValueError(_('No columns to export'))
+        raise Invalid(_('No columns to export'))
     limit = max_rows()
     if len(ids) > limit:
-        raise ValueError(_f('{n} rows are more than the {limit} an export can hold: '
+        raise Invalid(_f('{n} rows are more than the {limit} an export can hold: '
                             'narrow the selection', n=len(ids), limit=limit))
     return {'query': query, 'ids': ids, 'columns': columns}
 
@@ -87,11 +88,7 @@ def _situation(data: Dict[str, Any]) -> Dict[str, Any]:
 @endpoint('export', access=access.AUTHENTICATED)
 def export_menu(data: Dict[str, Any]) -> Dict[str, Any]:
     """The menu of formats, each entry carrying the situation back."""
-    try:
-        situation = _situation(data)
-    except ValueError as e:
-        return {'status': 'error', 'message': str(e), 'code': 400}
-
+    situation = _situation(data)
     n = len(situation['ids'])
     return {
         'status': 'success',
@@ -114,12 +111,8 @@ def export_file(data: Dict[str, Any]) -> Any:
     """The file, through the download route."""
     fmt = data.get('format')
     if fmt not in FORMATS:
-        return {'status': 'error', 'code': 400,
-                'message': _f("Unknown export format: '{format}'", format=fmt)}
-    try:
-        situation = _situation(data)
-    except ValueError as e:
-        return {'status': 'error', 'message': str(e), 'code': 400}
+        raise Invalid(_f("Unknown export format: '{format}'", format=fmt))
+    situation = _situation(data)
 
     query, ids, columns = situation['query'], situation['ids'], situation['columns']
     table = query['table']

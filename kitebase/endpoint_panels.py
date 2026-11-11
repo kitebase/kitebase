@@ -2,6 +2,7 @@ from typing import Any, Dict
 import kitebase.utils
 from kitebase import access, settings
 from kitebase.endpoints import endpoint
+from kitebase.errors import Invalid, NotFound
 from kitebase.outbound import to_client
 from kitebase.pages import load_page, page_permissions, restrict_page
 # Note: context is set globally via kitebase.context.replace() before each call —
@@ -37,16 +38,12 @@ def get_page(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     page_id = data.get('id')
     if not page_id:
-        return {'status': 'error', 'message': 'id is required', 'code': 400}
+        raise Invalid('id is required')
 
     app = kitebase.utils.get_app()
-    try:
-        page = load_page(app, page_id)
-    except ValueError as e:
-        return {'status': 'error', 'message': str(e), 'code': 400}
-
+    page = load_page(app, page_id)
     if page is None:
-        return {'status': 'error', 'message': f"Page not found: '{page_id}'", 'code': 404}
+        raise NotFound(f"Page not found: '{page_id}'")
 
     for permission in page_permissions(app, page_id) or []:
         access.check(permission)

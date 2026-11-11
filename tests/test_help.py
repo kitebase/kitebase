@@ -6,6 +6,7 @@ import yaml
 
 import kitebase.utils
 from kitebase import access
+from kitebase.errors import Invalid, NotFound
 from kitebase.app import App
 from kitebase.endpoint_help import get_help
 from kitebase.help import (BESIDE, INSIDE, SELECTING, guide_root, help_manual, help_merge,
@@ -657,12 +658,15 @@ def test_get_help_follows_a_link_of_a_guide(served):
     assert result['data']['root'] == 'doc_list'
     assert result['data']['anchor'] == 'field-Doc.title'
     assert get_help({'ref': 'report_list'})['data']['root'] == 'report_list'
-    assert get_help({'ref': 'Doc.nothing'})['code'] == 404
+    with pytest.raises(NotFound):
+        get_help({'ref': 'Doc.nothing'})
 
 
 def test_get_help_asks_for_something_to_tell(served):
-    assert get_help({})['code'] == 400
-    assert get_help({'stack': 'doc_list'})['code'] == 400
+    with pytest.raises(Invalid):
+        get_help({})
+    with pytest.raises(Invalid):
+        get_help({'stack': 'doc_list'})
 
 
 def test_get_help_asks_what_opening_the_page_asks(served):

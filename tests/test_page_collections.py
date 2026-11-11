@@ -340,10 +340,8 @@ def test_get_page_reports_a_broken_node_instead_of_serving_it(monkeypatch):
     app = make_app({'book_form': form_page(authors_node(fk=None))})
     monkeypatch.setattr(kitebase.utils, 'get_app', lambda: app)
 
-    result = get_page({'id': 'book_form'})
-
-    assert result['code'] == 400
-    assert 'fk' in result['message']
+    with pytest.raises(ValueError, match='fk'):
+        get_page({'id': 'book_form'})
 
 
 # ── List column titles from the model's labels ──────────────────────────────

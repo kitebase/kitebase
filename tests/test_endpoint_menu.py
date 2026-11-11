@@ -8,6 +8,7 @@ group convergence, orphan fallback, and internal-key stripping.
 import pytest
 
 import kitebase.utils
+from kitebase.errors import NotFound
 from kitebase.plugins import PluginsManager
 from kitebase.endpoint_menu import get_menu
 
@@ -112,8 +113,8 @@ def test_other_root(patch_app):
 
 def test_unknown_root_404(patch_app):
     patch_app(make_app(DEVTEST_MENUS, DEVTEST_ITEMS))
-    res = get_menu({'id': 'nope'})
-    assert res['status'] == 'error' and res['code'] == 404
+    with pytest.raises(NotFound):
+        get_menu({'id': 'nope'})
 
 
 def test_group_convergence_across_plugins(patch_app):
