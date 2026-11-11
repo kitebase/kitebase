@@ -23,6 +23,9 @@ import kitebase.context
 import kitebase.server_utils as srv
 from kitebase.access import AccessDenied
 from kitebase.endpoints import Dispatcher, FileResult, _ENDPOINTS
+from kitebase.errors import Conflict, NotFound, Unavailable
+from kitebase.media import MediaError
+from kitebase.transforms import ValidationError
 
 SECRET = 'test-secret-key-long-enough-for-hs256'
 
@@ -57,6 +60,12 @@ def kitebase_app():
     register('refuse', lambda params: {
         'status': 'error', 'code': 400, 'message': 'not changed',
         'data': {'errors': {'confirm': 'the two do not match'}}})
+    # The same refusals, raised: the dispatcher builds the envelope.
+    register('raised_invalid', _raising(ValidationError({'confirm': 'the two do not match'})))
+    register('raised_missing', _raising(NotFound('no such row')))
+    register('raised_conflict', _raising(Conflict('already closed')))
+    register('raised_unavailable', _raising(Unavailable('the mail server does not answer')))
+    register('raised_too_large', _raising(MediaError('File larger than 10 bytes', 413)))
     # A file, with a name that is not ASCII: the header has to carry it.
     register('a_file', lambda params: FileResult(b'a;b\r\n1;2\r\n', 'città.csv', 'text/csv'))
     register('a_pdf', lambda params: FileResult(b'%PDF-1.7', 'invoice.pdf',
@@ -77,6 +86,12 @@ def _raise(params):
 
 def _deny(params):
     raise AccessDenied('Book.delete')
+
+
+def _raising(exc):
+    def run(params):
+        raise exc
+    return run
 
 
 @pytest.fixture
@@ -149,6 +164,11 @@ def test_an_invalid_token_is_refused(flask_client):
     ('boom', 500),       # an endpoint that raised
     ('no_code', 400),    # a refusal that names no status
     ('refuse', 400),
+    ('raised_invalid', 400),
+    ('raised_missing', 404),
+    ('raised_conflict', 409),
+    ('raised_unavailable', 503),
+    ('raised_too_large', 413),
 ])
 def test_the_dispatcher_answers_with_the_status_of_the_operation(
         flask_client, fastapi_client, operation, status):
@@ -454,6 +474,36 @@ def test_both_frameworks_carry_the_field_errors_of_a_refusal(flask_client, fasta
     assert flask_res.get_json()['data'] == expected
     assert fastapi_res.json()['data'] == expected
     assert flask_res.status_code == fastapi_res.status_code
+
+
+@pytest.mark.parametrize('operation', [
+    'raised_invalid', 'raised_missing', 'raised_conflict', 'raised_unavailable',
+    'raised_too_large', 'denied'])
+def test_a_raised_refusal_reaches_both_servers_alike(flask_client, fastapi_client, operation):
+    """The envelope is built below the adapters: the two bodies are the same,
+    and a refusal carries no traceback."""
+    def body(res):
+        found = dict(res.get_json() if hasattr(res, 'get_json') else res.json())
+        found.pop('request_id')
+        return found
+
+    flask_body = body(flask_client.post(f'/kitebase/endpoint/{operation}', json={},
+                                        headers=bearer()))
+    fastapi_body = body(fastapi_client.post(f'/kitebase/endpoint/{operation}', json={},
+                                            headers=bearer()))
+
+    assert flask_body == fastapi_body
+    assert 'traceback' not in flask_body
+    assert flask_body['error_type'] in {'ValidationError', 'NotFound', 'Conflict',
+                                        'Unavailable', 'MediaError', 'AccessDenied'}
+
+
+def test_a_raised_validation_error_answers_by_field(flask_client, fastapi_client):
+    for res in (flask_client.post('/kitebase/endpoint/raised_invalid', json={}, headers=bearer()),
+                fastapi_client.post('/kitebase/endpoint/raised_invalid', json={}, headers=bearer())):
+        body = res.get_json() if hasattr(res, 'get_json') else res.json()
+        assert body['message'] == 'Some values are not valid'
+        assert body['data'] == {'errors': {'confirm': 'the two do not match'}}
 
 
 def test_fastapi_keys_of_mixed_type_do_not_raise(fastapi_client):
