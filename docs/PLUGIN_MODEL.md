@@ -271,9 +271,9 @@ Two consequences follow, and they are the backbone of the whole system:
 
 - **Sections are open-ended.** Adding a new kind of descriptor — the `menus`
   section, a future `chrome` or `quickbar` — requires **no change to the merge
-  engine**. You declare the section in a plugin and write the consumer that
-  reads it. The diagnostics validator and dumper likewise walk every non-DB
-  section uniformly, with no hardcoded list of names.
+  engine**. The module that reads a section registers itself as its owner, and
+  writes the consumer that reads it. The diagnostics validator and dumper walk
+  the registered sections, with no hardcoded list of names.
 - **Each root has its own rules.** A section decides how its lists are keyed
   (identity key, § 2.2), whether it registers a custom merge handler, and how
   its resolved tree is interpreted by its consumer. `tables` are keyed by column
@@ -301,6 +301,25 @@ The framework's generic tooling makes exactly **one** distinction: DB/type
 sections (`types`, `tables`, `schemas`) feed model generation, everything else
 is a **descriptor** consumed by the UI. Beyond that split, all sections are
 treated the same.
+
+**Every section has an owner**, the module that reads it, which says so when it
+is imported:
+
+```python
+from kitebase.sections import register_section
+
+register_section('roles')                                  # read, nothing more
+register_section('settings', check=check_catalog,          # its own rules in `check`
+                 vocabulary=Path(__file__).with_name('vocabulary') / 'settings.yaml')
+register_section('pages', descriptor=True)                 # walked as descriptors
+```
+
+`check=` brings the rules on the section's content into `kitebase check`;
+`vocabulary=` is the file its keys are read against, which belongs to the owner.
+Two modules owning the same section are refused. A section no loaded plugin owns
+is read by nobody: `kitebase check` says so as an info, since it is usually the
+section of a plugin the application does not load, and as a warning with a
+"did you mean" when its name resembles an owned one.
 
 ---
 
