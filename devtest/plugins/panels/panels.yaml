@@ -328,7 +328,6 @@ pages:
                 - name: tags
                 - filler:
                 - name: description
-                  widget: textarea
       policy:
         button_style: label
 

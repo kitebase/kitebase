@@ -146,8 +146,9 @@ tables:
         foreign_key:
           target: Publisher.id
 
+      # Markdown: written as rich text in the form (the editor widget)
       - name: description
-        type: Text
+        type: Markdown
         nullable: true
 
 
