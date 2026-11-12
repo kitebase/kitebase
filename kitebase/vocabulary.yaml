@@ -24,7 +24,7 @@ pages.*.content.layout[].columns[].fields[].choices[]: [label, value]
 pages.*.content.layout[].columns[].fields[].foreign_key: [field, target]
 pages.*.content.layout[].columns[].fields[].lookup: [filters]
 pages.*.content.layout[].columns[].fields[].lookup.filters: '*'
-pages.*.content.layout[].fields[]: [choices_endpoint, label, name, placeholders, required, type, widget]
+pages.*.content.layout[].fields[]: [choices_endpoint, label, name, placeholders, readonly, required, type, widget]
 pages.*.content.layout[].fields[].placeholders[]: [label, name]
 pages.*.content.layout[].pages[]: [count, id, label, layout]
 pages.*.content.layout[].pages[].layout[]: [columns, defaults, domain, fk, form, id, label, model, prefill, sequence, type, view]
@@ -94,7 +94,7 @@ views.*.layout[].columns[]: [fields]
 views.*.layout[].columns[].fields[]: [choices, filler, label, name, readonly, required, type, widget, widget_props, width]
 views.*.layout[].columns[].fields[].choices[]: [label, value]
 views.*.layout[].columns[].fields[].widget_props: '*'
-views.*.layout[].fields[]: [choices, choices_endpoint, default, help, label, name, required, type, widget]
+views.*.layout[].fields[]: [choices, choices_endpoint, default, help, label, name, readonly, required, type, widget]
 views.*.layout[].fields[].choices[]: [label, value]
 views.*.layout[].pages[]: [label, layout]
 views.*.layout[].pages[].layout[]: [border, children, columns, label, style, text, type]
@@ -110,9 +110,10 @@ views.*.navigator.commands[]: [endpoint, help, icon, id, key, label, params, row
 views.*.navigator.commands[].params: '*'
 views.*.policy: [button_style, editable, selection]
 views.*.props: '*'
-views.*.source: [autofocus, data, filters, group_by, id, joins, model, order_by, save_endpoint]
+views.*.source: [autofocus, data, endpoint, filters, group_by, id, joins, model, order_by, pass, save_endpoint]
 views.*.source.data: '*'
 views.*.source.filters: [conditions]
 views.*.source.filters.conditions[]: '*'
 views.*.source.joins[]: '*'
 views.*.source.joins[].*: ['on', type]
+views.*.source.pass: '*'
