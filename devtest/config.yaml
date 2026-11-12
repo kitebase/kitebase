@@ -15,7 +15,7 @@ author: "Claudio Driussi"
 # What devtest adds to them is in its own plugins (devtypes, libapp/library).
 plugins:
   - path: ../../commons/plugins
-    include: [common, users, acl, settings, tags, tables]
+    include: [common, users, acl, settings, tags, tables, smtp]
   - plugins
   - plugins/libapp
 
@@ -48,6 +48,7 @@ media:
     books:   { type: fs, path: media/books }                         # yyyymm
     records: { type: fs, path: media/records, allocate: by_record }
     cache:   { type: fs, path: media/cache }
+    mail:    { type: fs, path: media/mail }                          # attachments, dry runs
   # Where the variants are made, on the first request: it can be emptied.
   cache: cache
   # Sizes a view names (`variant: thumb`), never free in a URL.

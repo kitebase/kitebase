@@ -1,10 +1,16 @@
-# secrets/smtp.yaml: an example of a kind a plugin owns (docs: email.md, not
-# implemented yet). One file per kind, one top-level key per name; what an
-# entry holds is checked by the plugin that reads it with
-# kitebase.secrets.get('smtp', 'relay').
+# secrets/smtp.yaml: the mail accounts of the smtp plugin (kitebase.secrets),
+# one top-level key per account, plus the switches of a development
+# installation. Copy it into secrets/ with the rest of this folder.
+#
+# Devtest sends nothing: $dry_run writes each message to a file, which the log
+# row names (MailLog.eml) and a mail client opens. Take it away, give a real
+# account, and $redirect_to sends everything to one address of yours.
+$dry_run: true
+# $redirect_to: me@example.com
+
 relay:
   host: smtp.example.com
-  port: 587
-  security: starttls
+  port: 587                 # 587 STARTTLS, 465 SSL; `security:` to force
   user: noreply@example.com
   password: CHANGE-ME
+  from: "Devtest <noreply@example.com>"

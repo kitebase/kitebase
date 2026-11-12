@@ -11,7 +11,7 @@ pages.*.content.columns[]: [field, formatter, title, tone, width]
 pages.*.content.columns[].tone: [ranges, values]
 pages.*.content.columns[].tone.values: '*'
 pages.*.content.fields[]: [help, label, name, type, widget]
-pages.*.content.layout[]: [children, columns, id, label, pages, type]
+pages.*.content.layout[]: [children, columns, fields, id, label, pages, type]
 pages.*.content.layout[].children[]: [id, layout, type]
 pages.*.content.layout[].children[].layout[]: [count, endpoint, help, icon, label, opens, pass, type]
 pages.*.content.layout[].children[].layout[].opens: [fk, id, model, page, type, view]
@@ -24,6 +24,8 @@ pages.*.content.layout[].columns[].fields[].choices[]: [label, value]
 pages.*.content.layout[].columns[].fields[].foreign_key: [field, target]
 pages.*.content.layout[].columns[].fields[].lookup: [filters]
 pages.*.content.layout[].columns[].fields[].lookup.filters: '*'
+pages.*.content.layout[].fields[]: [choices_endpoint, label, name, placeholders, required, type, widget]
+pages.*.content.layout[].fields[].placeholders[]: [label, name]
 pages.*.content.layout[].pages[]: [count, id, label, layout]
 pages.*.content.layout[].pages[].layout[]: [columns, defaults, domain, fk, form, id, label, model, prefill, sequence, type, view]
 pages.*.content.layout[].pages[].layout[].columns[]: [fields, id]
@@ -79,6 +81,7 @@ views.*: [actions, allow_views, card, columns, component, data_schema, doc, fiel
 views.*.actions: [row, toolbar]
 views.*.actions.row[]: [action, confirm, id, op, panel, params, pass]
 views.*.actions.row[].params: '*'
+views.*.actions.toolbar[]: [id, label]
 views.*.card: [details, image, ribbon, subtitle, title]
 views.*.columns[]: [align, field, formatter, title, tone, variant, visible, width]
 views.*.columns[].tone: [ranges, values]
@@ -90,7 +93,7 @@ views.*.layout[].columns[]: [fields]
 views.*.layout[].columns[].fields[]: [choices, filler, label, name, readonly, required, type, widget, widget_props, width]
 views.*.layout[].columns[].fields[].choices[]: [label, value]
 views.*.layout[].columns[].fields[].widget_props: '*'
-views.*.layout[].fields[]: [choices, default, help, label, name, required, type, widget]
+views.*.layout[].fields[]: [choices, choices_endpoint, default, help, label, name, required, type, widget]
 views.*.layout[].fields[].choices[]: [label, value]
 views.*.layout[].pages[]: [label, layout]
 views.*.layout[].pages[].layout[]: [border, children, columns, label, style, text, type]
@@ -104,9 +107,9 @@ views.*.layout[].pages[].layout[].columns[].fields[]: [filler, label, name, type
 views.*.navigator: [commands, form_id, hide, mode]
 views.*.navigator.commands[]: [endpoint, help, icon, id, key, label, params, rows, scope, toolbar]
 views.*.navigator.commands[].params: '*'
-views.*.policy: [editable, selection]
+views.*.policy: [button_style, editable, selection]
 views.*.props: '*'
-views.*.source: [autofocus, data, filters, group_by, id, joins, model, order_by]
+views.*.source: [autofocus, data, filters, group_by, id, joins, model, order_by, save_endpoint]
 views.*.source.data: '*'
 views.*.source.filters: [conditions]
 views.*.source.filters.conditions[]: '*'

@@ -16,6 +16,54 @@ pages:
     content:
       type: cards
       allow_views: [cards, table]
+      # An email to the member under the cursor (the smtp plugin): the form
+      # opens with the member's address and offers the member's fields.
+      navigator:
+        commands:
+          - id: write_email
+            label: Write an email
+            help: Opens an email to the selected member, from one of your accounts.
+            scope: row
+            endpoint: smtp_compose
+            params: { page: member_compose }
+
+  # The compose form of the smtp plugin, as a member's email wants it: no
+  # copies and no receipt, and the member's fields as placeholders. The
+  # content refers to the plugin's view and replaces its layout.
+  member_compose:
+    title: Email to a member
+    access: smtp.send
+    content:
+      $ref: views.smtp_compose_form
+      layout:
+        - id: addresses
+          type: section
+          fields:
+            - name: account
+              label: From
+              widget: combobox
+              choices_endpoint: smtp_my_accounts
+              required: true
+            - name: to
+              label: To
+            - name: subject
+              label: Subject
+              required: true
+        - id: text
+          type: section
+          fields:
+            - name: body
+              label: Text
+              type: Markdown
+              widget: markdown
+              placeholders:
+                - { name: name, label: Name }
+                - { name: membership_number, label: Membership number }
+                - { name: membership_expires, label: Membership expires }
+                - { name: a_city, label: City }
+            - name: attachments
+              label: Attachments
+              widget: smtp.attachments
 
   libraryuser_form:
     title: Member

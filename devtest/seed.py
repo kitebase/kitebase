@@ -68,7 +68,8 @@ def seed_users(session, model, rng=None) -> int:
     added = 0
     if 'admin' not in have:
         session.add(model.User(name='Admin User', email='admin@example.com',
-                               username='admin', password='admin', is_admin=True))
+                               username='admin', password='admin', is_admin=True,
+                               mail_accounts=['relay']))
         added += 1
     for username, name, roles in STAFF:
         if username not in have:
