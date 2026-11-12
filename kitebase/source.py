@@ -723,7 +723,7 @@ class Generator:
         self._generate_source()
 
         path = self.db.plugins.resolve_path(filename) if self.db.plugins else Path(filename)
-        with open(path, 'w') as f:
+        with open(path, 'w', encoding='utf-8') as f:
             f.write(self.source)
 
     def _process_tables(self) -> None:

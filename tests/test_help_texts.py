@@ -48,9 +48,9 @@ def write_plugin(root: Path, name: str, files, depends=()):
     plugin = root / 'plugins' / name
     plugin.mkdir(parents=True)
     (plugin / 'config.yaml').write_text(yaml.safe_dump(
-        {'name': name, 'version': '0.0.1', 'depends_on': list(depends)}))
+        {'name': name, 'version': '0.0.1', 'depends_on': list(depends)}), encoding='utf-8')
     for filename, data in files.items():
-        (plugin / filename).write_text(yaml.safe_dump(data))
+        (plugin / filename).write_text(yaml.safe_dump(data), encoding='utf-8')
     return plugin
 
 
@@ -70,7 +70,7 @@ def load(path: Path, monkeypatch) -> App:
 def bench(tmp_path, monkeypatch):
     base = write_plugin(tmp_path, 'base', {'model.yaml': BASE_MODEL, 'pages.yaml': BASE_PAGES})
     extra = write_plugin(tmp_path, 'extra', {'model.yaml': APP_MODEL}, depends=['base'])
-    (tmp_path / 'config.yaml').write_text(yaml.safe_dump({'name': 'bench', 'plugins': ['plugins']}))
+    (tmp_path / 'config.yaml').write_text(yaml.safe_dump({'name': 'bench', 'plugins': ['plugins']}), encoding='utf-8')
 
     def reload():
         return load(tmp_path, monkeypatch)
@@ -86,15 +86,15 @@ def translate(plugin: Path, key: str, text: str, lang='it'):
     data = read_file(path)
     data.setdefault(key, {'en': ''})[lang] = text
     path.parent.mkdir(exist_ok=True)
-    path.write_text(yaml.safe_dump(data, allow_unicode=True))
+    path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding='utf-8')
 
 
 def rewrite_english(plugin: Path, column: str, text: str):
-    model = yaml.safe_load((plugin / 'model.yaml').read_text())
+    model = yaml.safe_load((plugin / 'model.yaml').read_text(encoding='utf-8'))
     for c in model['tables']['Doc']['columns']:
         if c['name'] == column:
             c['help'] = text
-    (plugin / 'model.yaml').write_text(yaml.safe_dump(model))
+    (plugin / 'model.yaml').write_text(yaml.safe_dump(model), encoding='utf-8')
 
 
 # ── Keys ────────────────────────────────────────────────────────────────────
@@ -193,7 +193,7 @@ def test_a_multiline_english_is_written_as_a_block(bench):
     reload, base, _ = bench
     rewrite_english(base, 'title', 'One line.\nAnother line.')
     sync_help(reload(), 'it')
-    assert 'en: |-\n    One line.\n    Another line.' in (base / 'help' / 'it.yaml').read_text()
+    assert 'en: |-\n    One line.\n    Another line.' in (base / 'help' / 'it.yaml').read_text(encoding='utf-8')
 
 
 # ── What the user reads ─────────────────────────────────────────────────────
@@ -254,10 +254,10 @@ def test_a_later_plugin_may_translate_the_text_of_an_earlier_one(bench):
 def test_the_long_text_in_the_language_or_in_english(bench):
     reload, base, _ = bench
     (base / 'help' / 'en').mkdir(parents=True)
-    (base / 'help' / 'en' / 'doc_list.md').write_text('Read me.\n')
+    (base / 'help' / 'en' / 'doc_list.md').write_text('Read me.\n', encoding='utf-8')
     assert 'Read me.' in guide(reload)
     (base / 'help' / 'it').mkdir()
-    (base / 'help' / 'it' / 'doc_list.md').write_text('Leggimi.\n')
+    (base / 'help' / 'it' / 'doc_list.md').write_text('Leggimi.\n', encoding='utf-8')
     page = guide(reload)
     assert 'Leggimi.' in page and 'Read me.' not in page
     assert 'Read me.' in guide(reload, 'en')
@@ -267,7 +267,7 @@ def test_a_page_on_the_web_opens_in_a_new_tab(bench):
     reload, base, _ = bench
     (base / 'help' / 'en').mkdir(parents=True)
     (base / 'help' / 'en' / 'doc_list.md').write_text(
-        'See [the site](https://example.com) or [write](mailto:a@example.com).\n')
+        'See [the site](https://example.com) or [write](mailto:a@example.com).\n', encoding='utf-8')
     page = guide(reload, 'en')
     assert '<a href="https://example.com" target="_blank" rel="noopener noreferrer">' in page
     assert '<a href="mailto:a@example.com">' in page
@@ -293,9 +293,9 @@ def test_check_tells_what_to_review_and_what_is_left_over(bench):
     rewrite_english(base, 'title', 'Changed.')
     sync_help(reload())
     rewrite_english(base, 'code', 'Changed too.')
-    model = yaml.safe_load((base / 'model.yaml').read_text())
+    model = yaml.safe_load((base / 'model.yaml').read_text(encoding='utf-8'))
     model['tables']['Doc']['columns'].append({'name': 'extra', 'type': 'String', 'help': 'New.'})
-    (base / 'model.yaml').write_text(yaml.safe_dump(model))
+    (base / 'model.yaml').write_text(yaml.safe_dump(model), encoding='utf-8')
     found = {code: [i for i in diagnose(reload()) if i['code'] == code]
              for code in ('help-stale', 'help-orphan', 'help-unsynced', 'help-untranslated')}
     assert [i['path'] for i in found['help-stale']] == ['base/help/it.yaml: tables.Doc.columns.title']
@@ -308,7 +308,7 @@ def test_check_tells_what_to_review_and_what_is_left_over(bench):
 def test_a_file_that_is_not_a_mapping_is_an_error(bench):
     reload, base, _ = bench
     (base / 'help').mkdir()
-    (base / 'help' / 'it.yaml').write_text('- just a list\n')
+    (base / 'help' / 'it.yaml').write_text('- just a list\n', encoding='utf-8')
     assert [i['code'] for i in diagnose(reload())] == ['help-file']
 
 

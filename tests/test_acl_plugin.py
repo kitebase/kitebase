@@ -100,17 +100,17 @@ def app(tmp_path, monkeypatch):
     plugin = tmp_path / 'plugins' / 'library'
     plugin.mkdir(parents=True)
     (plugin / 'config.yaml').write_text(yaml.safe_dump(
-        {'name': 'library', 'version': '0.0.1', 'depends_on': ['acl']}))
-    (plugin / 'model.yaml').write_text(yaml.safe_dump({'tables': TABLES}))
-    (plugin / 'acl.yaml').write_text(yaml.safe_dump(ACL))
-    (plugin / 'pages.yaml').write_text(yaml.safe_dump({'pages': PAGES}))
+        {'name': 'library', 'version': '0.0.1', 'depends_on': ['acl']}), encoding='utf-8')
+    (plugin / 'model.yaml').write_text(yaml.safe_dump({'tables': TABLES}), encoding='utf-8')
+    (plugin / 'acl.yaml').write_text(yaml.safe_dump(ACL), encoding='utf-8')
+    (plugin / 'pages.yaml').write_text(yaml.safe_dump({'pages': PAGES}), encoding='utf-8')
 
     cfg = tmp_path / 'config.yaml'
     cfg.write_text(yaml.safe_dump({
         'name': 'library',
         'plugins': [{'path': str(COMMONS), 'include': ['acl']}, 'plugins'],
         'acl': {'endpoints': {'library.renew': 'library.renew'}},
-    }))
+    }), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
 
     # Registries a plugin module fills once per process: put back what the

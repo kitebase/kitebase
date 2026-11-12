@@ -21,7 +21,7 @@ from kitebase.plugins import PluginsManager, _core_timestamp
 def model_file(tmp_path, age: float):
     """A generated model whose mtime is `age` seconds newer than the core."""
     path = tmp_path / 'model.py'
-    path.write_text('# generated\n')
+    path.write_text('# generated\n', encoding='utf-8')
     stamp = _core_timestamp() + age
     os.utime(path, (stamp, stamp))
     return str(path)
@@ -55,7 +55,7 @@ def an_app(tmp_path, age: float):
     """An application whose config.yaml is `age` seconds newer than the core."""
     (tmp_path / 'plugins').mkdir()
     config = tmp_path / 'config.yaml'
-    config.write_text(yaml.safe_dump({'name': 'a', 'plugins': ['plugins']}))
+    config.write_text(yaml.safe_dump({'name': 'a', 'plugins': ['plugins']}), encoding='utf-8')
     stamp = _core_timestamp() + age
     os.utime(config, (stamp, stamp))
     return config

@@ -59,7 +59,7 @@ SCRIPT = textwrap.dedent('''
 
 def test_copied_file_needs_only_sqlalchemy(tmp_path: Path):
     shutil.copy(Path(kitebase.querybuilder.__file__), tmp_path / 'querybuilder.py')
-    (tmp_path / 'run.py').write_text(SCRIPT)
+    (tmp_path / 'run.py').write_text(SCRIPT, encoding='utf-8')
 
     done = subprocess.run([sys.executable, 'run.py'], cwd=tmp_path,
                           capture_output=True, text=True)

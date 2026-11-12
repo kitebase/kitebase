@@ -1326,7 +1326,7 @@ class Plugin:
             "depends_on": [],
         }
 
-        with open(plugin_dir / "config.yaml") as f:
+        with open(plugin_dir / "config.yaml", encoding='utf-8') as f:
             data = yaml.safe_load(f)
         deep_merge(self.config, data)
 
@@ -1356,7 +1356,7 @@ class Plugin:
                 if file.suffix.lower() == '.py':
                     self.sources.append(file)
                 elif file.suffix.lower() == '.yaml' and file.stem != 'config':
-                    with open(file) as f:
+                    with open(file, encoding='utf-8') as f:
                         self.data.append(expand_shorthand(yaml.safe_load(f)))
                     self.data_files.append(file)
                 else:

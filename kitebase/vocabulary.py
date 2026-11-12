@@ -40,7 +40,7 @@ Vocabulary = Dict[str, Union[List[str], str]]
 
 def load(path: Path = VOCABULARY_FILE) -> Vocabulary:
     """The vocabulary as written; empty when there is no file."""
-    return load_text(path.read_text()) if path.exists() else {}
+    return load_text(path.read_text(encoding='utf-8')) if path.exists() else {}
 
 
 def load_text(text: str) -> Vocabulary:
@@ -125,7 +125,7 @@ def update(data: Dict[str, Any], path: Path = VOCABULARY_FILE) -> int:
             known.append(key)
             added += 1
     if added:
-        path.write_text(render(vocabulary))
+        path.write_text(render(vocabulary), encoding='utf-8')
     return added
 
 

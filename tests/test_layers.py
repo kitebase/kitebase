@@ -77,7 +77,7 @@ def _graph() -> Dict[str, Tuple[Set[str], Set[str]]]:
     """module -> (imported at the top of the file, imported inside a function)."""
     graph = {}
     for name in sorted(MODULES):
-        tree = ast.parse((PACKAGE / f'{name}.py').read_text())
+        tree = ast.parse((PACKAGE / f'{name}.py').read_text(encoding='utf-8'))
         at_import = _run_at_import(tree)
         top: Set[str] = set()
         inside: Set[str] = set()

@@ -150,12 +150,12 @@ def app(tmp_path, monkeypatch):
     """A one-plugin application on a real sqlite file, wired to kitebase.utils."""
     plugin = tmp_path / 'plugins' / 'bench'
     plugin.mkdir(parents=True)
-    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'bench', 'version': '0.0.1'}))
-    (plugin / 'model.yaml').write_text(yaml.safe_dump({'tables': TABLES}))
-    (plugin / 'pages.yaml').write_text(yaml.safe_dump({'pages': PAGES}))
+    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'bench', 'version': '0.0.1'}), encoding='utf-8')
+    (plugin / 'model.yaml').write_text(yaml.safe_dump({'tables': TABLES}), encoding='utf-8')
+    (plugin / 'pages.yaml').write_text(yaml.safe_dump({'pages': PAGES}), encoding='utf-8')
 
     cfg = tmp_path / 'config.yaml'
-    cfg.write_text(yaml.safe_dump({'name': 'bench', 'plugins': ['plugins']}))
+    cfg.write_text(yaml.safe_dump({'name': 'bench', 'plugins': ['plugins']}), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
 
     pm = PluginsManager()

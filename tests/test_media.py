@@ -153,7 +153,7 @@ def test_a_root_with_a_bad_template_does_not_load(tmp_path):
 
 def test_a_symlink_out_of_the_root_is_refused(media, tmp_path):
     outside = tmp_path / 'outside.txt'
-    outside.write_text('secret')
+    outside.write_text('secret', encoding='utf-8')
     base = tmp_path / 'uploads'
     base.mkdir()
     (base / 'link.txt').symlink_to(outside)
@@ -205,7 +205,7 @@ def test_descriptions_live_beside_the_files(media, tmp_path):
     assert [e.name for e in media.list(str(folder))] == ['id-front.jpg']
     disk = tmp_path / 'records/Author/000/12/documents'
     assert (disk / '.trash/permit.pdf').exists()
-    assert 'permit' not in (disk / '.descriptions.yaml').read_text()
+    assert 'permit' not in (disk / '.descriptions.yaml').read_text(encoding='utf-8')
 
     provider.describe(folder.path, 'id-front.jpg', '')
     assert not (disk / '.descriptions.yaml').exists()
@@ -216,7 +216,7 @@ def test_descriptions_hold_text_and_nothing_else(media, tmp_path):
     folder = root.folder(AllocContext('Author', 'documents', 12))
     root.add_to_folder(folder, 'a.pdf', [b'a'])
     (tmp_path / 'records/Author/000/12/documents/.descriptions.yaml').write_text(
-        'a.pdf: {text: x, expires: 2027}\n')
+        'a.pdf: {text: x, expires: 2027}\n', encoding='utf-8')
     with pytest.raises(MediaError, match='nothing else'):
         media.list(str(folder))
 

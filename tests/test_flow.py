@@ -105,12 +105,12 @@ def fresh_registry():
 def app(tmp_path, monkeypatch):
     plugin = tmp_path / 'plugins' / 'bench'
     plugin.mkdir(parents=True)
-    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'bench', 'version': '0.0.1'}))
-    (plugin / 'model.yaml').write_text(yaml.safe_dump({'tables': TABLES}))
-    (plugin / 'pages.yaml').write_text(yaml.safe_dump({'pages': PAGES}))
+    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'bench', 'version': '0.0.1'}), encoding='utf-8')
+    (plugin / 'model.yaml').write_text(yaml.safe_dump({'tables': TABLES}), encoding='utf-8')
+    (plugin / 'pages.yaml').write_text(yaml.safe_dump({'pages': PAGES}), encoding='utf-8')
 
     cfg = tmp_path / 'config.yaml'
-    cfg.write_text(yaml.safe_dump({'name': 'bench', 'plugins': ['plugins']}))
+    cfg.write_text(yaml.safe_dump({'name': 'bench', 'plugins': ['plugins']}), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
 
     pm = PluginsManager()
@@ -409,7 +409,7 @@ def test_a_file_imported_under_two_names_registers_once(app, tmp_path):
         'from kitebase.flow import on_write\n'
         '@on_write("Loan")\n'
         'def remind(ctx):\n'
-        '    ctx.info("once")\n')
+        '    ctx.info("once")\n', encoding='utf-8')
     for name in ('library.loan_rules', 'libapp.library.loan_rules'):
         spec = importlib.util.spec_from_file_location(name, rules_file)
         spec.loader.exec_module(importlib.util.module_from_spec(spec))

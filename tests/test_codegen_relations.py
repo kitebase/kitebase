@@ -43,14 +43,14 @@ def build(tmp_path, monkeypatch, tables, source=None, config=None, types=None):
     """
     plugin = tmp_path / 'plugins' / 'app'
     plugin.mkdir(parents=True, exist_ok=True)   # a test may generate twice
-    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'app', 'version': '0.0.1'}))
+    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'app', 'version': '0.0.1'}), encoding='utf-8')
     model = {'tables': tables, **({'types': types} if types else {})}
-    (plugin / 'model.yaml').write_text(yaml.safe_dump(model))
+    (plugin / 'model.yaml').write_text(yaml.safe_dump(model), encoding='utf-8')
     if source:
-        (plugin / 'model.py').write_text(source)
+        (plugin / 'model.py').write_text(source, encoding='utf-8')
 
     cfg = tmp_path / 'config.yaml'
-    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': ['plugins'], **(config or {})}))
+    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': ['plugins'], **(config or {})}), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
 
     manager = PluginsManager()
@@ -67,13 +67,13 @@ def generate(tmp_path, monkeypatch, tables, source=None, config=None, types=None
     db = build(tmp_path, monkeypatch, tables, source, config, types)
     out = tmp_path / 'generated_model.py'
     Generator(db).generate(filename=str(out))
-    return out.read_text()
+    return out.read_text(encoding='utf-8')
 
 
 def load(tmp_path, source):
     """Import the generated source and let SQLAlchemy configure the mappers."""
     path = tmp_path / 'generated_model.py'
-    path.write_text(source)
+    path.write_text(source, encoding='utf-8')
     spec = importlib.util.spec_from_file_location('generated_model', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

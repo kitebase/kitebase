@@ -38,7 +38,7 @@ def test_a_file_is_added_when_asked_and_carries_the_time(tmp_path):
         logging.getLogger('kitebase').info('hello')
         for h in _ours():
             h.flush()
-        text = log.read_text()
+        text = log.read_text(encoding='utf-8')
         assert 'INFO kitebase: hello' in text
         assert text[:4].isdigit()  # the timestamp: a file has no journald under it
         assert logging.getLogger().level == logging.DEBUG

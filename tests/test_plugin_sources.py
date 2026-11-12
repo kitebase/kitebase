@@ -9,11 +9,11 @@ def make_plugins(tmp_path, monkeypatch, plugins):
     for name, (deps, files) in plugins.items():
         plugin = tmp_path / 'plugins' / name
         plugin.mkdir(parents=True)
-        (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': name, 'depends_on': deps}))
+        (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': name, 'depends_on': deps}), encoding='utf-8')
         for file, source in files.items():
-            (plugin / file).write_text(source)
+            (plugin / file).write_text(source, encoding='utf-8')
     cfg = tmp_path / 'config.yaml'
-    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': ['plugins']}))
+    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': ['plugins']}), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
 
     pm = PluginsManager()
@@ -116,11 +116,11 @@ def test_the_chosen_root_is_the_one_whose_code_runs(tmp_path, monkeypatch):
     for root, mark in (('first', 'FIRST'), ('second', 'SECOND')):
         plugin = tmp_path / root / 'shelf6'
         plugin.mkdir(parents=True)
-        (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'shelf6'}))
-        (plugin / 'which6.py').write_text(f'ROOT = "{mark}"\n')
+        (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'shelf6'}), encoding='utf-8')
+        (plugin / 'which6.py').write_text(f'ROOT = "{mark}"\n', encoding='utf-8')
     cfg = tmp_path / 'config.yaml'
     cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': [
-        {'path': 'first', 'include': []}, {'path': 'second', 'include': ['shelf6']}]}))
+        {'path': 'first', 'include': []}, {'path': 'second', 'include': ['shelf6']}]}), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
     pm = PluginsManager()
     pm.load_config(str(cfg))

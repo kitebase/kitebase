@@ -31,7 +31,7 @@ Catalog = Dict[str, Any]
 
 
 def load(path: Path = CATALOG_FILE) -> Catalog:
-    return yaml.safe_load(path.read_text()) or {}
+    return yaml.safe_load(path.read_text(encoding='utf-8')) or {}
 
 
 def form_at(catalog: Catalog, norm: str) -> Optional[str]:

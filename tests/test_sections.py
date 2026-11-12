@@ -152,7 +152,7 @@ def test_a_plugins_root_is_read_with_the_plugins_vocabulary(tmp_path, monkeypatc
     own = tmp_path / 'acme' / 'vocabulary.yaml'
     own.parent.mkdir()
     own.write_text(vocabulary.render({'gadgets.*': ['items', 'label'],
-                                      'gadgets.*.items[]': ['name', 'type']}))
+                                      'gadgets.*.items[]': ['name', 'type']}), encoding='utf-8')
     register_from('acme.reader', 'gadgets', vocabulary=own)
     pm = PluginsManager()
     pm.merge_dicts({'gadgets': {'g': {'label': 'G', 'items': [{'name': 'x', 'tipe': 'Integer'}]}}},
@@ -163,8 +163,8 @@ def test_a_plugins_root_is_read_with_the_plugins_vocabulary(tmp_path, monkeypatc
     assert "did you mean 'type'" in issue['message']
     assert 'acme/vocabulary.yaml' in issue['message']
 
-    core_before = vocabulary.VOCABULARY_FILE.read_text()
+    core_before = vocabulary.VOCABULARY_FILE.read_text(encoding='utf-8')
     monkeypatch.setenv('KITEBASE_VOCABULARY_UPDATE', '1')
     run_checks(FakeApp(pm))
     assert 'tipe' in vocabulary.load(own)['gadgets.*.items[]']
-    assert vocabulary.VOCABULARY_FILE.read_text() == core_before
+    assert vocabulary.VOCABULARY_FILE.read_text(encoding='utf-8') == core_before

@@ -60,7 +60,7 @@ def test_beneath_an_open_map_the_vocabulary_holds_again():
 
 def test_the_update_adds_and_never_removes(tmp_path: Path):
     path = tmp_path / 'vocabulary.yaml'
-    path.write_text(v.render({'tables.*': ['label', 'unused'], 'pages.*.props': v.OPEN}))
+    path.write_text(v.render({'tables.*': ['label', 'unused'], 'pages.*.props': v.OPEN}), encoding='utf-8')
 
     added = v.update({'tables': {'Book': {'label': 'Books', 'help': 'x'}},
                       'pages': {'p': {'props': {'free': 1}}}}, path)

@@ -30,15 +30,15 @@ def _app(tmp_path, monkeypatch):
         'smtp:\n'
         '  host: mail.example.org\n'
         f'  password: "{SMTP_PASSWORD}"\n'
-        f'archive_db: {DB_URL}\n')
+        f'archive_db: {DB_URL}\n', encoding='utf-8')
     (plugin / 'model.yaml').write_text(yaml.safe_dump({
         'tables': {'Message': {'columns': [
             {'name': 'id', 'type': 'Integer', 'primary_key': True, 'autoincrement': True},
             {'name': 'password', 'type': 'String', 'secret': True}]}},
         'pages': {'messages': {'title': 'Messages', 'lookup': {'source': {'api_key': API_KEY}}}},
-    }))
+    }), encoding='utf-8')
     cfg = tmp_path / 'config.yaml'
-    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': ['plugins']}))
+    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': ['plugins']}), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
 
     pm = PluginsManager()

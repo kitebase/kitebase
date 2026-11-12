@@ -19,12 +19,12 @@ def load(tmp_path, monkeypatch, requires=None, source=None):
     config = {'name': 'shelf', 'version': '0.0.1'}
     if requires is not None:
         config['requires'] = requires
-    (plugin / 'config.yaml').write_text(yaml.safe_dump(config))
+    (plugin / 'config.yaml').write_text(yaml.safe_dump(config), encoding='utf-8')
     if source is not None:
-        (plugin / 'shelf_code.py').write_text(source)
+        (plugin / 'shelf_code.py').write_text(source, encoding='utf-8')
 
     cfg = tmp_path / 'config.yaml'
-    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': ['plugins']}))
+    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': ['plugins']}), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
 
     pm = PluginsManager()

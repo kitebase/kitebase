@@ -19,9 +19,9 @@ from kitebase.plugins import PluginsManager
 def plugin(root, name, config=None, modules=()):
     folder = root / name
     folder.mkdir(parents=True)
-    (folder / 'config.yaml').write_text(yaml.safe_dump({'name': name, **(config or {})}))
+    (folder / 'config.yaml').write_text(yaml.safe_dump({'name': name, **(config or {})}), encoding='utf-8')
     for module in modules:
-        (folder / f'{module}.py').write_text('')
+        (folder / f'{module}.py').write_text('', encoding='utf-8')
 
 
 def load(tmp_path, monkeypatch, optional, with_reports=True):
@@ -34,7 +34,7 @@ def load(tmp_path, monkeypatch, optional, with_reports=True):
 
     roots = ['plugins'] + ([{'path': 'more', 'include': ['reports']}] if with_reports else [])
     cfg = tmp_path / 'config.yaml'
-    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': roots}))
+    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': roots}), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
 
     pm = PluginsManager()
@@ -78,7 +78,7 @@ def test_a_plugin_the_app_does_not_include_stays_out(tmp_path, monkeypatch):
     plugin(root, 'reports', modules=['registry'])
     cfg = tmp_path / 'config.yaml'
     cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': [
-        {'path': 'plugins', 'include': ['partners']}]}))
+        {'path': 'plugins', 'include': ['partners']}]}), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
     pm = PluginsManager()
     pm.load_config(str(cfg))
@@ -100,7 +100,7 @@ def test_a_module_under_two_plugins_needs_both(tmp_path, monkeypatch, loaded, im
         plugin(tmp_path / 'more', name)
     cfg = tmp_path / 'config.yaml'
     cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': [
-        'plugins', {'path': 'more', 'include': loaded}]}))
+        'plugins', {'path': 'more', 'include': loaded}]}), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
     pm = PluginsManager()
     pm.load_config(str(cfg))

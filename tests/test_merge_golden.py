@@ -101,13 +101,13 @@ def test_the_merged_tree_is_what_it_was(app, monkeypatch):
 
     if os.environ.get('KITEBASE_GOLDEN_UPDATE'):
         GOLDEN_DIR.mkdir(exist_ok=True)
-        golden.write_text(render(tree))
+        golden.write_text(render(tree), encoding='utf-8')
         pytest.skip(f'golden rewritten: {golden.relative_to(REPO_ROOT)} — read the diff')
 
     assert golden.exists(), (
         f'No snapshot for {app}. Create it with KITEBASE_GOLDEN_UPDATE=1 and commit it.')
 
-    found = list(differences(json.loads(golden.read_text()), json.loads(render(tree))))
+    found = list(differences(json.loads(golden.read_text(encoding='utf-8')), json.loads(render(tree))))
     assert not found, (
         f'The merged tree of {app} moved in {len(found)} places:\n  '
         + '\n  '.join(found[:MAX_REPORTED])
@@ -117,7 +117,7 @@ def test_the_merged_tree_is_what_it_was(app, monkeypatch):
 
 def test_the_snapshot_covers_what_the_merge_composes():
     """A snapshot of half the tree would go green through a change it never saw."""
-    golden = json.loads((GOLDEN_DIR / 'devtest.json').read_text())
+    golden = json.loads((GOLDEN_DIR / 'devtest.json').read_text(encoding='utf-8'))
 
     assert set(golden) >= {'tables', 'types', 'pages', 'views', 'menu_items'}
     # The two lists the merge actually crosses plugins on today, and the one the

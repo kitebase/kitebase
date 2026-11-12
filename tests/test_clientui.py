@@ -68,8 +68,8 @@ def test_check_reports_a_host_login_nobody_can_leave():
 def app_dir(tmp_path):
     client = tmp_path / 'clientui'
     (client / '_app').mkdir(parents=True)
-    (client / 'index.html').write_text('<!doctype html>the client')
-    (client / '_app' / 'start.js').write_text('// a chunk')
+    (client / 'index.html').write_text('<!doctype html>the client', encoding='utf-8')
+    (client / '_app' / 'start.js').write_text('// a chunk', encoding='utf-8')
     return tmp_path
 
 

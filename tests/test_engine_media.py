@@ -37,10 +37,10 @@ media:
 def app_dir(tmp_path, monkeypatch):
     for var in ('KITEBASE_ENGINE', 'KITEBASE_SECRETS', 'KITEBASE_ENGINES_DIR'):
         monkeypatch.delenv(var, raising=False)
-    (tmp_path / 'config.yaml').write_text(CONFIG)
+    (tmp_path / 'config.yaml').write_text(CONFIG, encoding='utf-8')
     (tmp_path / 'secrets').mkdir()
     (tmp_path / 'secrets' / 'engines.yaml').write_text(
-        "demo: sqlite:///data/engines/demo/app.sqlite\n")
+        "demo: sqlite:///data/engines/demo/app.sqlite\n", encoding='utf-8')
     yield tmp_path
     secrets.set_app_root(None)
 
@@ -91,7 +91,7 @@ def test_another_engine_is_chosen_by_name_not_by_url(app_dir, monkeypatch):
 
 
 def test_choosing_the_default_by_name_changes_nothing(app_dir, monkeypatch):
-    (app_dir / 'config.yaml').write_text(CONFIG.replace('sqlite:///app.sqlite', 'demo'))
+    (app_dir / 'config.yaml').write_text(CONFIG.replace('sqlite:///app.sqlite', 'demo'), encoding='utf-8')
     monkeypatch.setenv('KITEBASE_ENGINE', 'demo')
     pm = manager(app_dir)
     assert pm.engine_name is None and pm.media_base() == app_dir

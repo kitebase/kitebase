@@ -38,11 +38,11 @@ ADDRESS = {
 def generate(tmp_path, monkeypatch, types, tables):
     plugin = tmp_path / 'plugins' / 'app'
     plugin.mkdir(parents=True, exist_ok=True)
-    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'app', 'version': '0.0.1'}))
-    (plugin / 'model.yaml').write_text(yaml.safe_dump({'types': types, 'tables': tables}))
+    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'app', 'version': '0.0.1'}), encoding='utf-8')
+    (plugin / 'model.yaml').write_text(yaml.safe_dump({'types': types, 'tables': tables}), encoding='utf-8')
 
     cfg = tmp_path / 'config.yaml'
-    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': ['plugins']}))
+    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': ['plugins']}), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
 
     manager = PluginsManager()
@@ -54,7 +54,7 @@ def generate(tmp_path, monkeypatch, types, tables):
 
     out = tmp_path / 'generated_model.py'
     Generator(db).generate(filename=str(out))
-    return out.read_text()
+    return out.read_text(encoding='utf-8')
 
 
 def table(type_name):

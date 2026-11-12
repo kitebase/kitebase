@@ -113,7 +113,7 @@ def test_the_check_compares_the_clock_and_not_the_name():
 
 def _app(tmp_path, config):
     (tmp_path / 'plugins').mkdir()
-    (tmp_path / 'config.yaml').write_text(yaml.safe_dump(config))
+    (tmp_path / 'config.yaml').write_text(yaml.safe_dump(config), encoding='utf-8')
     return str(tmp_path / 'config.yaml')
 
 

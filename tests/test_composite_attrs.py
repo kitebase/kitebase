@@ -40,16 +40,16 @@ ADDRESS = {
 def build(tmp_path, monkeypatch, address_column):
     plugin = tmp_path / 'plugins' / 'app'
     plugin.mkdir(parents=True, exist_ok=True)
-    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'app', 'version': '0.0.1'}))
+    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'app', 'version': '0.0.1'}), encoding='utf-8')
     (plugin / 'model.yaml').write_text(yaml.safe_dump({
         'types': {'Address': ADDRESS},
         'tables': {'Subject': {'columns': [
             {'name': 'id', 'type': 'Integer', 'primary_key': True},
             address_column,
         ]}},
-    }))
+    }), encoding='utf-8')
     cfg = tmp_path / 'config.yaml'
-    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': ['plugins']}))
+    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': ['plugins']}), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
 
     manager = PluginsManager()

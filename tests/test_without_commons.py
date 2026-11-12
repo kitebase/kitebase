@@ -103,7 +103,7 @@ APP = textwrap.dedent('''
 
 def test_an_application_without_the_commons(tmp_path):
     script = tmp_path / 'run_app.py'
-    script.write_text(APP)
+    script.write_text(APP, encoding='utf-8')
     data = tmp_path / 'app'
     data.mkdir()
 

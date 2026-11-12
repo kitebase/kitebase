@@ -23,9 +23,9 @@ def make_plugin(root, name, depends_on=None, table=None):
     config = {'name': name, 'version': '0.0.1'}
     if depends_on is not None:
         config['depends_on'] = depends_on
-    (d / 'config.yaml').write_text(yaml.safe_dump(config))
+    (d / 'config.yaml').write_text(yaml.safe_dump(config), encoding='utf-8')
     (d / 'model.yaml').write_text(yaml.safe_dump(
-        {'tables': {table or name.capitalize(): {'columns': []}}}))
+        {'tables': {table or name.capitalize(): {'columns': []}}}), encoding='utf-8')
     return d
 
 
@@ -43,7 +43,7 @@ def commons(tmp_path):
 def load(tmp_path, monkeypatch, roots):
     """Run PluginsManager against a config whose `plugins:` is `roots`."""
     cfg = tmp_path / 'config.yaml'
-    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': roots}))
+    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': roots}), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
     manager = PluginsManager()
     manager.load_config(str(cfg))

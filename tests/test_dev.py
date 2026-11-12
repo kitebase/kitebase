@@ -22,18 +22,18 @@ def write_app(directory: Path, port: int = 8300, servers=("server_fastapi.py",),
     """An application directory, reduced to what `dev` looks at."""
     directory.mkdir(parents=True, exist_ok=True)
     (directory / "config.yaml").write_text(
-        yaml.safe_dump({"name": directory.name, "api": {"port": port}}))
+        yaml.safe_dump({"name": directory.name, "api": {"port": port}}), encoding='utf-8')
     for server in servers:
-        (directory / server).write_text("# server\n")
+        (directory / server).write_text("# server\n", encoding='utf-8')
     if standalone:
-        (directory / "pyproject.toml").write_text("[project]\nname='x'\n")
+        (directory / "pyproject.toml").write_text("[project]\nname='x'\n", encoding='utf-8')
     return directory
 
 
 def write_ui(directory: Path) -> Path:
     """A client checkout, recognised by the client every one of them has."""
     (directory / "apps" / "shell").mkdir(parents=True, exist_ok=True)
-    (directory / "apps" / "shell" / "package.json").write_text("{}")
+    (directory / "apps" / "shell" / "package.json").write_text("{}", encoding='utf-8')
     return directory
 
 
@@ -64,7 +64,7 @@ def test_the_port_is_the_one_the_app_declares(tmp_path):
 def test_an_app_that_declares_no_port_gets_the_default(tmp_path):
     app = tmp_path / "a"
     app.mkdir()
-    (app / "config.yaml").write_text(yaml.safe_dump({"name": "a"}))
+    (app / "config.yaml").write_text(yaml.safe_dump({"name": "a"}), encoding='utf-8')
     assert dev.read_api_port(app) == 8300
 
 
@@ -115,7 +115,7 @@ def test_asking_for_a_framework_that_is_not_there_says_so(tmp_path):
 def test_the_environment_names_the_checkout(tmp_path, monkeypatch):
     checkout = tmp_path / "kitebase"
     checkout.mkdir()
-    (checkout / "pyproject.toml").write_text("[project]\nname='kitebase'\n")
+    (checkout / "pyproject.toml").write_text("[project]\nname='kitebase'\n", encoding='utf-8')
     monkeypatch.setenv("KITEBASE_SRC", str(checkout))
     assert dev.find_source_checkout() == checkout
 
@@ -195,7 +195,7 @@ def test_a_bench_inside_the_checkout_runs_in_the_checkout_environment(tmp_path):
     and the checkout is not layered on itself."""
     checkout = tmp_path / "server"
     checkout.mkdir()
-    (checkout / "pyproject.toml").write_text("[project]\nname='kitebase'\n")
+    (checkout / "pyproject.toml").write_text("[project]\nname='kitebase'\n", encoding='utf-8')
     app = write_app(checkout / "devtest")
     command = dev.backend_command(app, app / "devtest.py", checkout, ["check"])
     assert command[1:] == ["run", "devtest.py", "check"]
@@ -210,8 +210,8 @@ def test_the_cli_script_defaults_to_kite_py(tmp_path):
 
 def test_the_cli_script_is_the_one_config_names(tmp_path):
     app = write_app(tmp_path / "a", servers=("devtest.py",))
-    config = yaml.safe_load((app / "config.yaml").read_text())
-    (app / "config.yaml").write_text(yaml.safe_dump({**config, "cli": "devtest.py"}))
+    config = yaml.safe_load((app / "config.yaml").read_text(encoding='utf-8'))
+    (app / "config.yaml").write_text(yaml.safe_dump({**config, "cli": "devtest.py"}), encoding='utf-8')
     assert dev.find_cli(app) == app / "devtest.py"
 
 

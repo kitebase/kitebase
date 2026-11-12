@@ -262,15 +262,15 @@ def load(path: Path, monkeypatch) -> App:
 def app(tmp_path, monkeypatch):
     plugin = tmp_path / 'plugins' / 'bench'
     (plugin / 'help' / 'en').mkdir(parents=True)
-    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'bench', 'version': '0.0.1'}))
-    (plugin / 'model.yaml').write_text(yaml.safe_dump({'types': TYPES, 'tables': TABLES}))
+    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'bench', 'version': '0.0.1'}), encoding='utf-8')
+    (plugin / 'model.yaml').write_text(yaml.safe_dump({'types': TYPES, 'tables': TABLES}), encoding='utf-8')
     (plugin / 'pages.yaml').write_text(yaml.safe_dump(
-        {'pages': PAGES, 'menus': {'main': {'label': 'Bench'}}, 'menu_items': MENU}))
+        {'pages': PAGES, 'menus': {'main': {'label': 'Bench'}}, 'menu_items': MENU}), encoding='utf-8')
     (plugin / 'help' / 'en' / 'doc_form.md').write_text(
         'See [[Doc.title|the title]], [[Owner.name]], [[doc_list]] and [[gone_page]].\n\n'
-        '<script>alert(1)</script>\n\n`[[doc_list]]` stays code.\n')
-    (plugin / 'help' / 'en' / 'by_hand.md').write_text('Written by hand.\n')
-    (tmp_path / 'config.yaml').write_text(yaml.safe_dump({'name': 'bench', 'title': 'Bench app', 'plugins': ['plugins']}))
+        '<script>alert(1)</script>\n\n`[[doc_list]]` stays code.\n', encoding='utf-8')
+    (plugin / 'help' / 'en' / 'by_hand.md').write_text('Written by hand.\n', encoding='utf-8')
+    (tmp_path / 'config.yaml').write_text(yaml.safe_dump({'name': 'bench', 'title': 'Bench app', 'plugins': ['plugins']}), encoding='utf-8')
     return load(tmp_path, monkeypatch)
 
 
@@ -558,8 +558,8 @@ def test_an_application_replaces_a_template_and_can_extend_the_original(app):
     folder = Path(app.plugins.app_root) / 'guide'
     folder.mkdir()
     (folder / 'skeleton.html').write_text(
-        '{% extends "core/skeleton.html" %}{% block header %}<header>Ours</header>{% endblock %}')
-    (folder / 'style.css').write_text('body { color: red; }')
+        '{% extends "core/skeleton.html" %}{% block header %}<header>Ours</header>{% endblock %}', encoding='utf-8')
+    (folder / 'style.css').write_text('body { color: red; }', encoding='utf-8')
     app.plugins.config['help_templates'] = 'guide'
     page = render_html(app, help_merge(app, 'doc_list')).html
     assert '<header>Ours</header>' in page
@@ -701,11 +701,11 @@ def written(app, tmp_path):
     """Texts of the manual: the application's, and a plugin's beside them."""
     root = tmp_path / 'help' / 'en'
     (root / 'appendix').mkdir(parents=True)
-    (root / 'index.md').write_text('About this bench. See [[appendix/keys|the keys]].\n')
-    (root / 'appendix' / 'keys.md').write_text('# The keys\n\n| Key | Does |\n|---|---|\n| F1 | help |\n')
-    (root / 'menu.documents.md').write_text('Added by the application.\n')
+    (root / 'index.md').write_text('About this bench. See [[appendix/keys|the keys]].\n', encoding='utf-8')
+    (root / 'appendix' / 'keys.md').write_text('# The keys\n\n| Key | Does |\n|---|---|\n| F1 | help |\n', encoding='utf-8')
+    (root / 'menu.documents.md').write_text('Added by the application.\n', encoding='utf-8')
     plugin = tmp_path / 'plugins' / 'bench' / 'help' / 'en'
-    (plugin / 'menu.documents.md').write_text('Written by the plugin.\n')
+    (plugin / 'menu.documents.md').write_text('Written by the plugin.\n', encoding='utf-8')
     return app
 
 
@@ -777,7 +777,7 @@ def test_the_manual_downloads_as_one_page(written, served):
 def test_an_application_stylesheet_extends_the_core(written, tmp_path):
     folder = tmp_path / 'help' / 'templates'
     folder.mkdir()
-    (folder / 'style.css').write_text('{% include "core/style.css" %}\nh1 { color: red; }\n')
+    (folder / 'style.css').write_text('{% include "core/style.css" %}\nh1 { color: red; }\n', encoding='utf-8')
     written.plugins.config['help_templates'] = 'help/templates'
     page = render_html(written, help_merge(written, 'doc_list')).html
     assert 'h1 { color: red; }' in page and '--link:' in page

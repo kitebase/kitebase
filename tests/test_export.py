@@ -60,11 +60,11 @@ def fresh_registry():
 def build_app(tmp_path, monkeypatch, app_config=None):
     plugin = tmp_path / 'plugins' / 'shelf'
     plugin.mkdir(parents=True)
-    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'shelf', 'version': '0.0.1'}))
-    (plugin / 'model.yaml').write_text(yaml.safe_dump({'tables': TABLES}))
+    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'shelf', 'version': '0.0.1'}), encoding='utf-8')
+    (plugin / 'model.yaml').write_text(yaml.safe_dump({'tables': TABLES}), encoding='utf-8')
 
     cfg = tmp_path / 'config.yaml'
-    cfg.write_text(yaml.safe_dump({'name': 'shelf', 'plugins': ['plugins'], **(app_config or {})}))
+    cfg.write_text(yaml.safe_dump({'name': 'shelf', 'plugins': ['plugins'], **(app_config or {})}), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
 
     pm = PluginsManager()

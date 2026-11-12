@@ -101,7 +101,7 @@ def _app(tmp_path, monkeypatch):
 
     plugin = tmp_path / 'plugins' / 'app'
     plugin.mkdir(parents=True)
-    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'app', 'version': '0.0.1'}))
+    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'app', 'version': '0.0.1'}), encoding='utf-8')
     (plugin / 'model.yaml').write_text(yaml.safe_dump({
         'types': {'Code': {'base': 'String', 'length': 8, 'doc': 'type doc'}},
         'schemas': {'Total': {'doc': {'type': 'String'}, 'amount': {'type': 'Integer', 'doc': 'field doc'}}},
@@ -113,9 +113,9 @@ def _app(tmp_path, monkeypatch):
         'pages': {'book': {'title': 'Book', 'doc': 'page doc', 'content': {'$ref': 'views.book_form'}}},
         'menus': {'main': {'label': 'Main', 'doc': 'menu doc'}},
         'menu_items': {'books': {'label': 'Books', 'doc': 'item doc', 'action': 'stack_push', 'panel': 'book'}},
-    }))
+    }), encoding='utf-8')
     cfg = tmp_path / 'config.yaml'
-    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': ['plugins'], 'menu': {'default_root': 'main'}}))
+    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': ['plugins'], 'menu': {'default_root': 'main'}}), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
 
     pm = PluginsManager()

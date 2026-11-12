@@ -1,0 +1,36 @@
+name: tests
+
+# By hand (gh workflow run tests), and before a release.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      # The workspace layout: the commons beside the server, as the tests expect.
+      - uses: actions/checkout@v4
+        with:
+          path: server
+      - uses: actions/checkout@v4
+        with:
+          repository: kitebase/kitebase-commons
+          path: commons
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.12'
+      - name: Install
+        working-directory: server
+        run: uv sync --extra dev
+      - name: Server tests
+        working-directory: server
+        run: uv run --no-sync pytest -p no:warnings
+      - name: Commons tests
+        working-directory: commons
+        run: uv run --project ../server --no-sync pytest -p no:warnings plugins

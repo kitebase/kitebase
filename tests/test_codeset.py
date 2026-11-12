@@ -129,13 +129,13 @@ def fresh_registry():
 def test_the_generated_model_uses_the_core_type(tmp_path, monkeypatch, fresh_registry):
     plugin = tmp_path / 'plugins' / 'app'
     plugin.mkdir(parents=True)
-    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'app', 'version': '0.0.1'}))
+    (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': 'app', 'version': '0.0.1'}), encoding='utf-8')
     (plugin / 'model.yaml').write_text(yaml.safe_dump({'tables': {'Subject': {'columns': [
         {'name': 'id', 'type': 'Integer', 'primary_key': True, 'autoincrement': True},
         {'name': 'roles', 'type': 'Roles'},
-    ]}}, 'types': {'Roles': {'base': 'CodeSet', 'length': 255}}}))
+    ]}}, 'types': {'Roles': {'base': 'CodeSet', 'length': 255}}}), encoding='utf-8')
     cfg = tmp_path / 'config.yaml'
-    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': ['plugins']}))
+    cfg.write_text(yaml.safe_dump({'name': 'test', 'plugins': ['plugins']}), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
 
     manager = PluginsManager()
@@ -145,7 +145,7 @@ def test_the_generated_model_uses_the_core_type(tmp_path, monkeypatch, fresh_reg
     db.calc_db(manager)
     out = tmp_path / 'generated_model.py'
     Generator(db).generate(filename=str(out))
-    source = out.read_text()
+    source = out.read_text(encoding='utf-8')
 
     assert 'roles: Mapped[list] = mapped_column(CodeSet(length=255), nullable=True)' in source
     assert 'CodeSet' in source.split('from kitebase.sqltypes import')[1].splitlines()[0]

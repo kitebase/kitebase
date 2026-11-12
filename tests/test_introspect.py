@@ -106,10 +106,10 @@ def _app(tmp_path, monkeypatch):
         plugin = tmp_path / 'plugins' / name
         plugin.mkdir(parents=True)
         (plugin / 'config.yaml').write_text(yaml.safe_dump(
-            {'name': name, 'version': '0.0.1', 'depends_on': deps}))
-        (plugin / 'model.yaml').write_text(model)
+            {'name': name, 'version': '0.0.1', 'depends_on': deps}), encoding='utf-8')
+        (plugin / 'model.yaml').write_text(model, encoding='utf-8')
     cfg = tmp_path / 'config.yaml'
-    cfg.write_text(yaml.safe_dump({'name': 'bench', 'plugins': ['plugins']}))
+    cfg.write_text(yaml.safe_dump({'name': 'bench', 'plugins': ['plugins']}), encoding='utf-8')
     monkeypatch.chdir(tmp_path)
 
     pm = PluginsManager()
@@ -296,7 +296,7 @@ def server(tmp_path, monkeypatch):
     app = _app(tmp_path, monkeypatch)
     ui = tmp_path / 'ui'
     ui.mkdir()
-    (ui / 'index.html').write_text('<!doctype html><title>inspector</title>')
+    (ui / 'index.html').write_text('<!doctype html><title>inspector</title>', encoding='utf-8')
     srv = inspector.make_server(app, port=0, ui=ui)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     yield srv.server_address[1], app
@@ -352,12 +352,12 @@ def test_a_changed_file_makes_the_application_old(server):
 def test_the_page_is_compiled_when_missing_or_older_than_its_sources(tmp_path):
     source, ui = tmp_path / 'inspector', tmp_path / 'ui'
     (source / 'src').mkdir(parents=True)
-    (source / 'package.json').write_text('{}')
-    (source / 'src' / 'App.svelte').write_text('')
+    (source / 'package.json').write_text('{}', encoding='utf-8')
+    (source / 'src' / 'App.svelte').write_text('', encoding='utf-8')
     assert inspector.build_state(source, ui) == 'missing'
     ui.mkdir()
     page = ui / 'index.html'
-    page.write_text('')
+    page.write_text('', encoding='utf-8')
     later = time.time() + 5
     os.utime(page, (later, later))
     assert inspector.build_state(source, ui) == 'ok'

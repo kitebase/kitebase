@@ -62,23 +62,23 @@ def test_the_application_name_has_to_be_importable(tmp_path):
 
 def test_the_library_comes_from_its_repository(app):
     """No index to publish to yet: the repository is where it comes from."""
-    pyproject = (app() / "pyproject.toml").read_text()
+    pyproject = (app() / "pyproject.toml").read_text(encoding='utf-8')
     assert "kitebase[flask,fastapi] @ git+https://github.com/" in pyproject
 
 
 @pytest.mark.parametrize("server", ["flask", "fastapi", "both"])
 def test_the_extras_are_the_frameworks_written(app, server):
-    pyproject = (app(server) / "pyproject.toml").read_text()
+    pyproject = (app(server) / "pyproject.toml").read_text(encoding='utf-8')
     assert f"kitebase[{EXTRAS[server]}] @" in pyproject
 
 
 def test_the_wsgi_server_comes_only_with_flask(app):
-    assert "waitress" in (app("flask") / "pyproject.toml").read_text()
-    assert "waitress" not in (app("fastapi") / "pyproject.toml").read_text()
+    assert "waitress" in (app("flask") / "pyproject.toml").read_text(encoding='utf-8')
+    assert "waitress" not in (app("fastapi") / "pyproject.toml").read_text(encoding='utf-8')
 
 
 def test_the_readme_names_the_entry_points_that_exist(app):
-    readme = (app("fastapi") / "README.md").read_text()
+    readme = (app("fastapi") / "README.md").read_text(encoding='utf-8')
     assert "uv run server_fastapi.py" in readme
     assert "uv run server_flask.py" not in readme
 
@@ -150,12 +150,12 @@ def test_a_new_application_checks_clean(app, monkeypatch):
 
 def test_there_is_something_to_see_at_the_first_start(app):
     target = app()
-    assert yaml.safe_load((target / "config.yaml").read_text())['title'] == 'Sample'
-    menu = yaml.safe_load((target / "plugins/sample/menu.yaml").read_text())
+    assert yaml.safe_load((target / "config.yaml").read_text(encoding='utf-8'))['title'] == 'Sample'
+    menu = yaml.safe_load((target / "plugins/sample/menu.yaml").read_text(encoding='utf-8'))
     assert menu['menu_items']['items']['panel'] == 'item_list'
-    assert "raise NotFound" in (target / "plugins/sample/endpoints.py").read_text()
-    assert "def seed(" in (target / "kite.py").read_text()
-    assert "kite.seed(" in (target / "server_flask.py").read_text()
+    assert "raise NotFound" in (target / "plugins/sample/endpoints.py").read_text(encoding='utf-8')
+    assert "def seed(" in (target / "kite.py").read_text(encoding='utf-8')
+    assert "kite.seed(" in (target / "server_flask.py").read_text(encoding='utf-8')
 
 
 # ── With the shared plugins ──────────────────────────────────────────────────
@@ -180,7 +180,7 @@ def test_a_directory_without_users_is_not_the_commons(tmp_path):
 def test_users_without_what_it_depends_on_is_refused(tmp_path):
     users = tmp_path / 'plugins' / 'users'
     users.mkdir(parents=True)
-    (users / 'config.yaml').write_text('name: users\ndepends_on: [common]\n')
+    (users / 'config.yaml').write_text('name: users\ndepends_on: [common]\n', encoding='utf-8')
     with pytest.raises(ValueError, match='common'):
         commons_root(tmp_path)
 
@@ -189,21 +189,21 @@ def _fake_commons(where):
     for name, deps in (('users', ['common']), ('common', [])):
         plugin = where / 'plugins' / name
         plugin.mkdir(parents=True)
-        (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': name, 'depends_on': deps}))
+        (plugin / 'config.yaml').write_text(yaml.safe_dump({'name': name, 'depends_on': deps}), encoding='utf-8')
 
 
 def test_a_relative_path_stays_relative_from_the_application(tmp_path, monkeypatch):
     _fake_commons(tmp_path / 'commons')
     monkeypatch.chdir(tmp_path)
     target = create_app("sample", Path("apps") / "sample", commons=Path("commons"))
-    root = yaml.safe_load((target / "config.yaml").read_text())['plugins'][0]
+    root = yaml.safe_load((target / "config.yaml").read_text(encoding='utf-8'))['plugins'][0]
     assert root['path'] == '../../commons/plugins'
 
 
 def test_an_absolute_path_stays_absolute(tmp_path):
     _fake_commons(tmp_path / 'commons')
     target = create_app("sample", tmp_path / "sample", commons=tmp_path / "commons")
-    root = yaml.safe_load((target / "config.yaml").read_text())['plugins'][0]
+    root = yaml.safe_load((target / "config.yaml").read_text(encoding='utf-8'))['plugins'][0]
     assert root['path'] == str(tmp_path / 'commons' / 'plugins')
 
 
@@ -219,7 +219,7 @@ def test_with_the_commons_users_are_theirs_and_it_checks_clean(tmp_path, monkeyp
     target = create_app("sample", Path("apps") / "sample",
                         commons=Path(os.path.relpath(COMMONS, tmp_path)))
     assert not (target / "plugins" / "users").exists()
-    config = yaml.safe_load((target / "config.yaml").read_text())
+    config = yaml.safe_load((target / "config.yaml").read_text(encoding='utf-8'))
     root = config['plugins'][0]
     assert root['include'] == ['users']
     assert (target / root['path']).resolve() == COMMONS / 'plugins'

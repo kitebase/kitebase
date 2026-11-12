@@ -32,11 +32,11 @@ dataview: { page_size: 1000 }
 def app_dir(tmp_path, monkeypatch):
     for var in ('KITEBASE_ENGINE', 'KITEBASE_SECRETS', 'KITEBASE_ENGINES_DIR'):
         monkeypatch.delenv(var, raising=False)
-    (tmp_path / 'config.yaml').write_text(BASE)
-    (tmp_path / 'config.demo.yaml').write_text(VARIANT)
+    (tmp_path / 'config.yaml').write_text(BASE, encoding='utf-8')
+    (tmp_path / 'config.demo.yaml').write_text(VARIANT, encoding='utf-8')
     (tmp_path / 'secrets').mkdir()
     (tmp_path / 'secrets' / 'engines.yaml').write_text(
-        "main: sqlite:///app.sqlite\ndemo: sqlite:///demo.sqlite\n")
+        "main: sqlite:///app.sqlite\ndemo: sqlite:///demo.sqlite\n", encoding='utf-8')
     yield tmp_path
     from kitebase import secrets
     secrets.set_app_root(None)
@@ -84,24 +84,24 @@ def test_an_engine_changed_by_a_variant_is_chosen_by_name(app_dir, monkeypatch):
 
 
 def test_a_variant_changes_the_engine_by_name_only(app_dir, monkeypatch):
-    (app_dir / 'config.demo.yaml').write_text(VARIANT.replace('demo', 'sqlite:///other.sqlite'))
+    (app_dir / 'config.demo.yaml').write_text(VARIANT.replace('demo', 'sqlite:///other.sqlite'), encoding='utf-8')
     monkeypatch.setenv('KITEBASE_CONFIG', 'config.demo.yaml')
     with pytest.raises(ValueError, match='by name'):
         manager(app_dir)
 
 
 def test_one_level_of_extends(app_dir, monkeypatch):
-    (app_dir / 'config.second.yaml').write_text('extends: config.demo.yaml\nlocale: it\n')
+    (app_dir / 'config.second.yaml').write_text('extends: config.demo.yaml\nlocale: it\n', encoding='utf-8')
     with pytest.raises(ValueError, match='one level'):
         compose_config(app_dir / 'config.second.yaml')
-    (app_dir / 'config.lost.yaml').write_text('extends: nowhere.yaml\n')
+    (app_dir / 'config.lost.yaml').write_text('extends: nowhere.yaml\n', encoding='utf-8')
     with pytest.raises(FileNotFoundError, match='nowhere.yaml'):
         compose_config(app_dir / 'config.lost.yaml')
 
 
 def test_a_variant_sits_beside_config_yaml(app_dir, monkeypatch, tmp_path_factory):
     elsewhere = tmp_path_factory.mktemp('elsewhere') / 'config.yaml'
-    elsewhere.write_text(BASE)
+    elsewhere.write_text(BASE, encoding='utf-8')
     monkeypatch.setenv('KITEBASE_CONFIG', str(elsewhere))
     with pytest.raises(ValueError, match='beside'):
         manager(app_dir)

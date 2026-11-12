@@ -23,9 +23,9 @@ def app_dir(tmp_path, monkeypatch):
     (tmp_path / 'secrets' / 'engines.yaml').write_text(
         "local: sqlite:///data/other.sqlite\n"
         "pg: postgresql+psycopg://kitebase:s3cret@localhost:5432/app\n"
-        "broken: [not, a, url]\n")
+        "broken: [not, a, url]\n", encoding='utf-8')
     (tmp_path / 'config.yaml').write_text(
-        "name: t\nplugins: []\ndb_engine: sqlite:///data/app.sqlite\n")
+        "name: t\nplugins: []\ndb_engine: sqlite:///data/app.sqlite\n", encoding='utf-8')
     secrets.set_app_root(tmp_path)
     yield tmp_path
     secrets.set_app_root(None)
@@ -60,7 +60,7 @@ def test_a_missing_kind_is_an_error_to_get_and_empty_to_list(app_dir):
 
 def test_the_folder_moves_with_the_environment(app_dir, tmp_path_factory, monkeypatch):
     elsewhere = tmp_path_factory.mktemp('etc')
-    (elsewhere / 'smtp.yaml').write_text("relay: {host: mail.example.com}\n")
+    (elsewhere / 'smtp.yaml').write_text("relay: {host: mail.example.com}\n", encoding='utf-8')
     monkeypatch.setenv('KITEBASE_SECRETS', str(elsewhere))
     assert secrets.get('smtp', 'relay') == {'host': 'mail.example.com'}
 
