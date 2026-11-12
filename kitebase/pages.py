@@ -311,6 +311,14 @@ def auto_form_page(table_name: str, table: Any, app: Any = None) -> Dict[str, An
     }
 
 
+# The ids that always mean the generated page, whatever the plugins declare:
+# `auto.partner_list` is the list built from the columns even where an
+# application draws its own `partner_list`, and its rows open
+# `auto.partner_form`. Every column of the model, no command: the way to a
+# table for maintenance, where the database answers only to its constraints.
+AUTO_PREFIX = 'auto.'
+
+
 def resolve_auto_page(app: Any, page_id: str) -> Optional[Dict[str, Any]]:
     """
     Try to auto-generate a page from a conventional id.
@@ -319,9 +327,18 @@ def resolve_auto_page(app: Any, page_id: str) -> Optional[Dict[str, Any]]:
       {table_name}_list  →  auto list view for that table
       {table_name}_form  →  auto form descriptor for that table
 
+    With AUTO_PREFIX in front the same pages, and the list opens its rows in
+    the generated form rather than in `{table_name}_form`.
+
     Table name matching is case-insensitive (e.g. 'author_list' → 'Author').
     Returns None if no matching table is found.
     """
+    if page_id.startswith(AUTO_PREFIX):
+        page = resolve_auto_page(app, page_id[len(AUTO_PREFIX):])
+        if page is not None and page['content']['type'] == 'table':
+            model = page['content']['source']['model']
+            page['content']['navigator'] = {'form_id': f'{AUTO_PREFIX}{model.lower()}_form'}
+        return page
     for suffix in ('_list', '_form'):
         if page_id.endswith(suffix):
             base = page_id[:-len(suffix)]
@@ -489,6 +506,8 @@ def _fill_fields(app: Any, obj: Any, model: Optional[str] = None) -> None:
 
 def _resolve(app: Any, page_id: str):
     """Return (page, collection map), or (None, {}) if no page answers to that id."""
+    if page_id.startswith(AUTO_PREFIX):
+        return resolve_auto_page(app, page_id), {}
     page = app.plugins.get(f'pages.{page_id}')
     if page is not None:
         resolved = app.plugins.resolve_refs(page)
@@ -610,7 +629,7 @@ def _collections_below(app: Any, page_id: str, seen: frozenset) -> Dict[str, Col
 def page_permissions(app: Any, page_id: str) -> Optional[List[str]]:
     """What opening a page asks: `<Model>.read` on the model it shows, then the
     page's own `access:`, which can only narrow. None when no page answers."""
-    page = app.plugins.get(f'pages.{page_id}')
+    page = None if page_id.startswith(AUTO_PREFIX) else app.plugins.get(f'pages.{page_id}')
     if page is not None:
         page = app.plugins.resolve_refs(page)
         if page.get(AUTO):

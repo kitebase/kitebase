@@ -26,6 +26,7 @@ menu_items:
   # ── Commons pages (User, Settings): the APP decides whether/where they surface ──
   users:    { label: Users,         icon: users,     parent: masters, order: 10, action: stack_push, panel: user_list }
   userlogs: { label: User logs,     icon: file-text, parent: masters, order: 20, action: stack_push, panel: userlog_list }
+  maillog:  { label: Email log,     icon: mail,      parent: masters, order: 80, action: stack_push, panel: smtp_log }
   settings: { label: Settings,      icon: settings,  parent: masters, order: 90, action: stack_push, panel: settings_admin }
   # Every table through its generated list and form, for maintenance (commons `tables`)
   tables:   { label: Tables,        icon: table,     parent: masters, order: 95, action: stack_push, panel: tables_browser }

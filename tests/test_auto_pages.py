@@ -131,3 +131,35 @@ def test_a_hidden_column_is_in_no_generated_page():
 
     assert form == ['id', 'title']
     assert grid == ['id', 'title']
+
+
+# ── `auto.`: the generated page, whatever is declared ────────────────────────
+
+def test_the_prefix_answers_the_generated_list_over_a_declared_one():
+    app = make_app({'author_list': {'title': 'Writers', 'content': {
+        'type': 'table', 'source': {'model': 'Author'}, 'columns': [{'field': 'name'}],
+        'navigator': {'commands': [archive()]}}}})
+
+    assert shown(app, 'author_list')['title'] == 'Writers'
+    page = shown(app, 'auto.author_list')
+    assert [c['field'] for c in page['content']['columns']] == ['id', 'name', 'active']
+    # No command, and its rows open the generated form, not `author_form`
+    assert page['content']['navigator'] == {'form_id': 'auto.author_form'}
+
+
+def test_the_prefix_answers_the_generated_form_over_a_declared_one():
+    app = make_app({'author_form': {'content': {
+        'type': 'form', 'source': {'model': 'Author'}, 'fields': [{'name': 'name'}]}}})
+
+    fields = shown(app, 'auto.author_form')['content']['fields']
+    assert [f['name'] for f in fields] == ['id', 'name', 'active']
+
+
+def test_the_prefix_asks_what_the_generated_page_asks():
+    from kitebase.pages import page_permissions
+    app = make_app({'author_list': {'access': 'library.admin', 'content': {
+        'type': 'table', 'source': {'model': 'Author'}}}})
+
+    assert page_permissions(app, 'author_list') == ['Author.read', 'library.admin']
+    assert page_permissions(app, 'auto.author_list') == ['Author.read']
+    assert page_permissions(app, 'auto.nobody_list') is None

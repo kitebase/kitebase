@@ -399,6 +399,15 @@
    "panel": "userlog_list",
    "$plugin": "menu"
   },
+  "maillog": {
+   "label": "Email log",
+   "icon": "mail",
+   "parent": "masters",
+   "order": 80,
+   "action": "stack_push",
+   "panel": "smtp_log",
+   "$plugin": "menu"
+  },
   "settings": {
    "label": "Settings",
    "icon": "settings",
@@ -672,6 +681,15 @@
      "$plugin": "acl"
     },
     {
+     "name": "mail_accounts",
+     "type": "ShortSet",
+     "label": "Mail accounts",
+     "help": "The accounts this user may send email from; the first one is the default.",
+     "choices_endpoint": "smtp_accounts",
+     "validate": "smtp_accounts",
+     "$plugin": "smtp"
+    },
+    {
      "name": "employee_id",
      "type": "ShortStr",
      "unique": true,
@@ -732,6 +750,210 @@
     }
    ],
    "$plugin": "users"
+  },
+  "MailLog": {
+   "name": "mail_logs",
+   "label": "Mail",
+   "help": "The messages sent, with their recipients, their text and their outcome.",
+   "mixins": [
+    "TimeStamp"
+   ],
+   "display_field": "subject",
+   "columns": [
+    {
+     "name": "id",
+     "type": "ID",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "status",
+     "type": "String",
+     "length": 16,
+     "nullable": false,
+     "default": "'sending'",
+     "label": "Status",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "account",
+     "type": "String",
+     "length": 64,
+     "label": "Account",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "sender",
+     "type": "String",
+     "length": 255,
+     "label": "From",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "reply_to",
+     "type": "String",
+     "length": 255,
+     "label": "Reply to",
+     "query_rank": "low",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "to",
+     "type": "Json",
+     "default": [],
+     "label": "To",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "cc",
+     "type": "Json",
+     "default": [],
+     "label": "Cc",
+     "query_rank": "low",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "bcc",
+     "type": "Json",
+     "default": [],
+     "label": "Bcc",
+     "query_rank": "low",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "delivered_to",
+     "type": "Json",
+     "default": [],
+     "label": "Delivered to",
+     "query_rank": "low",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "subject",
+     "type": "Text",
+     "label": "Subject",
+     "searchable": true,
+     "$plugin": "smtp"
+    },
+    {
+     "name": "body",
+     "type": "Markdown",
+     "label": "Text",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "attachments",
+     "type": "Json",
+     "default": [],
+     "label": "Attachments",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "eml",
+     "type": "String",
+     "length": 255,
+     "label": "Message file",
+     "query_rank": "more",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "receipt",
+     "type": "Boolean",
+     "default": false,
+     "label": "Receipt requested",
+     "query_rank": "low",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "message_id",
+     "type": "String",
+     "length": 255,
+     "label": "Message-ID",
+     "query_rank": "more",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "error",
+     "type": "Text",
+     "label": "Error",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "sent_at",
+     "type": "DateTime",
+     "granularity": "second",
+     "label": "Sent",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "user_id",
+     "label": "User",
+     "foreign_key": {
+      "target": "User.id",
+      "relation": "user",
+      "backref": "mail_logs"
+     },
+     "$plugin": "smtp"
+    }
+   ],
+   "$plugin": "smtp"
+  },
+  "MailLink": {
+   "name": "mail_links",
+   "label": "Mail link",
+   "columns": [
+    {
+     "name": "id",
+     "type": "ID",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "mail_log_id",
+     "label": "Mail",
+     "nullable": false,
+     "foreign_key": {
+      "target": "MailLog.id",
+      "owned": true,
+      "relation": "mail_log",
+      "backref": "links"
+     },
+     "$plugin": "smtp"
+    },
+    {
+     "name": "model",
+     "type": "String",
+     "length": 64,
+     "nullable": false,
+     "label": "Table",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "record_id",
+     "type": "String",
+     "length": 64,
+     "nullable": false,
+     "label": "Record",
+     "$plugin": "smtp"
+    },
+    {
+     "name": "role",
+     "type": "String",
+     "length": 32,
+     "label": "Role",
+     "$plugin": "smtp"
+    }
+   ],
+   "indexes": [
+    {
+     "name": "idx_mail_link_record",
+     "columns": [
+      "model",
+      "record_id"
+     ],
+     "description": "The mail of a record",
+     "$plugin": "smtp"
+    }
+   ],
+   "$plugin": "smtp"
   },
   "Author": {
    "name": "authors",
@@ -966,7 +1188,7 @@
     },
     {
      "name": "description",
-     "type": "Text",
+     "type": "Markdown",
      "nullable": true,
      "$plugin": "books"
     },
@@ -2214,8 +2436,7 @@
           "filler": null
          },
          {
-          "name": "description",
-          "widget": "textarea"
+          "name": "description"
          }
         ]
        }
@@ -2348,6 +2569,178 @@
     "$plugin": "wizards"
    },
    "$plugin": "wizards"
+  },
+  "smtp_compose": {
+   "title": "Write an email",
+   "help": "A message from one of your accounts. Sending it closes the form; a refusal says what to fix and keeps what you wrote.",
+   "access": "smtp.send",
+   "content": {
+    "$ref": "views.smtp_compose_form",
+    "$plugin": "smtp"
+   },
+   "$plugin": "smtp"
+  },
+  "smtp_sent": {
+   "title": "Email sent",
+   "help": "The messages sent about this record, newest first, with how each one went.",
+   "content": {
+    "type": "table",
+    "source": {
+     "endpoint": "smtp_sent",
+     "params": {
+      "model": "$trigger.model",
+      "id": "$trigger.id",
+      "$plugin": "smtp"
+     },
+     "$plugin": "smtp"
+    },
+    "navigator": {
+     "mode": "readonly",
+     "$plugin": "smtp"
+    },
+    "columns": [
+     {
+      "field": "sent_at",
+      "title": "Sent",
+      "width": 140,
+      "$plugin": "smtp"
+     },
+     {
+      "field": "status",
+      "title": "Status",
+      "width": 90,
+      "$plugin": "smtp"
+     },
+     {
+      "field": "subject",
+      "title": "Subject",
+      "$plugin": "smtp"
+     },
+     {
+      "field": "to",
+      "title": "To",
+      "$plugin": "smtp"
+     },
+     {
+      "field": "sender",
+      "title": "From",
+      "$plugin": "smtp"
+     },
+     {
+      "field": "attachments",
+      "title": "Attachments",
+      "$plugin": "smtp"
+     },
+     {
+      "field": "error",
+      "title": "Error",
+      "$plugin": "smtp"
+     }
+    ],
+    "$plugin": "smtp"
+   },
+   "panels": [
+    {
+     "id": "message",
+     "pos": "right",
+     "width": 460,
+     "trigger": {
+      "event": "row_click",
+      "pass": [
+       "id"
+      ]
+     },
+     "$ref": "views.smtp_message_view",
+     "$plugin": "smtp"
+    }
+   ],
+   "$plugin": "smtp"
+  },
+  "smtp_log": {
+   "title": "Email log",
+   "access": "MailLog.read",
+   "help": "Every message sent, newest first, with how each one went.",
+   "content": {
+    "type": "table",
+    "source": {
+     "model": "MailLog",
+     "order_by": [
+      "-id"
+     ],
+     "$plugin": "smtp"
+    },
+    "navigator": {
+     "mode": "readonly",
+     "$plugin": "smtp"
+    },
+    "columns": [
+     {
+      "field": "sent_at",
+      "title": "Sent",
+      "width": 140,
+      "$plugin": "smtp"
+     },
+     {
+      "field": "status",
+      "title": "Status",
+      "width": 90,
+      "$plugin": "smtp"
+     },
+     {
+      "field": "account",
+      "title": "Account",
+      "width": 100,
+      "$plugin": "smtp"
+     },
+     {
+      "field": "subject",
+      "title": "Subject",
+      "$plugin": "smtp"
+     },
+     {
+      "field": "to",
+      "title": "To",
+      "$plugin": "smtp"
+     },
+     {
+      "field": "sender",
+      "title": "From",
+      "$plugin": "smtp"
+     },
+     {
+      "field": "error",
+      "title": "Error",
+      "$plugin": "smtp"
+     }
+    ],
+    "$plugin": "smtp"
+   },
+   "panels": [
+    {
+     "id": "message",
+     "pos": "right",
+     "width": 460,
+     "trigger": {
+      "event": "row_click",
+      "pass": [
+       "id"
+      ]
+     },
+     "$ref": "views.smtp_message_view",
+     "$plugin": "smtp"
+    }
+   ],
+   "$plugin": "smtp"
+  },
+  "smtp_merge": {
+   "title": "Mail merge",
+   "help": "One text to every record ticked in the list, each message with its own values. Nothing leaves if one message cannot.",
+   "access": "smtp.send",
+   "content": {
+    "$ref": "views.smtp_merge_form",
+    "$plugin": "smtp"
+   },
+   "$plugin": "smtp"
   },
   "author_list": {
    "$auto": true,
@@ -2836,6 +3229,100 @@
      "cards",
      "table"
     ],
+    "navigator": {
+     "commands": [
+      {
+       "id": "write_email",
+       "label": "Write an email",
+       "help": "Opens an email to the selected member, from one of your accounts.",
+       "scope": "row",
+       "endpoint": "smtp_compose",
+       "params": {
+        "page": "member_compose"
+       },
+       "$plugin": "library"
+      },
+      {
+       "id": "sent_email",
+       "label": "Email sent",
+       "help": "Lists the messages sent to the selected member, newest first.",
+       "scope": "row",
+       "endpoint": "smtp_sent_page",
+       "$plugin": "library"
+      }
+     ],
+     "$plugin": "library"
+    },
+    "$plugin": "library"
+   },
+   "$plugin": "library"
+  },
+  "member_compose": {
+   "title": "Email to a member",
+   "access": "smtp.send",
+   "content": {
+    "$ref": "views.smtp_compose_form",
+    "layout": [
+     {
+      "id": "addresses",
+      "type": "section",
+      "fields": [
+       {
+        "name": "account",
+        "label": "From",
+        "widget": "combobox",
+        "choices_endpoint": "smtp_my_accounts",
+        "required": true
+       },
+       {
+        "name": "to",
+        "label": "To"
+       },
+       {
+        "name": "subject",
+        "label": "Subject",
+        "required": true
+       }
+      ],
+      "$plugin": "library"
+     },
+     {
+      "id": "text",
+      "type": "section",
+      "fields": [
+       {
+        "name": "body",
+        "label": "Text",
+        "type": "Markdown",
+        "widget": "markdown",
+        "placeholders": [
+         {
+          "name": "name",
+          "label": "Name"
+         },
+         {
+          "name": "membership_number",
+          "label": "Membership number"
+         },
+         {
+          "name": "membership_expires",
+          "label": "Membership expires"
+         },
+         {
+          "name": "a_city",
+          "label": "City"
+         }
+        ]
+       },
+       {
+        "name": "attachments",
+        "label": "Attachments",
+        "widget": "smtp.attachments"
+       }
+      ],
+      "$plugin": "library"
+     }
+    ],
     "$plugin": "library"
    },
    "$plugin": "library"
@@ -3174,6 +3661,10 @@
   "playground.demos": {
    "label": "Playground demos",
    "$plugin": "panels"
+  },
+  "smtp.send": {
+   "label": "Send email",
+   "$plugin": "smtp"
   }
  },
  "views": {
@@ -4474,6 +4965,248 @@
    ],
    "$plugin": "wizards"
   },
+  "smtp_compose_form": {
+   "type": "form",
+   "source": {
+    "save_endpoint": "smtp_compose_send",
+    "$plugin": "smtp"
+   },
+   "policy": {
+    "button_style": "icon-label",
+    "$plugin": "smtp"
+   },
+   "actions": {
+    "toolbar": [
+     {
+      "id": "save",
+      "label": "Send",
+      "$plugin": "smtp"
+     },
+     "cancel"
+    ],
+    "$plugin": "smtp"
+   },
+   "layout": [
+    {
+     "id": "addresses",
+     "type": "section",
+     "fields": [
+      {
+       "name": "account",
+       "label": "From",
+       "widget": "combobox",
+       "choices_endpoint": "smtp_my_accounts",
+       "required": true
+      },
+      {
+       "name": "to",
+       "label": "To",
+       "widget": "smtp.recipients",
+       "help": "The addresses, separated by commas, such as ann@example.com, Bob <bob@example.com>."
+      },
+      {
+       "name": "cc",
+       "label": "Cc"
+      },
+      {
+       "name": "bcc",
+       "label": "Bcc"
+      },
+      {
+       "name": "subject",
+       "label": "Subject",
+       "required": true
+      }
+     ],
+     "$plugin": "smtp"
+    },
+    {
+     "id": "text",
+     "type": "section",
+     "fields": [
+      {
+       "name": "body",
+       "label": "Text",
+       "type": "Markdown",
+       "widget": "markdown"
+      },
+      {
+       "name": "attachments",
+       "label": "Attachments",
+       "widget": "smtp.attachments"
+      },
+      {
+       "name": "receipt",
+       "label": "Ask for a receipt",
+       "type": "Boolean",
+       "help": "Asks the recipient's mail program to confirm the reading; many ignore it."
+      }
+     ],
+     "$plugin": "smtp"
+    }
+   ],
+   "$plugin": "smtp"
+  },
+  "smtp_message_view": {
+   "type": "form",
+   "source": {
+    "endpoint": "smtp_message",
+    "pass": {
+     "id": "$trigger.id",
+     "$plugin": "smtp"
+    },
+    "$plugin": "smtp"
+   },
+   "policy": {
+    "editable": false,
+    "$plugin": "smtp"
+   },
+   "layout": [
+    {
+     "id": "head",
+     "type": "section",
+     "fields": [
+      {
+       "name": "subject",
+       "label": "Subject"
+      },
+      {
+       "name": "sent_at",
+       "label": "Sent"
+      },
+      {
+       "name": "status",
+       "label": "Status"
+      },
+      {
+       "name": "sender",
+       "label": "From"
+      },
+      {
+       "name": "to",
+       "label": "To"
+      },
+      {
+       "name": "cc",
+       "label": "Cc"
+      }
+     ],
+     "$plugin": "smtp"
+    },
+    {
+     "id": "text",
+     "type": "section",
+     "fields": [
+      {
+       "name": "body",
+       "label": "Text",
+       "type": "Markdown",
+       "widget": "markdown"
+      }
+     ],
+     "$plugin": "smtp"
+    },
+    {
+     "id": "delivery",
+     "type": "section",
+     "fields": [
+      {
+       "name": "attachments",
+       "label": "Attachments"
+      },
+      {
+       "name": "delivered_to",
+       "label": "Delivered to"
+      },
+      {
+       "name": "error",
+       "label": "Error"
+      }
+     ],
+     "$plugin": "smtp"
+    }
+   ],
+   "$plugin": "smtp"
+  },
+  "smtp_merge_form": {
+   "type": "form",
+   "source": {
+    "save_endpoint": "smtp_merge_send",
+    "$plugin": "smtp"
+   },
+   "policy": {
+    "button_style": "icon-label",
+    "$plugin": "smtp"
+   },
+   "actions": {
+    "toolbar": [
+     {
+      "id": "save",
+      "label": "Send",
+      "$plugin": "smtp"
+     },
+     "cancel"
+    ],
+    "$plugin": "smtp"
+   },
+   "layout": [
+    {
+     "id": "addresses",
+     "type": "section",
+     "fields": [
+      {
+       "name": "account",
+       "label": "From",
+       "widget": "combobox",
+       "choices_endpoint": "smtp_my_accounts",
+       "required": true
+      },
+      {
+       "name": "recipients",
+       "label": "Recipients",
+       "widget": "smtp.mergerecipients"
+      },
+      {
+       "name": "subject",
+       "label": "Subject",
+       "required": true
+      }
+     ],
+     "$plugin": "smtp"
+    },
+    {
+     "id": "text",
+     "type": "section",
+     "fields": [
+      {
+       "name": "body",
+       "label": "Text",
+       "type": "Markdown",
+       "widget": "markdown"
+      },
+      {
+       "name": "attachments",
+       "label": "Attachments",
+       "widget": "smtp.attachments"
+      },
+      {
+       "name": "per_contact",
+       "label": "One message per contact",
+       "type": "Boolean",
+       "help": "Each address gets a message of its own, whose placeholders read the row the address belongs to."
+      },
+      {
+       "name": "keep_log",
+       "label": "Keep a log of the messages",
+       "type": "Boolean",
+       "help": "Each message is written in the log and linked to its record, where Email sent finds it. Without the log nothing is kept of what left."
+      }
+     ],
+     "$plugin": "smtp"
+    }
+   ],
+   "$plugin": "smtp"
+  },
   "purchaseorder_discount": {
    "type": "form",
    "presentation": "dialog",
@@ -4708,6 +5441,30 @@
    "$plugin": "wizards"
   },
   "$plugin": "wizards"
+ },
+ "smtp": {
+  "timeout": 30,
+  "attachments": {
+   "accept": [
+    "pdf",
+    "jpg",
+    "jpeg",
+    "png",
+    "gif",
+    "txt",
+    "csv",
+    "xlsx",
+    "xls",
+    "docx",
+    "doc",
+    "odt",
+    "ods",
+    "zip"
+   ],
+   "max_size": "20MB",
+   "$plugin": "smtp"
+  },
+  "$plugin": "smtp"
  },
  "roles": {
   "acquisitions.buyer": {
