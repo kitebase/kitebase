@@ -38,7 +38,7 @@ pages.*.content.layout[].pages[].layout[].view.columns[]: [field, title, width]
 pages.*.content.layout[].pages[].layout[].view.navigator: [commands]
 pages.*.content.layout[].pages[].layout[].view.navigator.commands[]: [endpoint, help, id, label, scope]
 pages.*.content.layout[].pages[].layout[].view.source: [order_by]
-pages.*.content.navigator: [commands]
+pages.*.content.navigator: [commands, mode]
 pages.*.content.navigator.commands[]: [endpoint, help, id, key, label, params, scope]
 pages.*.content.navigator.commands[].params: '*'
 pages.*.content.on_saved: [insert, update]
@@ -52,11 +52,12 @@ pages.*.content.policy: [button_style, editable]
 pages.*.content.props: '*'
 pages.*.content.props.*[]: '*'
 pages.*.content.rules[]: [field, op]
-pages.*.content.source: [defaults, domain, endpoint, id, joins, model, order_by, save_endpoint]
+pages.*.content.source: [defaults, domain, endpoint, id, joins, model, order_by, params, save_endpoint]
 pages.*.content.source.defaults: '*'
 pages.*.content.source.domain[]: '*'
 pages.*.content.source.joins[]: '*'
 pages.*.content.source.joins[].*: ['on', type]
+pages.*.content.source.params: '*'
 pages.*.panels[]: [collapsed, component, content, height, id, panels, pos, props, tabs, trigger, type, width]
 pages.*.panels[].content: [component, props, type]
 pages.*.panels[].content.props: '*'

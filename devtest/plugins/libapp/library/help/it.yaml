@@ -2,6 +2,10 @@
 # Translate the value under the language; an empty one shows the English.
 # `en_old` is the English the translation was made on: review it, then remove the line.
 
+pages.libraryuser_list.content.navigator.commands.sent_email:
+  en: Lists the messages sent to the selected member, newest first.
+  it: Elenca i messaggi spediti al socio selezionato, dal più recente.
+
 pages.libraryuser_list.content.navigator.commands.write_email:
   en: Opens an email to the selected member, from one of your accounts.
   it: Apre una email al socio selezionato, da uno dei tuoi account.

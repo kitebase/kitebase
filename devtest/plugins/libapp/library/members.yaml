@@ -26,6 +26,11 @@ pages:
             scope: row
             endpoint: smtp_compose
             params: { page: member_compose }
+          - id: sent_email
+            label: Email sent
+            help: Lists the messages sent to the selected member, newest first.
+            scope: row
+            endpoint: smtp_sent_page
 
   # The compose form of the smtp plugin, as a member's email wants it: no
   # copies and no receipt, and the member's fields as placeholders. The
