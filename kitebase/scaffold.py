@@ -828,8 +828,13 @@ def create_app(name: str, directory: Optional[Path] = None,
         root = commons_root(Path(commons))
         # As it was given; relative only while the two share more than the
         # root of the disk, where it would read as a ladder of `../`
-        shared = Path(os.path.commonpath([root, target]))
-        relative = not Path(commons).expanduser().is_absolute() and shared != Path(shared.anchor)
+        relative = False
+        if not Path(commons).expanduser().is_absolute():
+            try:
+                shared = Path(os.path.commonpath([root, target]))
+                relative = shared != Path(shared.anchor)
+            except ValueError:  # two Windows drives: no relative path joins them
+                pass
         written = Path(os.path.relpath(root, target)) if relative else root
         plugins = COMMONS_PLUGINS.format(root=written.as_posix())
 

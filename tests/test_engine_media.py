@@ -6,6 +6,7 @@ db-copy moves the files only with --media, staged until the rows are
 committed; db-backup --media writes the unit, linking what did not change.
 """
 import logging
+import os
 import sqlite3
 from types import SimpleNamespace
 
@@ -107,7 +108,7 @@ def test_a_missing_media_folder_is_said_at_startup(app_dir, monkeypatch, caplog)
 
 def test_the_roots_of_a_database_leave_out_the_cache_and_the_absolute_ones():
     own, shared = media_roots({'roots': {'a': {'path': 'media/a'}, 'c': {'path': 'media/c'},
-                                         'x': {'path': '/srv/x'}}, 'cache': 'c'})
+                                         'x': {'path': os.path.abspath('/srv/x')}}, 'cache': 'c'})
     assert own == [('a', 'media/a')] and shared == ['x']
 
 

@@ -204,7 +204,7 @@ def test_an_absolute_path_stays_absolute(tmp_path):
     _fake_commons(tmp_path / 'commons')
     target = create_app("sample", tmp_path / "sample", commons=tmp_path / "commons")
     root = yaml.safe_load((target / "config.yaml").read_text(encoding='utf-8'))['plugins'][0]
-    assert root['path'] == str(tmp_path / 'commons' / 'plugins')
+    assert root['path'] == (tmp_path / 'commons' / 'plugins').as_posix()
 
 
 def test_nothing_is_written_when_the_commons_are_not_there(tmp_path):
@@ -215,6 +215,8 @@ def test_nothing_is_written_when_the_commons_are_not_there(tmp_path):
 
 @needs_commons
 def test_with_the_commons_users_are_theirs_and_it_checks_clean(tmp_path, monkeypatch):
+    if Path(tmp_path).drive != COMMONS.drive:
+        pytest.skip('the commons and the temporary directory are on two drives')
     monkeypatch.chdir(tmp_path)
     target = create_app("sample", Path("apps") / "sample",
                         commons=Path(os.path.relpath(COMMONS, tmp_path)))

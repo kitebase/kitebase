@@ -504,7 +504,7 @@ class PluginsManager:
 
             # Scan for plugin directories
             in_root: Dict[str, Plugin] = {}
-            for plugin_dir in plugins_dir.iterdir():
+            for plugin_dir in sorted(plugins_dir.iterdir()):
                 if plugin_dir.is_dir():
                     config_file = plugin_dir / "config.yaml"
                     if not config_file.exists():
@@ -542,7 +542,7 @@ class PluginsManager:
                 chosen[name] = in_root[name]
 
         # Keep what was asked for plus what it references, drop the rest.
-        # Restored to discovery order (root order, then directory order): the
+        # Restored to discovery order (root order, then directory name): the
         # topological sort is only a partial order, so the order plugins are
         # registered in decides deep_merge precedence between independent ones.
         # Selection must narrow that sequence, never reshuffle it.
@@ -1345,7 +1345,7 @@ class Plugin:
         self.timestamp: float = 0  # Default timestamp
 
         # Categorize and load files
-        for file in plugin_dir.iterdir():
+        for file in sorted(plugin_dir.iterdir()):
             if file.is_file():
                 # Update timestamp if this file is newer
                 file_timestamp = os.path.getmtime(file)

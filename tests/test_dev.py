@@ -173,7 +173,7 @@ def test_an_app_with_its_own_environment_runs_through_uv(tmp_path):
     app = write_app(tmp_path / "a", standalone=True)
     command = dev.backend_command(app, app / "server_fastapi.py")
     assert command[1:] == ["run", "server_fastapi.py"]
-    assert command[0].endswith("uv")
+    assert Path(command[0]).stem.lower() == "uv"
 
 
 def test_the_library_checkout_is_layered_on_for_the_run(tmp_path):
@@ -252,7 +252,8 @@ def test_running_nothing_is_refused(tmp_path, monkeypatch):
 
 # ── Building the client ──────────────────────────────────────────────────────
 
-def test_the_build_names_the_application_it_is_for(tmp_path):
+def test_the_build_names_the_application_it_is_for(tmp_path, monkeypatch):
+    monkeypatch.setattr(dev.shutil, "which", lambda name: f"/bin/{name}")
     app = write_app(tmp_path / "a")
     command = dev.build_command(app)
     assert command[1:] == ["build:app", str(app)]

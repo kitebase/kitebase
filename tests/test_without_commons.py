@@ -9,6 +9,7 @@ reads, the pages and the menu come out; and no module was loaded from outside
 the core, the libraries and the application's own folder.
 """
 import json
+import os
 import subprocess
 import sys
 import textwrap
@@ -109,7 +110,9 @@ def test_an_application_without_the_commons(tmp_path):
 
     done = subprocess.run(
         [sys.executable, str(script), str(data)], cwd=data, capture_output=True,
-        text=True, env={'PYTHONPATH': str(REPO_ROOT), 'PATH': '/usr/bin:/bin'},
+        text=True, env={'PYTHONPATH': str(REPO_ROOT), 'PATH': os.defpath,
+             # Windows cannot start asyncio without it
+             **{k: v for k, v in os.environ.items() if k.upper() == 'SYSTEMROOT'}},
         timeout=120)
     assert done.returncode == 0, done.stderr
     out = json.loads(done.stdout.strip().splitlines()[-1])

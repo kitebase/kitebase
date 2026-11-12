@@ -294,6 +294,7 @@ dependencies = [
     { name = "pyjwt" },
     { name = "pyyaml" },
     { name = "sqlalchemy" },
+    { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
 
 [package.optional-dependencies]
@@ -343,6 +344,7 @@ requires-dist = [
     { name = "python-multipart", marker = "extra == 'fastapi'" },
     { name = "pyyaml" },
     { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "tzdata", marker = "sys_platform == 'win32'" },
     { name = "uvicorn", marker = "extra == 'dev'" },
     { name = "uvicorn", marker = "extra == 'fastapi'" },
 ]

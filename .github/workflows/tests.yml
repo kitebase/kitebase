@@ -32,5 +32,6 @@ jobs:
         working-directory: server
         run: uv run --no-sync pytest -p no:warnings
       - name: Commons tests
+        if: success() || failure()
         working-directory: commons
         run: uv run --project ../server --no-sync pytest -p no:warnings plugins

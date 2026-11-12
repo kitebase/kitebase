@@ -508,6 +508,39 @@
    "panel": "book_list",
    "$plugin": "books"
   },
+  "acquisitions": {
+   "label": "Acquisitions",
+   "icon": "truck",
+   "order": 40,
+   "$plugin": "acquisitions"
+  },
+  "orders": {
+   "label": "Orders",
+   "icon": "clipboard-list",
+   "parent": "acquisitions",
+   "order": 10,
+   "action": "stack_push",
+   "panel": "purchaseorder_list",
+   "$plugin": "acquisitions"
+  },
+  "receipts": {
+   "label": "Receipts",
+   "icon": "package-check",
+   "parent": "acquisitions",
+   "order": 20,
+   "action": "stack_push",
+   "panel": "receipt_list",
+   "$plugin": "acquisitions"
+  },
+  "acquisitions_settings": {
+   "label": "Settings",
+   "icon": "settings",
+   "parent": "acquisitions",
+   "order": 90,
+   "action": "stack_push",
+   "panel": "acquisitions_settings",
+   "$plugin": "acquisitions"
+  },
   "members": {
    "label": "Members",
    "icon": "users",
@@ -543,39 +576,6 @@
    "action": "stack_push",
    "panel": "review_list",
    "$plugin": "library"
-  },
-  "acquisitions": {
-   "label": "Acquisitions",
-   "icon": "truck",
-   "order": 40,
-   "$plugin": "acquisitions"
-  },
-  "orders": {
-   "label": "Orders",
-   "icon": "clipboard-list",
-   "parent": "acquisitions",
-   "order": 10,
-   "action": "stack_push",
-   "panel": "purchaseorder_list",
-   "$plugin": "acquisitions"
-  },
-  "receipts": {
-   "label": "Receipts",
-   "icon": "package-check",
-   "parent": "acquisitions",
-   "order": 20,
-   "action": "stack_push",
-   "panel": "receipt_list",
-   "$plugin": "acquisitions"
-  },
-  "acquisitions_settings": {
-   "label": "Settings",
-   "icon": "settings",
-   "parent": "acquisitions",
-   "order": 90,
-   "action": "stack_push",
-   "panel": "acquisitions_settings",
-   "$plugin": "acquisitions"
   }
  },
  "tables": {
@@ -1070,190 +1070,6 @@
    },
    "$plugin": "books"
   },
-  "LibraryUser": {
-   "name": "library_users",
-   "mixins": [
-    "TimeStamp",
-    "Credentials"
-   ],
-   "columns": [
-    {
-     "name": "id",
-     "type": "ID",
-     "$plugin": "library"
-    },
-    {
-     "name": "name",
-     "type": "Name",
-     "index": false,
-     "$plugin": "library"
-    },
-    {
-     "name": "card",
-     "type": "Image",
-     "root": "records",
-     "label": "Library card",
-     "$plugin": "library"
-    },
-    {
-     "name": "address",
-     "type": "Address",
-     "prefix": "a_",
-     "$plugin": "library"
-    },
-    {
-     "name": "is_student",
-     "label": "Student",
-     "type": "Boolean",
-     "default": false,
-     "$plugin": "library"
-    },
-    {
-     "name": "membership_number",
-     "type": "String",
-     "length": 50,
-     "unique": true,
-     "nullable": true,
-     "$plugin": "library"
-    },
-    {
-     "name": "membership_date",
-     "type": "Date",
-     "nullable": true,
-     "$plugin": "library"
-    },
-    {
-     "name": "membership_expires",
-     "type": "Date",
-     "nullable": true,
-     "$plugin": "library"
-    },
-    {
-     "name": "phone",
-     "type": "Phone",
-     "help": "Contact phone number",
-     "$plugin": "library"
-    },
-    {
-     "name": "notes",
-     "type": "Text",
-     "nullable": true,
-     "$plugin": "library"
-    }
-   ],
-   "$plugin": "library"
-  },
-  "Review": {
-   "help": "What a reader thought of a book.",
-   "name": "reviews",
-   "tags": [
-    "journal"
-   ],
-   "mixins": [
-    "TimeStamp"
-   ],
-   "columns": [
-    {
-     "name": "id",
-     "type": "ID",
-     "$plugin": "library"
-    },
-    {
-     "name": "rating",
-     "help": "From one to five stars.",
-     "type": "Integer",
-     "$plugin": "library"
-    },
-    {
-     "name": "comment",
-     "type": "Text",
-     "$plugin": "library"
-    },
-    {
-     "name": "review_date",
-     "type": "Date",
-     "default": "$op_date",
-     "nullable": false,
-     "$plugin": "library"
-    },
-    {
-     "name": "library_user_id",
-     "nullable": false,
-     "foreign_key": {
-      "target": "LibraryUser.id"
-     },
-     "$plugin": "library"
-    },
-    {
-     "name": "book_id",
-     "doc": "A review is edited inside the book's form and still outlives it: lifetime and editing surface are independent axes, and saying so settles the question.",
-     "nullable": false,
-     "foreign_key": {
-      "target": "Book.id",
-      "owned": false
-     },
-     "$plugin": "library"
-    }
-   ],
-   "$plugin": "library"
-  },
-  "Loan": {
-   "help": "A book lent to a member, from the day it goes out to the day it comes back.",
-   "name": "loans",
-   "tags": [
-    "journal"
-   ],
-   "mixins": [
-    "TimeStamp"
-   ],
-   "columns": [
-    {
-     "name": "id",
-     "type": "ID",
-     "$plugin": "library"
-    },
-    {
-     "name": "borrowed_at",
-     "type": "DateTime",
-     "default": "$now",
-     "nullable": false,
-     "$plugin": "library"
-    },
-    {
-     "name": "due_date",
-     "help": "When the book should come back.",
-     "type": "DateTime",
-     "nullable": false,
-     "$plugin": "library"
-    },
-    {
-     "name": "returned_at",
-     "help": "Empty while the book is out.",
-     "type": "DateTime",
-     "nullable": true,
-     "$plugin": "library"
-    },
-    {
-     "name": "library_user_id",
-     "nullable": false,
-     "foreign_key": {
-      "target": "LibraryUser.id"
-     },
-     "$plugin": "library"
-    },
-    {
-     "name": "book_id",
-     "doc": "A loan is a journal entry, edited inside the book's form behind a button and not a part of the book: deleting a book leaves its history standing.",
-     "nullable": false,
-     "foreign_key": {
-      "target": "Book.id",
-      "owned": false
-     },
-     "$plugin": "library"
-    }
-   ],
-   "$plugin": "library"
-  },
   "PurchaseOrder": {
    "name": "purchase_orders",
    "help": "An order to one publisher for the books the library wants to buy.",
@@ -1484,6 +1300,190 @@
     }
    ],
    "$plugin": "acquisitions"
+  },
+  "LibraryUser": {
+   "name": "library_users",
+   "mixins": [
+    "TimeStamp",
+    "Credentials"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "ID",
+     "$plugin": "library"
+    },
+    {
+     "name": "name",
+     "type": "Name",
+     "index": false,
+     "$plugin": "library"
+    },
+    {
+     "name": "card",
+     "type": "Image",
+     "root": "records",
+     "label": "Library card",
+     "$plugin": "library"
+    },
+    {
+     "name": "address",
+     "type": "Address",
+     "prefix": "a_",
+     "$plugin": "library"
+    },
+    {
+     "name": "is_student",
+     "label": "Student",
+     "type": "Boolean",
+     "default": false,
+     "$plugin": "library"
+    },
+    {
+     "name": "membership_number",
+     "type": "String",
+     "length": 50,
+     "unique": true,
+     "nullable": true,
+     "$plugin": "library"
+    },
+    {
+     "name": "membership_date",
+     "type": "Date",
+     "nullable": true,
+     "$plugin": "library"
+    },
+    {
+     "name": "membership_expires",
+     "type": "Date",
+     "nullable": true,
+     "$plugin": "library"
+    },
+    {
+     "name": "phone",
+     "type": "Phone",
+     "help": "Contact phone number",
+     "$plugin": "library"
+    },
+    {
+     "name": "notes",
+     "type": "Text",
+     "nullable": true,
+     "$plugin": "library"
+    }
+   ],
+   "$plugin": "library"
+  },
+  "Review": {
+   "help": "What a reader thought of a book.",
+   "name": "reviews",
+   "tags": [
+    "journal"
+   ],
+   "mixins": [
+    "TimeStamp"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "ID",
+     "$plugin": "library"
+    },
+    {
+     "name": "rating",
+     "help": "From one to five stars.",
+     "type": "Integer",
+     "$plugin": "library"
+    },
+    {
+     "name": "comment",
+     "type": "Text",
+     "$plugin": "library"
+    },
+    {
+     "name": "review_date",
+     "type": "Date",
+     "default": "$op_date",
+     "nullable": false,
+     "$plugin": "library"
+    },
+    {
+     "name": "library_user_id",
+     "nullable": false,
+     "foreign_key": {
+      "target": "LibraryUser.id"
+     },
+     "$plugin": "library"
+    },
+    {
+     "name": "book_id",
+     "doc": "A review is edited inside the book's form and still outlives it: lifetime and editing surface are independent axes, and saying so settles the question.",
+     "nullable": false,
+     "foreign_key": {
+      "target": "Book.id",
+      "owned": false
+     },
+     "$plugin": "library"
+    }
+   ],
+   "$plugin": "library"
+  },
+  "Loan": {
+   "help": "A book lent to a member, from the day it goes out to the day it comes back.",
+   "name": "loans",
+   "tags": [
+    "journal"
+   ],
+   "mixins": [
+    "TimeStamp"
+   ],
+   "columns": [
+    {
+     "name": "id",
+     "type": "ID",
+     "$plugin": "library"
+    },
+    {
+     "name": "borrowed_at",
+     "type": "DateTime",
+     "default": "$now",
+     "nullable": false,
+     "$plugin": "library"
+    },
+    {
+     "name": "due_date",
+     "help": "When the book should come back.",
+     "type": "DateTime",
+     "nullable": false,
+     "$plugin": "library"
+    },
+    {
+     "name": "returned_at",
+     "help": "Empty while the book is out.",
+     "type": "DateTime",
+     "nullable": true,
+     "$plugin": "library"
+    },
+    {
+     "name": "library_user_id",
+     "nullable": false,
+     "foreign_key": {
+      "target": "LibraryUser.id"
+     },
+     "$plugin": "library"
+    },
+    {
+     "name": "book_id",
+     "doc": "A loan is a journal entry, edited inside the book's form behind a button and not a part of the book: deleting a book leaves its history standing.",
+     "nullable": false,
+     "foreign_key": {
+      "target": "Book.id",
+      "owned": false
+     },
+     "$plugin": "library"
+    }
+   ],
+   "$plugin": "library"
   }
  },
  "pages": {
@@ -1498,6 +1498,16 @@
    "$plugin": "settings"
   },
   "$plugin": "settings",
+  "tables_browser": {
+   "title": "Tables",
+   "access": "tables.browse",
+   "content": {
+    "type": "plugin",
+    "component": "tables.browser",
+    "$plugin": "tables"
+   },
+   "$plugin": "tables"
+  },
   "user_form": {
    "title": "User",
    "content": {
@@ -1707,71 +1717,56 @@
    },
    "$plugin": "users"
   },
-  "tables_browser": {
-   "title": "Tables",
-   "access": "tables.browse",
+  "hello_demo": {
+   "title": "Hello Demo",
+   "access": "playground.demos",
    "content": {
-    "type": "plugin",
-    "component": "tables.browser",
-    "$plugin": "tables"
-   },
-   "$plugin": "tables"
-  },
-  "book_with_reviews": {
-   "title": "Books & Reviews",
-   "help": "The catalogue with what readers did. Click a book to see its detail, its reviews and its loans.",
-   "content": {
-    "$ref": "views.book_list_view",
+    "$ref": "views.hello_main",
     "$plugin": "panels"
    },
    "panels": [
     {
-     "id": "detail",
+     "id": "sidebar",
      "pos": "right",
-     "width": 340,
-     "collapsed": true,
-     "trigger": {
-      "event": "row_click",
-      "pass": [
-       "id"
-      ]
-     },
-     "type": "tabs",
-     "tabs": [
-      {
-       "id": "detail",
-       "label": "Detail",
-       "$ref": "views.book_detail_view"
-      }
-     ],
-     "$plugin": "panels"
-    },
-    {
-     "id": "bottom_tabs",
-     "pos": "bottom",
-     "height": 220,
-     "trigger": {
-      "event": "row_click",
-      "pass": [
-       "id"
-      ]
-     },
-     "type": "tabs",
-     "tabs": [
-      {
-       "id": "reviews",
-       "label": "Reviews",
-       "$ref": "views.book_reviews_view"
-      },
-      {
-       "id": "loans",
-       "label": "Loans",
-       "$ref": "views.book_loans_by_book_view"
-      }
-     ],
+     "width": 300,
+     "$ref": "views.hello_sidebar",
      "$plugin": "panels"
     }
    ],
+   "$plugin": "panels"
+  },
+  "demo_author_list": {
+   "title": "Authors",
+   "content": {
+    "$ref": "views.demo_author_list_view",
+    "$plugin": "panels"
+   },
+   "$plugin": "panels"
+  },
+  "demo_book_list": {
+   "title": "Books",
+   "content": {
+    "$ref": "views.demo_book_list_view",
+    "$plugin": "panels"
+   },
+   "$plugin": "panels"
+  },
+  "demo_book_authors": {
+   "title": "Books with Authors",
+   "content": {
+    "$ref": "views.demo_book_authors_view",
+    "$plugin": "panels"
+   },
+   "$plugin": "panels"
+  },
+  "msgbox_demo": {
+   "title": "Msgbox demo",
+   "access": "playground.demos",
+   "content": {
+    "type": "plugin",
+    "component": "library.msgboxdemo",
+    "$plugin": "panels"
+   },
    "$plugin": "panels"
   },
   "book_demo_bottom_full": {
@@ -2260,66 +2255,62 @@
    ],
    "$plugin": "panels"
   },
-  "hello_demo": {
-   "title": "Hello Demo",
-   "access": "playground.demos",
+  "book_with_reviews": {
+   "title": "Books & Reviews",
+   "help": "The catalogue with what readers did. Click a book to see its detail, its reviews and its loans.",
    "content": {
-    "$ref": "views.hello_main",
+    "$ref": "views.book_list_view",
     "$plugin": "panels"
    },
    "panels": [
     {
-     "id": "sidebar",
+     "id": "detail",
      "pos": "right",
-     "width": 300,
-     "$ref": "views.hello_sidebar",
+     "width": 340,
+     "collapsed": true,
+     "trigger": {
+      "event": "row_click",
+      "pass": [
+       "id"
+      ]
+     },
+     "type": "tabs",
+     "tabs": [
+      {
+       "id": "detail",
+       "label": "Detail",
+       "$ref": "views.book_detail_view"
+      }
+     ],
+     "$plugin": "panels"
+    },
+    {
+     "id": "bottom_tabs",
+     "pos": "bottom",
+     "height": 220,
+     "trigger": {
+      "event": "row_click",
+      "pass": [
+       "id"
+      ]
+     },
+     "type": "tabs",
+     "tabs": [
+      {
+       "id": "reviews",
+       "label": "Reviews",
+       "$ref": "views.book_reviews_view"
+      },
+      {
+       "id": "loans",
+       "label": "Loans",
+       "$ref": "views.book_loans_by_book_view"
+      }
+     ],
      "$plugin": "panels"
     }
    ],
    "$plugin": "panels"
-  },
-  "demo_author_list": {
-   "title": "Authors",
-   "content": {
-    "$ref": "views.demo_author_list_view",
-    "$plugin": "panels"
-   },
-   "$plugin": "panels"
-  },
-  "demo_book_list": {
-   "title": "Books",
-   "content": {
-    "$ref": "views.demo_book_list_view",
-    "$plugin": "panels"
-   },
-   "$plugin": "panels"
-  },
-  "demo_book_authors": {
-   "title": "Books with Authors",
-   "content": {
-    "$ref": "views.demo_book_authors_view",
-    "$plugin": "panels"
-   },
-   "$plugin": "panels"
-  },
-  "msgbox_demo": {
-   "title": "Msgbox demo",
-   "access": "playground.demos",
-   "content": {
-    "type": "plugin",
-    "component": "library.msgboxdemo",
-    "$plugin": "panels"
-   },
-   "$plugin": "panels"
-  },
-  "product_demo_form": {
-   "title": "Scheda prodotto",
-   "access": "playground.demos",
-   "content": {
-    "$ref": "views.product_demo_form",
-    "$plugin": "wizards"
-   },
-   "$plugin": "wizards"
   },
   "payment_wizard_params": {
    "title": "Parametri solleciti",
@@ -2349,6 +2340,15 @@
    },
    "$plugin": "wizards"
   },
+  "product_demo_form": {
+   "title": "Scheda prodotto",
+   "access": "playground.demos",
+   "content": {
+    "$ref": "views.product_demo_form",
+    "$plugin": "wizards"
+   },
+   "$plugin": "wizards"
+  },
   "author_list": {
    "$auto": true,
    "content": {
@@ -2368,374 +2368,6 @@
     "$plugin": "books"
    },
    "$plugin": "books"
-  },
-  "loan_stats": {
-   "title": "Loan statistics",
-   "access": "library.loan_stats",
-   "content": {
-    "$ref": "views.loan_stats_by_book",
-    "$plugin": "library"
-   },
-   "panels": [
-    {
-     "id": "by_month",
-     "pos": "bottom",
-     "height": 240,
-     "trigger": {
-      "event": "row_click",
-      "pass": [
-       "id"
-      ]
-     },
-     "$ref": "views.loan_stats_by_month",
-     "$plugin": "library"
-    }
-   ],
-   "$plugin": "library"
-  },
-  "review_list": {
-   "title": "Reviews",
-   "content": {
-    "type": "cards",
-    "allow_views": [
-     "cards",
-     "table"
-    ],
-    "source": {
-     "model": "Review",
-     "joins": [
-      {
-       "Book": "Review.book_id = Book.id",
-       "$plugin": "library"
-      },
-      {
-       "LibraryUser": "Review.library_user_id = LibraryUser.id",
-       "$plugin": "library"
-      }
-     ],
-     "order_by": [
-      "-rating",
-      "-review_date"
-     ],
-     "$plugin": "library"
-    },
-    "columns": [
-     {
-      "field": "id",
-      "$plugin": "library"
-     },
-     {
-      "field": "rating",
-      "tone": {
-       "ranges": [
-        [
-         5,
-         "success"
-        ],
-        [
-         4,
-         "accent"
-        ],
-        [
-         3,
-         "warning"
-        ],
-        [
-         1,
-         "danger"
-        ]
-       ]
-      },
-      "$plugin": "library"
-     },
-     {
-      "field": "Book.title as book",
-      "title": "Book",
-      "$plugin": "library"
-     },
-     {
-      "field": "comment",
-      "$plugin": "library"
-     },
-     {
-      "field": "LibraryUser.name as member",
-      "title": "Member",
-      "$plugin": "library"
-     },
-     {
-      "field": "review_date",
-      "$plugin": "library"
-     }
-    ],
-    "card": {
-     "title": "book",
-     "subtitle": "comment",
-     "ribbon": "rating",
-     "details": [
-      "member",
-      "review_date"
-     ],
-     "$plugin": "library"
-    },
-    "navigator": true,
-    "$plugin": "library"
-   },
-   "$plugin": "library"
-  },
-  "welcome": {
-   "title": "Welcome",
-   "content": {
-    "type": "plugin",
-    "component": "library.welcome",
-    "props": {
-     "title": "Devtest, a Kitebase demo and playground",
-     "intro": [
-      "The library is the working part: catalogue, members, loans and reviews. The Playground group holds the demos of panels, triggers, wizards and dialogs: those that read no table ask for playground.demos, which the librarian has.",
-      "Access control is on. Sign out and back in as another user to see what each role is given: the menu, the pages and the data follow the role."
-     ],
-     "users": [
-      {
-       "username": "admin",
-       "password": "admin",
-       "role": "administrator",
-       "sees": "Everything: not a role, it passes every check.",
-       "$plugin": "library"
-      },
-      {
-       "username": "catalog",
-       "password": "catalog",
-       "role": "Cataloguer",
-       "sees": "The catalogue. No loans: the Loans tab of Book + reviews is not there.",
-       "$plugin": "library"
-      },
-      {
-       "username": "desk",
-       "password": "desk",
-       "role": "Loans desk",
-       "sees": "Members and loans; books read only, every other table by its label.",
-       "$plugin": "library"
-      },
-      {
-       "username": "librarian",
-       "password": "librarian",
-       "role": "Librarian",
-       "sees": "Cataloguer and loans desk together, plus the reviews and the Playground demos.",
-       "$plugin": "library"
-      },
-      {
-       "username": "stats",
-       "password": "stats",
-       "role": "Statistics",
-       "sees": "Loan statistics, by book and by month. The Loans list answers 403: it shows the members' names. No Playground: the group goes when nothing in it is left.",
-       "$plugin": "library"
-      },
-      {
-       "username": "buyer",
-       "password": "buyer",
-       "role": "Buyer",
-       "sees": "Orders to the publishers and what arrives against them; the catalogue read only. The bench of the document form.",
-       "$plugin": "library"
-      }
-     ],
-     "$plugin": "library"
-    },
-    "$plugin": "library"
-   },
-   "$plugin": "library"
-  },
-  "libraryuser_list": {
-   "$auto": true,
-   "content": {
-    "type": "cards",
-    "allow_views": [
-     "cards",
-     "table"
-    ],
-    "$plugin": "library"
-   },
-   "$plugin": "library"
-  },
-  "libraryuser_form": {
-   "title": "Member",
-   "content": {
-    "type": "form",
-    "source": {
-     "model": "LibraryUser",
-     "id": "$props.id",
-     "$plugin": "library"
-    },
-    "layout": [
-     {
-      "id": "member",
-      "type": "section",
-      "columns": [
-       {
-        "id": "left",
-        "fields": [
-         {
-          "name": "name",
-          "width": "50%"
-         },
-         {
-          "name": "membership_number",
-          "width": "30%"
-         },
-         {
-          "name": "is_student",
-          "width": "20%"
-         },
-         {
-          "filler": null
-         },
-         {
-          "name": "membership_date",
-          "width": "25%"
-         },
-         {
-          "name": "membership_expires",
-          "width": "25%"
-         },
-         {
-          "name": "phone",
-          "width": "50%"
-         }
-        ]
-       }
-      ],
-      "$plugin": "library"
-     },
-     {
-      "id": "reach",
-      "type": "section",
-      "label": "Address",
-      "columns": [
-       {
-        "id": "postal",
-        "fields": [
-         {
-          "name": "a_address",
-          "width": "45%"
-         },
-         {
-          "name": "a_zip",
-          "width": "12%"
-         },
-         {
-          "name": "a_city",
-          "width": "28%"
-         },
-         {
-          "filler": null
-         },
-         {
-          "name": "a_state",
-          "width": "12%"
-         },
-         {
-          "name": "a_country",
-          "width": "28%"
-         }
-        ]
-       }
-      ],
-      "$plugin": "library"
-     },
-     {
-      "id": "login",
-      "type": "section",
-      "label": "Login",
-      "columns": [
-       {
-        "id": "credentials",
-        "fields": [
-         {
-          "name": "username",
-          "width": "30%"
-         },
-         {
-          "name": "email",
-          "width": "40%"
-         },
-         {
-          "name": "password",
-          "label": "Password",
-          "widget": "password",
-          "width": "30%"
-         },
-         {
-          "filler": null
-         },
-         {
-          "name": "is_active",
-          "width": "30%"
-         }
-        ]
-       }
-      ],
-      "$plugin": "library"
-     },
-     {
-      "id": "card",
-      "type": "section",
-      "label": "Library card",
-      "columns": [
-       {
-        "id": "card_image",
-        "fields": [
-         {
-          "name": "card"
-         },
-         {
-          "name": "notes"
-         }
-        ]
-       }
-      ],
-      "$plugin": "library"
-     }
-    ],
-    "actions": {
-     "toolbar": [
-      "save",
-      "cancel"
-     ],
-     "$plugin": "library"
-    },
-    "$plugin": "library"
-   },
-   "$plugin": "library"
-  },
-  "loan_form": {
-   "$auto": true,
-   "content": {
-    "on_saved": {
-     "insert": {
-      "action": "download",
-      "op": "loan_ticket",
-      "params": {
-       "id": "$record.id",
-       "$plugin": "library"
-      },
-      "$plugin": "library"
-     },
-     "$plugin": "library"
-    },
-    "$plugin": "library"
-   },
-   "$plugin": "library"
-  },
-  "acquisitions_settings": {
-   "title": "Purchasing settings",
-   "content": {
-    "type": "plugin",
-    "component": "settings.group",
-    "props": {
-     "group": "acquisitions",
-     "$plugin": "acquisitions"
-    },
-    "$plugin": "acquisitions"
-   },
-   "$plugin": "acquisitions"
   },
   "purchaseorder_list": {
    "title": "Purchase orders",
@@ -3163,6 +2795,374 @@
     "$plugin": "acquisitions"
    },
    "$plugin": "acquisitions"
+  },
+  "acquisitions_settings": {
+   "title": "Purchasing settings",
+   "content": {
+    "type": "plugin",
+    "component": "settings.group",
+    "props": {
+     "group": "acquisitions",
+     "$plugin": "acquisitions"
+    },
+    "$plugin": "acquisitions"
+   },
+   "$plugin": "acquisitions"
+  },
+  "loan_form": {
+   "$auto": true,
+   "content": {
+    "on_saved": {
+     "insert": {
+      "action": "download",
+      "op": "loan_ticket",
+      "params": {
+       "id": "$record.id",
+       "$plugin": "library"
+      },
+      "$plugin": "library"
+     },
+     "$plugin": "library"
+    },
+    "$plugin": "library"
+   },
+   "$plugin": "library"
+  },
+  "libraryuser_list": {
+   "$auto": true,
+   "content": {
+    "type": "cards",
+    "allow_views": [
+     "cards",
+     "table"
+    ],
+    "$plugin": "library"
+   },
+   "$plugin": "library"
+  },
+  "libraryuser_form": {
+   "title": "Member",
+   "content": {
+    "type": "form",
+    "source": {
+     "model": "LibraryUser",
+     "id": "$props.id",
+     "$plugin": "library"
+    },
+    "layout": [
+     {
+      "id": "member",
+      "type": "section",
+      "columns": [
+       {
+        "id": "left",
+        "fields": [
+         {
+          "name": "name",
+          "width": "50%"
+         },
+         {
+          "name": "membership_number",
+          "width": "30%"
+         },
+         {
+          "name": "is_student",
+          "width": "20%"
+         },
+         {
+          "filler": null
+         },
+         {
+          "name": "membership_date",
+          "width": "25%"
+         },
+         {
+          "name": "membership_expires",
+          "width": "25%"
+         },
+         {
+          "name": "phone",
+          "width": "50%"
+         }
+        ]
+       }
+      ],
+      "$plugin": "library"
+     },
+     {
+      "id": "reach",
+      "type": "section",
+      "label": "Address",
+      "columns": [
+       {
+        "id": "postal",
+        "fields": [
+         {
+          "name": "a_address",
+          "width": "45%"
+         },
+         {
+          "name": "a_zip",
+          "width": "12%"
+         },
+         {
+          "name": "a_city",
+          "width": "28%"
+         },
+         {
+          "filler": null
+         },
+         {
+          "name": "a_state",
+          "width": "12%"
+         },
+         {
+          "name": "a_country",
+          "width": "28%"
+         }
+        ]
+       }
+      ],
+      "$plugin": "library"
+     },
+     {
+      "id": "login",
+      "type": "section",
+      "label": "Login",
+      "columns": [
+       {
+        "id": "credentials",
+        "fields": [
+         {
+          "name": "username",
+          "width": "30%"
+         },
+         {
+          "name": "email",
+          "width": "40%"
+         },
+         {
+          "name": "password",
+          "label": "Password",
+          "widget": "password",
+          "width": "30%"
+         },
+         {
+          "filler": null
+         },
+         {
+          "name": "is_active",
+          "width": "30%"
+         }
+        ]
+       }
+      ],
+      "$plugin": "library"
+     },
+     {
+      "id": "card",
+      "type": "section",
+      "label": "Library card",
+      "columns": [
+       {
+        "id": "card_image",
+        "fields": [
+         {
+          "name": "card"
+         },
+         {
+          "name": "notes"
+         }
+        ]
+       }
+      ],
+      "$plugin": "library"
+     }
+    ],
+    "actions": {
+     "toolbar": [
+      "save",
+      "cancel"
+     ],
+     "$plugin": "library"
+    },
+    "$plugin": "library"
+   },
+   "$plugin": "library"
+  },
+  "review_list": {
+   "title": "Reviews",
+   "content": {
+    "type": "cards",
+    "allow_views": [
+     "cards",
+     "table"
+    ],
+    "source": {
+     "model": "Review",
+     "joins": [
+      {
+       "Book": "Review.book_id = Book.id",
+       "$plugin": "library"
+      },
+      {
+       "LibraryUser": "Review.library_user_id = LibraryUser.id",
+       "$plugin": "library"
+      }
+     ],
+     "order_by": [
+      "-rating",
+      "-review_date"
+     ],
+     "$plugin": "library"
+    },
+    "columns": [
+     {
+      "field": "id",
+      "$plugin": "library"
+     },
+     {
+      "field": "rating",
+      "tone": {
+       "ranges": [
+        [
+         5,
+         "success"
+        ],
+        [
+         4,
+         "accent"
+        ],
+        [
+         3,
+         "warning"
+        ],
+        [
+         1,
+         "danger"
+        ]
+       ]
+      },
+      "$plugin": "library"
+     },
+     {
+      "field": "Book.title as book",
+      "title": "Book",
+      "$plugin": "library"
+     },
+     {
+      "field": "comment",
+      "$plugin": "library"
+     },
+     {
+      "field": "LibraryUser.name as member",
+      "title": "Member",
+      "$plugin": "library"
+     },
+     {
+      "field": "review_date",
+      "$plugin": "library"
+     }
+    ],
+    "card": {
+     "title": "book",
+     "subtitle": "comment",
+     "ribbon": "rating",
+     "details": [
+      "member",
+      "review_date"
+     ],
+     "$plugin": "library"
+    },
+    "navigator": true,
+    "$plugin": "library"
+   },
+   "$plugin": "library"
+  },
+  "loan_stats": {
+   "title": "Loan statistics",
+   "access": "library.loan_stats",
+   "content": {
+    "$ref": "views.loan_stats_by_book",
+    "$plugin": "library"
+   },
+   "panels": [
+    {
+     "id": "by_month",
+     "pos": "bottom",
+     "height": 240,
+     "trigger": {
+      "event": "row_click",
+      "pass": [
+       "id"
+      ]
+     },
+     "$ref": "views.loan_stats_by_month",
+     "$plugin": "library"
+    }
+   ],
+   "$plugin": "library"
+  },
+  "welcome": {
+   "title": "Welcome",
+   "content": {
+    "type": "plugin",
+    "component": "library.welcome",
+    "props": {
+     "title": "Devtest, a Kitebase demo and playground",
+     "intro": [
+      "The library is the working part: catalogue, members, loans and reviews. The Playground group holds the demos of panels, triggers, wizards and dialogs: those that read no table ask for playground.demos, which the librarian has.",
+      "Access control is on. Sign out and back in as another user to see what each role is given: the menu, the pages and the data follow the role."
+     ],
+     "users": [
+      {
+       "username": "admin",
+       "password": "admin",
+       "role": "administrator",
+       "sees": "Everything: not a role, it passes every check.",
+       "$plugin": "library"
+      },
+      {
+       "username": "catalog",
+       "password": "catalog",
+       "role": "Cataloguer",
+       "sees": "The catalogue. No loans: the Loans tab of Book + reviews is not there.",
+       "$plugin": "library"
+      },
+      {
+       "username": "desk",
+       "password": "desk",
+       "role": "Loans desk",
+       "sees": "Members and loans; books read only, every other table by its label.",
+       "$plugin": "library"
+      },
+      {
+       "username": "librarian",
+       "password": "librarian",
+       "role": "Librarian",
+       "sees": "Cataloguer and loans desk together, plus the reviews and the Playground demos.",
+       "$plugin": "library"
+      },
+      {
+       "username": "stats",
+       "password": "stats",
+       "role": "Statistics",
+       "sees": "Loan statistics, by book and by month. The Loans list answers 403: it shows the members' names. No Playground: the group goes when nothing in it is left.",
+       "$plugin": "library"
+      },
+      {
+       "username": "buyer",
+       "password": "buyer",
+       "role": "Buyer",
+       "sees": "Orders to the publishers and what arrives against them; the catalogue read only. The bench of the document form.",
+       "$plugin": "library"
+      }
+     ],
+     "$plugin": "library"
+    },
+    "$plugin": "library"
+   },
+   "$plugin": "library"
   }
  },
  "permissions": {
@@ -3177,125 +3177,200 @@
   }
  },
  "views": {
-  "book_reviews_view": {
-   "type": "table",
-   "source": {
-    "model": "Review",
-    "joins": [
-     {
-      "LibraryUser": "Review.library_user_id = LibraryUser.id",
-      "$plugin": "panels"
-     }
-    ],
-    "filters": {
-     "conditions": [
-      {
-       "Review.book_id": [
-        "=",
-        "$trigger.id"
-       ],
-       "$plugin": "panels"
-      }
-     ],
-     "$plugin": "panels"
-    },
-    "order_by": [
-     "-created_at"
-    ],
-    "$plugin": "panels"
-   },
-   "columns": [
-    {
-     "field": "LibraryUser.name",
-     "title": "User",
-     "$plugin": "panels"
-    },
-    {
-     "field": "rating",
-     "title": "Rating",
-     "width": 120,
-     "align": "center",
-     "formatter": "star,5",
-     "$plugin": "panels"
-    },
-    {
-     "field": "comment",
-     "title": "Comment",
-     "$plugin": "panels"
-    },
-    {
-     "field": "created_at",
-     "title": "Date",
-     "width": 160,
-     "formatter": "date",
-     "$plugin": "panels"
-    }
-   ],
-   "policy": {
-    "editable": false,
-    "selection": false,
+  "hello_main": {
+   "type": "plugin",
+   "component": "library.hello",
+   "props": {
+    "message": "Contenuto principale del panel",
+    "userName": "Main Area",
     "$plugin": "panels"
    },
    "$plugin": "panels"
   },
-  "book_loans_by_book_view": {
+  "hello_sidebar": {
+   "type": "plugin",
+   "component": "library.hello",
+   "props": {
+    "message": "Pannello laterale",
+    "userName": "Sidebar",
+    "$plugin": "panels"
+   },
+   "$plugin": "panels"
+  },
+  "demo_author_list_view": {
    "type": "table",
    "source": {
-    "model": "Loan",
-    "joins": [
-     {
-      "LibraryUser": "Loan.library_user_id = LibraryUser.id",
-      "$plugin": "panels"
-     }
-    ],
-    "filters": {
-     "conditions": [
-      {
-       "Loan.book_id": [
-        "=",
-        "$trigger.id"
-       ],
-       "$plugin": "panels"
-      }
-     ],
-     "$plugin": "panels"
-    },
+    "model": "Author",
     "order_by": [
-     "-borrowed_at"
+     "last_name",
+     "first_name"
     ],
     "$plugin": "panels"
    },
    "columns": [
     {
-     "field": "LibraryUser.name",
-     "title": "User",
+     "field": "id",
+     "width": 60,
+     "align": "right",
      "$plugin": "panels"
     },
     {
-     "field": "borrowed_at",
-     "title": "Borrowed",
-     "formatter": "date",
-     "width": 140,
+     "field": "full_name",
+     "title": "Full Name",
      "$plugin": "panels"
     },
     {
-     "field": "due_date",
-     "title": "Due",
-     "formatter": "date",
-     "width": 140,
+     "field": "nationality",
+     "title": "Country",
+     "width": 100,
      "$plugin": "panels"
     },
     {
-     "field": "returned_at",
-     "title": "Returned",
-     "formatter": "date",
-     "width": 140,
+     "field": "birth_date",
+     "title": "Born",
+     "width": 110,
+     "align": "center",
      "$plugin": "panels"
     }
    ],
-   "policy": {
-    "editable": false,
-    "selection": false,
+   "actions": {
+    "toolbar": [
+     "add",
+     "search",
+     "export"
+    ],
+    "$plugin": "panels"
+   },
+   "$plugin": "panels"
+  },
+  "demo_book_list_view": {
+   "type": "table",
+   "source": {
+    "model": "Book",
+    "joins": [
+     {
+      "Publisher": "Publisher.id = Book.publisher_id",
+      "$plugin": "panels"
+     }
+    ],
+    "order_by": [
+     "title"
+    ],
+    "$plugin": "panels"
+   },
+   "columns": [
+    {
+     "field": "id",
+     "width": 60,
+     "align": "right",
+     "$plugin": "panels"
+    },
+    {
+     "field": "title",
+     "$plugin": "panels"
+    },
+    {
+     "field": "Publisher.name",
+     "title": "Publisher",
+     "$plugin": "panels"
+    },
+    {
+     "field": "isbn",
+     "title": "ISBN",
+     "width": 140,
+     "$plugin": "panels"
+    },
+    {
+     "field": "price",
+     "title": "Price",
+     "width": 90,
+     "align": "right",
+     "$plugin": "panels"
+    },
+    {
+     "field": "language",
+     "title": "Lang",
+     "width": 60,
+     "align": "center",
+     "$plugin": "panels"
+    }
+   ],
+   "actions": {
+    "toolbar": [
+     "add",
+     "search",
+     "export"
+    ],
+    "$plugin": "panels"
+   },
+   "$plugin": "panels"
+  },
+  "demo_book_authors_view": {
+   "type": "table",
+   "source": {
+    "model": "Book",
+    "joins": [
+     {
+      "BookAuthor": "BookAuthor.book_id = Book.id",
+      "$plugin": "panels"
+     },
+     {
+      "Author": "Author.id = BookAuthor.author_id",
+      "$plugin": "panels"
+     }
+    ],
+    "group_by": [
+     "Book.id",
+     "Book.title",
+     "Book.isbn",
+     "Book.price"
+    ],
+    "order_by": [
+     "Book.title"
+    ],
+    "$plugin": "panels"
+   },
+   "columns": [
+    {
+     "field": "id",
+     "width": 60,
+     "align": "right",
+     "$plugin": "panels"
+    },
+    {
+     "field": "title",
+     "$plugin": "panels"
+    },
+    {
+     "field": "CASE WHEN COUNT(DISTINCT Author.id) > 1 THEN 'Various' ELSE MIN(Author.last_name) END as author_last",
+     "title": "Last Name",
+     "$plugin": "panels"
+    },
+    {
+     "field": "CASE WHEN COUNT(DISTINCT Author.id) > 1 THEN '' ELSE MIN(Author.first_name) END as author_first",
+     "title": "First Name",
+     "$plugin": "panels"
+    },
+    {
+     "field": "isbn",
+     "title": "ISBN",
+     "width": 140,
+     "$plugin": "panels"
+    },
+    {
+     "field": "price",
+     "title": "Price",
+     "width": 90,
+     "align": "right",
+     "$plugin": "panels"
+    }
+   ],
+   "actions": {
+    "toolbar": [
+     "add",
+     "search",
+     "export"
+    ],
     "$plugin": "panels"
    },
    "$plugin": "panels"
@@ -3683,203 +3758,382 @@
    },
    "$plugin": "panels"
   },
-  "hello_main": {
-   "type": "plugin",
-   "component": "library.hello",
-   "props": {
-    "message": "Contenuto principale del panel",
-    "userName": "Main Area",
-    "$plugin": "panels"
-   },
-   "$plugin": "panels"
-  },
-  "hello_sidebar": {
-   "type": "plugin",
-   "component": "library.hello",
-   "props": {
-    "message": "Pannello laterale",
-    "userName": "Sidebar",
-    "$plugin": "panels"
-   },
-   "$plugin": "panels"
-  },
-  "demo_author_list_view": {
+  "book_reviews_view": {
    "type": "table",
    "source": {
-    "model": "Author",
-    "order_by": [
-     "last_name",
-     "first_name"
-    ],
-    "$plugin": "panels"
-   },
-   "columns": [
-    {
-     "field": "id",
-     "width": 60,
-     "align": "right",
-     "$plugin": "panels"
-    },
-    {
-     "field": "full_name",
-     "title": "Full Name",
-     "$plugin": "panels"
-    },
-    {
-     "field": "nationality",
-     "title": "Country",
-     "width": 100,
-     "$plugin": "panels"
-    },
-    {
-     "field": "birth_date",
-     "title": "Born",
-     "width": 110,
-     "align": "center",
-     "$plugin": "panels"
-    }
-   ],
-   "actions": {
-    "toolbar": [
-     "add",
-     "search",
-     "export"
-    ],
-    "$plugin": "panels"
-   },
-   "$plugin": "panels"
-  },
-  "demo_book_list_view": {
-   "type": "table",
-   "source": {
-    "model": "Book",
+    "model": "Review",
     "joins": [
      {
-      "Publisher": "Publisher.id = Book.publisher_id",
+      "LibraryUser": "Review.library_user_id = LibraryUser.id",
       "$plugin": "panels"
      }
     ],
+    "filters": {
+     "conditions": [
+      {
+       "Review.book_id": [
+        "=",
+        "$trigger.id"
+       ],
+       "$plugin": "panels"
+      }
+     ],
+     "$plugin": "panels"
+    },
     "order_by": [
-     "title"
+     "-created_at"
     ],
     "$plugin": "panels"
    },
    "columns": [
     {
-     "field": "id",
-     "width": 60,
-     "align": "right",
+     "field": "LibraryUser.name",
+     "title": "User",
      "$plugin": "panels"
     },
     {
-     "field": "title",
+     "field": "rating",
+     "title": "Rating",
+     "width": 120,
+     "align": "center",
+     "formatter": "star,5",
      "$plugin": "panels"
     },
     {
-     "field": "Publisher.name",
-     "title": "Publisher",
+     "field": "comment",
+     "title": "Comment",
      "$plugin": "panels"
     },
     {
-     "field": "isbn",
-     "title": "ISBN",
+     "field": "created_at",
+     "title": "Date",
+     "width": 160,
+     "formatter": "date",
+     "$plugin": "panels"
+    }
+   ],
+   "policy": {
+    "editable": false,
+    "selection": false,
+    "$plugin": "panels"
+   },
+   "$plugin": "panels"
+  },
+  "book_loans_by_book_view": {
+   "type": "table",
+   "source": {
+    "model": "Loan",
+    "joins": [
+     {
+      "LibraryUser": "Loan.library_user_id = LibraryUser.id",
+      "$plugin": "panels"
+     }
+    ],
+    "filters": {
+     "conditions": [
+      {
+       "Loan.book_id": [
+        "=",
+        "$trigger.id"
+       ],
+       "$plugin": "panels"
+      }
+     ],
+     "$plugin": "panels"
+    },
+    "order_by": [
+     "-borrowed_at"
+    ],
+    "$plugin": "panels"
+   },
+   "columns": [
+    {
+     "field": "LibraryUser.name",
+     "title": "User",
+     "$plugin": "panels"
+    },
+    {
+     "field": "borrowed_at",
+     "title": "Borrowed",
+     "formatter": "date",
      "width": 140,
      "$plugin": "panels"
     },
     {
-     "field": "price",
-     "title": "Price",
-     "width": 90,
-     "align": "right",
-     "$plugin": "panels"
-    },
-    {
-     "field": "language",
-     "title": "Lang",
-     "width": 60,
-     "align": "center",
-     "$plugin": "panels"
-    }
-   ],
-   "actions": {
-    "toolbar": [
-     "add",
-     "search",
-     "export"
-    ],
-    "$plugin": "panels"
-   },
-   "$plugin": "panels"
-  },
-  "demo_book_authors_view": {
-   "type": "table",
-   "source": {
-    "model": "Book",
-    "joins": [
-     {
-      "BookAuthor": "BookAuthor.book_id = Book.id",
-      "$plugin": "panels"
-     },
-     {
-      "Author": "Author.id = BookAuthor.author_id",
-      "$plugin": "panels"
-     }
-    ],
-    "group_by": [
-     "Book.id",
-     "Book.title",
-     "Book.isbn",
-     "Book.price"
-    ],
-    "order_by": [
-     "Book.title"
-    ],
-    "$plugin": "panels"
-   },
-   "columns": [
-    {
-     "field": "id",
-     "width": 60,
-     "align": "right",
-     "$plugin": "panels"
-    },
-    {
-     "field": "title",
-     "$plugin": "panels"
-    },
-    {
-     "field": "CASE WHEN COUNT(DISTINCT Author.id) > 1 THEN 'Various' ELSE MIN(Author.last_name) END as author_last",
-     "title": "Last Name",
-     "$plugin": "panels"
-    },
-    {
-     "field": "CASE WHEN COUNT(DISTINCT Author.id) > 1 THEN '' ELSE MIN(Author.first_name) END as author_first",
-     "title": "First Name",
-     "$plugin": "panels"
-    },
-    {
-     "field": "isbn",
-     "title": "ISBN",
+     "field": "due_date",
+     "title": "Due",
+     "formatter": "date",
      "width": 140,
      "$plugin": "panels"
     },
     {
-     "field": "price",
-     "title": "Price",
-     "width": 90,
-     "align": "right",
+     "field": "returned_at",
+     "title": "Returned",
+     "formatter": "date",
+     "width": 140,
      "$plugin": "panels"
     }
    ],
-   "actions": {
-    "toolbar": [
-     "add",
-     "search",
-     "export"
-    ],
+   "policy": {
+    "editable": false,
+    "selection": false,
     "$plugin": "panels"
    },
    "$plugin": "panels"
+  },
+  "payment_wizard_params_form": {
+   "type": "form",
+   "source": {
+    "$plugin": "wizards"
+   },
+   "layout": [
+    {
+     "type": "section",
+     "label": "Filtri di selezione",
+     "columns": 2,
+     "fields": [
+      {
+       "name": "min_amount",
+       "label": "Saldo minimo (€)",
+       "type": "Numeric",
+       "widget": "number",
+       "help": "Esclude i clienti con saldo inferiore a questo valore"
+      },
+      {
+       "name": "agent",
+       "label": "Agente (opzionale)",
+       "type": "String",
+       "help": "Lascia vuoto per tutti gli agenti"
+      }
+     ],
+     "$plugin": "wizards"
+    }
+   ],
+   "policy": {
+    "editable": true,
+    "$plugin": "wizards"
+   },
+   "actions": {
+    "toolbar": [
+     "save",
+     "cancel"
+    ],
+    "$plugin": "wizards"
+   },
+   "$plugin": "wizards"
+  },
+  "payment_wizard_preview_table": {
+   "type": "table",
+   "source": {
+    "$plugin": "wizards"
+   },
+   "data_schema": "payment_wizard_data",
+   "columns": [
+    {
+     "field": "code",
+     "title": "Codice",
+     "$plugin": "wizards"
+    },
+    {
+     "field": "customer",
+     "title": "Cliente",
+     "$plugin": "wizards"
+    },
+    {
+     "field": "agent",
+     "title": "Agente",
+     "$plugin": "wizards"
+    },
+    {
+     "field": "due_date",
+     "title": "Scadenza",
+     "$plugin": "wizards"
+    },
+    {
+     "field": "overdue_days",
+     "title": "Gg ritardo",
+     "$plugin": "wizards"
+    },
+    {
+     "field": "balance",
+     "title": "Saldo €",
+     "$plugin": "wizards"
+    },
+    {
+     "field": "credit_limit",
+     "title": "Fido €",
+     "$plugin": "wizards"
+    },
+    {
+     "field": "open_orders",
+     "title": "Ord. aperti",
+     "$plugin": "wizards"
+    },
+    {
+     "field": "risk",
+     "title": "Rischio",
+     "$plugin": "wizards"
+    },
+    {
+     "field": "email",
+     "title": "Email",
+     "$plugin": "wizards"
+    }
+   ],
+   "navigator": {
+    "mode": "batch",
+    "form_id": "payment_wizard_row_form",
+    "$plugin": "wizards"
+   },
+   "$plugin": "wizards"
+  },
+  "payment_wizard_row_form": {
+   "type": "form",
+   "source": {
+    "$plugin": "wizards"
+   },
+   "data_schema": "payment_wizard_data",
+   "layout": [
+    {
+     "type": "section",
+     "label": "Anagrafica",
+     "columns": [
+      {
+       "fields": [
+        {
+         "name": "code",
+         "label": "Codice",
+         "readonly": true
+        },
+        {
+         "name": "contact",
+         "label": "Referente"
+        }
+       ]
+      },
+      {
+       "fields": [
+        {
+         "name": "customer",
+         "label": "Cliente",
+         "readonly": true
+        },
+        {
+         "name": "agent",
+         "label": "Agente",
+         "readonly": true
+        }
+       ]
+      }
+     ],
+     "$plugin": "wizards"
+    },
+    {
+     "type": "section",
+     "label": "Contatti",
+     "columns": [
+      {
+       "fields": [
+        {
+         "name": "email",
+         "label": "Email"
+        },
+        {
+         "name": "phone",
+         "label": "Telefono"
+        }
+       ]
+      },
+      {
+       "fields": [
+        {
+         "name": "address",
+         "label": "Indirizzo"
+        }
+       ]
+      }
+     ],
+     "$plugin": "wizards"
+    },
+    {
+     "type": "hr",
+     "$plugin": "wizards"
+    },
+    {
+     "type": "section",
+     "label": "Situazione contabile",
+     "border": true,
+     "columns": [
+      {
+       "fields": [
+        {
+         "name": "balance",
+         "label": "Saldo €",
+         "readonly": true
+        },
+        {
+         "name": "credit_limit",
+         "label": "Fido €",
+         "readonly": true
+        }
+       ]
+      },
+      {
+       "fields": [
+        {
+         "name": "overdue_days",
+         "label": "Gg ritardo",
+         "readonly": true
+        },
+        {
+         "name": "open_orders",
+         "label": "Ord. aperti",
+         "readonly": true
+        }
+       ]
+      },
+      {
+       "fields": [
+        {
+         "name": "risk",
+         "label": "Rischio",
+         "readonly": true
+        },
+        {
+         "name": "order_value",
+         "label": "Valore ordini €",
+         "readonly": true
+        }
+       ]
+      }
+     ],
+     "$plugin": "wizards"
+    },
+    {
+     "type": "section",
+     "label": "Note",
+     "fields": [
+      {
+       "name": "note",
+       "label": "Note interne",
+       "widget": "textarea"
+      }
+     ],
+     "$plugin": "wizards"
+    }
+   ],
+   "policy": {
+    "editable": true,
+    "$plugin": "wizards"
+   },
+   "actions": {
+    "toolbar": [
+     "save",
+     "cancel"
+    ],
+    "$plugin": "wizards"
+   },
+   "$plugin": "wizards"
   },
   "product_demo_form": {
    "type": "form",
@@ -4220,259 +4474,57 @@
    ],
    "$plugin": "wizards"
   },
-  "payment_wizard_params_form": {
+  "purchaseorder_discount": {
    "type": "form",
+   "presentation": "dialog",
    "source": {
-    "$plugin": "wizards"
+    "$plugin": "acquisitions"
    },
    "layout": [
     {
      "type": "section",
-     "label": "Filtri di selezione",
-     "columns": 2,
+     "id": "discount",
      "fields": [
       {
-       "name": "min_amount",
-       "label": "Saldo minimo (€)",
-       "type": "Numeric",
-       "widget": "number",
-       "help": "Esclude i clienti con saldo inferiore a questo valore"
-      },
-      {
-       "name": "agent",
-       "label": "Agente (opzionale)",
-       "type": "String",
-       "help": "Lascia vuoto per tutti gli agenti"
+       "name": "discount",
+       "label": "Discount %",
+       "type": "Number",
+       "required": true
       }
      ],
-     "$plugin": "wizards"
+     "$plugin": "acquisitions"
     }
    ],
-   "policy": {
-    "editable": true,
-    "$plugin": "wizards"
-   },
-   "actions": {
-    "toolbar": [
-     "save",
-     "cancel"
-    ],
-    "$plugin": "wizards"
-   },
-   "$plugin": "wizards"
+   "$plugin": "acquisitions"
   },
-  "payment_wizard_preview_table": {
-   "type": "table",
-   "source": {
-    "$plugin": "wizards"
-   },
-   "data_schema": "payment_wizard_data",
-   "columns": [
-    {
-     "field": "code",
-     "title": "Codice",
-     "$plugin": "wizards"
-    },
-    {
-     "field": "customer",
-     "title": "Cliente",
-     "$plugin": "wizards"
-    },
-    {
-     "field": "agent",
-     "title": "Agente",
-     "$plugin": "wizards"
-    },
-    {
-     "field": "due_date",
-     "title": "Scadenza",
-     "$plugin": "wizards"
-    },
-    {
-     "field": "overdue_days",
-     "title": "Gg ritardo",
-     "$plugin": "wizards"
-    },
-    {
-     "field": "balance",
-     "title": "Saldo €",
-     "$plugin": "wizards"
-    },
-    {
-     "field": "credit_limit",
-     "title": "Fido €",
-     "$plugin": "wizards"
-    },
-    {
-     "field": "open_orders",
-     "title": "Ord. aperti",
-     "$plugin": "wizards"
-    },
-    {
-     "field": "risk",
-     "title": "Rischio",
-     "$plugin": "wizards"
-    },
-    {
-     "field": "email",
-     "title": "Email",
-     "$plugin": "wizards"
-    }
-   ],
-   "navigator": {
-    "mode": "batch",
-    "form_id": "payment_wizard_row_form",
-    "$plugin": "wizards"
-   },
-   "$plugin": "wizards"
-  },
-  "payment_wizard_row_form": {
+  "purchaseorder_duplicate": {
    "type": "form",
+   "presentation": "dialog",
    "source": {
-    "$plugin": "wizards"
+    "$plugin": "acquisitions"
    },
-   "data_schema": "payment_wizard_data",
    "layout": [
     {
      "type": "section",
-     "label": "Anagrafica",
-     "columns": [
-      {
-       "fields": [
-        {
-         "name": "code",
-         "label": "Codice",
-         "readonly": true
-        },
-        {
-         "name": "contact",
-         "label": "Referente"
-        }
-       ]
-      },
-      {
-       "fields": [
-        {
-         "name": "customer",
-         "label": "Cliente",
-         "readonly": true
-        },
-        {
-         "name": "agent",
-         "label": "Agente",
-         "readonly": true
-        }
-       ]
-      }
-     ],
-     "$plugin": "wizards"
-    },
-    {
-     "type": "section",
-     "label": "Contatti",
-     "columns": [
-      {
-       "fields": [
-        {
-         "name": "email",
-         "label": "Email"
-        },
-        {
-         "name": "phone",
-         "label": "Telefono"
-        }
-       ]
-      },
-      {
-       "fields": [
-        {
-         "name": "address",
-         "label": "Indirizzo"
-        }
-       ]
-      }
-     ],
-     "$plugin": "wizards"
-    },
-    {
-     "type": "hr",
-     "$plugin": "wizards"
-    },
-    {
-     "type": "section",
-     "label": "Situazione contabile",
-     "border": true,
-     "columns": [
-      {
-       "fields": [
-        {
-         "name": "balance",
-         "label": "Saldo €",
-         "readonly": true
-        },
-        {
-         "name": "credit_limit",
-         "label": "Fido €",
-         "readonly": true
-        }
-       ]
-      },
-      {
-       "fields": [
-        {
-         "name": "overdue_days",
-         "label": "Gg ritardo",
-         "readonly": true
-        },
-        {
-         "name": "open_orders",
-         "label": "Ord. aperti",
-         "readonly": true
-        }
-       ]
-      },
-      {
-       "fields": [
-        {
-         "name": "risk",
-         "label": "Rischio",
-         "readonly": true
-        },
-        {
-         "name": "order_value",
-         "label": "Valore ordini €",
-         "readonly": true
-        }
-       ]
-      }
-     ],
-     "$plugin": "wizards"
-    },
-    {
-     "type": "section",
-     "label": "Note",
+     "id": "duplicate",
      "fields": [
       {
-       "name": "note",
-       "label": "Note interne",
-       "widget": "textarea"
+       "name": "order_date",
+       "label": "Order date",
+       "type": "Date",
+       "required": true
+      },
+      {
+       "name": "lines",
+       "label": "Copy the lines",
+       "type": "Boolean",
+       "default": true
       }
      ],
-     "$plugin": "wizards"
+     "$plugin": "acquisitions"
     }
    ],
-   "policy": {
-    "editable": true,
-    "$plugin": "wizards"
-   },
-   "actions": {
-    "toolbar": [
-     "save",
-     "cancel"
-    ],
-    "$plugin": "wizards"
-   },
-   "$plugin": "wizards"
+   "$plugin": "acquisitions"
   },
   "loan_stats_by_book": {
    "type": "table",
@@ -4608,58 +4660,6 @@
     "$plugin": "library"
    },
    "$plugin": "library"
-  },
-  "purchaseorder_discount": {
-   "type": "form",
-   "presentation": "dialog",
-   "source": {
-    "$plugin": "acquisitions"
-   },
-   "layout": [
-    {
-     "type": "section",
-     "id": "discount",
-     "fields": [
-      {
-       "name": "discount",
-       "label": "Discount %",
-       "type": "Number",
-       "required": true
-      }
-     ],
-     "$plugin": "acquisitions"
-    }
-   ],
-   "$plugin": "acquisitions"
-  },
-  "purchaseorder_duplicate": {
-   "type": "form",
-   "presentation": "dialog",
-   "source": {
-    "$plugin": "acquisitions"
-   },
-   "layout": [
-    {
-     "type": "section",
-     "id": "duplicate",
-     "fields": [
-      {
-       "name": "order_date",
-       "label": "Order date",
-       "type": "Date",
-       "required": true
-      },
-      {
-       "name": "lines",
-       "label": "Copy the lines",
-       "type": "Boolean",
-       "default": true
-      }
-     ],
-     "$plugin": "acquisitions"
-    }
-   ],
-   "$plugin": "acquisitions"
   }
  },
  "schemas": {
@@ -4710,6 +4710,20 @@
   "$plugin": "wizards"
  },
  "roles": {
+  "acquisitions.buyer": {
+   "label": "Buyer",
+   "grants": [
+    "PurchaseOrder.*",
+    "PurchaseOrderLine.*",
+    "Receipt.*",
+    "ReceiptLine.*",
+    "Book.read",
+    "Publisher.read",
+    "*.label"
+   ],
+   "$plugin": "acquisitions"
+  },
+  "$plugin": "acquisitions",
   "library.catalog": {
    "label": "Cataloguer",
    "grants": [
@@ -4784,20 +4798,6 @@
     "-LibraryUser.label"
    ],
    "$plugin": "library"
-  },
-  "$plugin": "library",
-  "acquisitions.buyer": {
-   "label": "Buyer",
-   "grants": [
-    "PurchaseOrder.*",
-    "PurchaseOrderLine.*",
-    "Receipt.*",
-    "ReceiptLine.*",
-    "Book.read",
-    "Publisher.read",
-    "*.label"
-   ],
-   "$plugin": "acquisitions"
   }
  },
  "settings": {
