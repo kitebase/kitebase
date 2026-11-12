@@ -14,3 +14,8 @@ relay:
   user: noreply@example.com
   password: CHANGE-ME
   from: "Devtest <noreply@example.com>"
+  # A copy of each message in the mailbox's Sent folder, for providers that do
+  # not keep one themselves (IMAPS on the same host, the same login). Never
+  # under $dry_run or $redirect_to.
+  # sent: Sent
+  # sent: {host: imap.example.com, folder: "Sent Items"}
