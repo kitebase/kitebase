@@ -496,8 +496,8 @@ def _resolve(app: Any, page_id: str):
             resolved = _on_auto(app, page_id, resolved)
         collections = resolve_collections(resolved, page_id)
         _fill_titles(app, resolved)
-        cp = getattr(app, 'dispatcher', None)
-        _complete_commands(resolved, cp.endpoints if cp is not None else None)
+        dispatcher = getattr(app, 'dispatcher', None)
+        _complete_commands(resolved, dispatcher.endpoints if dispatcher is not None else None)
         content = resolved.get('content')
         if isinstance(content, dict) and content.get('type', 'form') == 'form':
             _fill_fields(app, content)

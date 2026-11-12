@@ -18,7 +18,7 @@ import kitebase.utils
 from kitebase import access, server_utils, tokens
 from kitebase.app import App
 from kitebase.model_base import Base
-from kitebase.endpoints import _ACCESS, _ENDPOINTS, Dispatcher, endpoint
+from kitebase.endpoints import _ACCESS, _ENDPOINTS, CommandDispatcher, endpoint
 from kitebase.plugins import PluginsManager
 from kitebase.source import Generator
 
@@ -159,7 +159,7 @@ def app(tmp_path, monkeypatch):
 
 
 def as_user(operation, parameters, roles=(), is_admin=False, exceptions=()):
-    return Dispatcher().send({
+    return CommandDispatcher().send({
         'operation': operation, 'parameters': parameters,
         'context': {'id': 1, 'username': 'x', 'roles': list(roles), 'is_admin': is_admin,
                     'acl_exceptions': list(exceptions)}})
@@ -702,7 +702,7 @@ READER = ['library.reader']
 
 
 def as_member(operation, parameters, roles=READER, member=1, **context):
-    return Dispatcher().send({
+    return CommandDispatcher().send({
         'operation': operation, 'parameters': parameters,
         'context': {'id': member, 'username': 'x', 'roles': list(roles),
                     'is_admin': False, 'acl_exceptions': [], **context}})
@@ -753,11 +753,11 @@ def test_a_grant_on_every_row_takes_the_conditions_in(loans):
 
 
 def test_the_administrator_and_an_exception_see_every_row(loans):
-    admin = Dispatcher().send({'operation': 'query', 'parameters': {
+    admin = CommandDispatcher().send({'operation': 'query', 'parameters': {
         'format': 'records', 'query': {'table': 'Loan'}},
         'context': {'id': 2, 'roles': READER, 'is_admin': True}})
     assert loan_ids(admin) == [1, 2, 3, 4]
-    granted = Dispatcher().send({'operation': 'query', 'parameters': {
+    granted = CommandDispatcher().send({'operation': 'query', 'parameters': {
         'format': 'records', 'query': {'table': 'Loan'}},
         'context': {'id': 2, 'roles': READER, 'acl_exceptions': ['+Loan.read']}})
     assert loan_ids(granted) == [1, 2, 3, 4]

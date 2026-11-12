@@ -303,7 +303,7 @@ class Command:
 INHERIT: Any = object()
 
 
-class Dispatcher:
+class CommandDispatcher:
     """
     Processes commands by routing them to registered endpoints.
 

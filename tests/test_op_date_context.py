@@ -11,8 +11,8 @@ from kitebase import server_utils
 SECRET = 'test-secret-long-enough-for-hs256-signing'
 
 
-class _Processor:
-    """Stands in for the command processor: the auth operation succeeds."""
+class _Dispatcher:
+    """Stands in for the CommandDispatcher: the auth operation succeeds."""
 
     def send(self, command):
         return {'status': 'success',
@@ -25,7 +25,7 @@ def _decode(token):
 
 def _login():
     result = server_utils.handle_auth(
-        _Processor(), {'username': 'admin', 'password': 'admin'}, SECRET,
+        _Dispatcher(), {'username': 'admin', 'password': 'admin'}, SECRET,
         context_fields=['id'])
     return _decode(result['data']['token'])
 

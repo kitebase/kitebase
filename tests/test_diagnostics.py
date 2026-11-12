@@ -379,7 +379,7 @@ def phases_app(phases, endpoints=()):
     }}}}, 'testplugin')
     app = FakeApp(pm, {'Order': FakeTable('id', 'date', 'customer'),
                        'Line': FakeTable('id', 'order_id', 'qty')})
-    app.dispatcher = type('CP', (), {'endpoints': {e: None for e in endpoints}})()
+    app.dispatcher = type('Dispatcher', (), {'endpoints': {e: None for e in endpoints}})()
     return app
 
 

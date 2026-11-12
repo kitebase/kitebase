@@ -13,7 +13,7 @@ import pytest
 
 import kitebase.context
 import kitebase.server_utils as srv
-from kitebase.endpoints import Dispatcher, _ENDPOINTS
+from kitebase.endpoints import CommandDispatcher, _ENDPOINTS
 from kitebase.media import Media, UploadedFile
 
 SECRET = 'test-secret-key-long-enough-for-hs256'
@@ -46,9 +46,9 @@ def stub(tmp_path):
     (tmp_path / 'covers' / 'my cover.png').write_bytes(PNG)
     (tmp_path / 'covers' / 'page.html').write_bytes(b'<script>alert(1)</script>')
     media = Media({'roots': {'covers': {'path': str(tmp_path / 'covers')}}})
-    cp = Dispatcher()
-    cp.endpoints = {**_ENDPOINTS, 'media_upload': fake_upload, 'sheet_import': fake_import}
-    yield SimpleNamespace(dispatcher=cp, media=media)
+    dispatcher = CommandDispatcher()
+    dispatcher.endpoints = {**_ENDPOINTS, 'media_upload': fake_upload, 'sheet_import': fake_import}
+    yield SimpleNamespace(dispatcher=dispatcher, media=media)
     kitebase.context.replace(None)
 
 

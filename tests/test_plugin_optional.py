@@ -134,19 +134,19 @@ def test_a_malformed_declaration_is_an_error(tmp_path, monkeypatch, optional):
 
 # ── The page ──────────────────────────────────────────────────────────────────
 
-class FakeProcessor:
+class FakeDispatcher:
     def __init__(self, *names):
         self.endpoints = {name: None for name in names}
 
 
 class FakeApp:
-    def __init__(self, pm, cp):
+    def __init__(self, pm, dispatcher):
         self.plugins = pm
-        self.dispatcher = cp
+        self.dispatcher = dispatcher
         self.tables = {}
 
 
-def page_with_commands(cp):
+def page_with_commands(dispatcher):
     pm = PluginsManager()
     pm.config = {}
     pm.merge_dicts({'pages': {'partner_list': {'content': {
@@ -157,16 +157,16 @@ def page_with_commands(cp):
             {'id': 'refresh'},       # no endpoint: the client's own
         ]},
     }}}}, 'bench')
-    page = strip_meta(load_page(FakeApp(pm, cp), 'partner_list'))
+    page = strip_meta(load_page(FakeApp(pm, dispatcher), 'partner_list'))
     return [c['id'] for c in page['content']['navigator']['commands']]
 
 
 def test_a_command_whose_endpoint_is_not_registered_is_dropped():
-    assert page_with_commands(FakeProcessor('archivable')) == ['archive', 'refresh']
+    assert page_with_commands(FakeDispatcher('archivable')) == ['archive', 'refresh']
 
 
 def test_a_registered_endpoint_keeps_its_command():
-    assert page_with_commands(FakeProcessor('archivable', 'reports.print')) == \
+    assert page_with_commands(FakeDispatcher('archivable', 'reports.print')) == \
         ['archive', 'print', 'refresh']
 
 
@@ -194,7 +194,7 @@ def unknown_endpoints(optional, loaded=(), registered=('archivable',)):
             {'id': 'print', 'endpoint': 'reports.print'},
         ]},
     }}}, 'demo_ui')
-    app = FakeApp(pm, FakeProcessor(*registered))
+    app = FakeApp(pm, FakeDispatcher(*registered))
     from kitebase.diagnostics import run_checks
     return [(i['severity'], i['path'], i['plugin']) for i in run_checks(app)
             if i['code'] == 'command-endpoint-unknown']

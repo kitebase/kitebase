@@ -51,7 +51,7 @@ from sqlalchemy import event, inspect as sa_inspect
 import kitebase
 import kitebase.context
 from kitebase import access
-from kitebase.endpoints import Dispatcher
+from kitebase.endpoints import CommandDispatcher
 from kitebase.i18n import _f
 from kitebase.outbound import to_client
 from kitebase.pages import load_page
@@ -524,8 +524,8 @@ def run_forms(page_id: str, trees: List[Dict[str, Any]],
 def _sender() -> Callable[[Dict[str, Any]], Dict[str, Any]]:
     """Calls through the dispatcher, as the caller: the access check of each
     endpoint is the one a request for it gets."""
-    processor = Dispatcher()
-    return lambda command: processor.call(command['operation'], command.get('parameters'))
+    dispatcher = CommandDispatcher()
+    return lambda command: dispatcher.call(command['operation'], command.get('parameters'))
 
 
 def _propose_all(page: Dict[str, Any], doc: Dict[str, Any], answers: Dict[str, Any],

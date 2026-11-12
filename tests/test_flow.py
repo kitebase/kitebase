@@ -15,7 +15,7 @@ import kitebase.utils
 from kitebase import flow
 from kitebase.app import App
 from kitebase.model_base import Base
-from kitebase.endpoints import Dispatcher
+from kitebase.endpoints import CommandDispatcher
 from kitebase.errors import Invalid, Refusal
 from kitebase.plugins import PluginsManager
 from kitebase.source import Generator
@@ -135,7 +135,7 @@ def app(tmp_path, monkeypatch):
 
 
 def send(operation, parameters):
-    return Dispatcher().send({'operation': operation, 'parameters': parameters})
+    return CommandDispatcher().send({'operation': operation, 'parameters': parameters})
 
 
 def create_loan(title='Dune', answers=None, **extra):

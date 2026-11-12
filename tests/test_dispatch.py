@@ -1,4 +1,4 @@
-"""Tests for the command dispatcher — Dispatcher.send().
+"""Tests for the command dispatcher — CommandDispatcher.send().
 
 Every request of every server goes through here, and until now nothing covered
 it: the existing tests call endpoint functions directly. These fix the observable
@@ -15,15 +15,15 @@ import pytest
 
 import kitebase.context
 from kitebase.access import AccessDenied
-from kitebase.endpoints import Dispatcher, endpoint, _ENDPOINTS
+from kitebase.endpoints import CommandDispatcher, endpoint, _ENDPOINTS
 from kitebase.errors import Conflict, Invalid, NotFound, Unavailable
 from kitebase.media import MediaError
 from kitebase.transforms import ValidationError
 
 
 @pytest.fixture
-def processor():
-    """A processor with a few endpoints registered, cleaned up afterwards."""
+def dispatcher():
+    """A dispatcher with a few endpoints registered, cleaned up afterwards."""
     registered = []
 
     def register(name, func):
@@ -35,9 +35,9 @@ def processor():
     register('shaped', lambda params: {'status': 'error', 'message': 'nope', 'code': 422})
     register('context', lambda params: kitebase.context.current())
 
-    cp = Dispatcher()
-    cp.endpoints = dict(_ENDPOINTS)
-    yield cp
+    dispatcher = CommandDispatcher()
+    dispatcher.endpoints = dict(_ENDPOINTS)
+    yield dispatcher
 
     for name in registered:
         _ENDPOINTS.pop(name, None)
@@ -48,31 +48,31 @@ def _raise(params):
     raise KeyError('missing thing')
 
 
-def test_result_wraps_the_return_value(processor):
-    result = processor.send({'operation': 'echo', 'parameters': {'a': 1}})
+def test_result_wraps_the_return_value(dispatcher):
+    result = dispatcher.send({'operation': 'echo', 'parameters': {'a': 1}})
 
     assert result['status'] == 'success'
     assert result['code'] == 200
     assert result['data'] == {'seen': {'a': 1}}
 
 
-def test_a_shaped_dict_is_passed_through(processor):
+def test_a_shaped_dict_is_passed_through(dispatcher):
     """An endpoint may return its own status/code instead of a plain payload."""
-    result = processor.send({'operation': 'shaped'})
+    result = dispatcher.send({'operation': 'shaped'})
 
     assert result['status'] == 'error'
     assert result['code'] == 422
     assert result['message'] == 'nope'
 
 
-def test_a_refusal_keeps_what_it_has_to_say(processor):
+def test_a_refusal_keeps_what_it_has_to_say(dispatcher):
     """The field errors of a form travel in `data`, on an error as on a success."""
     _ENDPOINTS['refuse'] = lambda params: {
         'status': 'error', 'code': 400, 'message': 'not changed',
         'data': {'errors': {'confirm': 'the two do not match'}}}
-    processor.endpoints['refuse'] = _ENDPOINTS['refuse']
+    dispatcher.endpoints['refuse'] = _ENDPOINTS['refuse']
     try:
-        result = processor.send({'operation': 'refuse', 'parameters': {}})
+        result = dispatcher.send({'operation': 'refuse', 'parameters': {}})
     finally:
         _ENDPOINTS.pop('refuse', None)
 
@@ -80,16 +80,16 @@ def test_a_refusal_keeps_what_it_has_to_say(processor):
     assert result['data'] == {'errors': {'confirm': 'the two do not match'}}
 
 
-def test_unknown_operation_is_a_404(processor):
-    result = processor.send({'operation': 'nowhere'})
+def test_unknown_operation_is_a_404(dispatcher):
+    result = dispatcher.send({'operation': 'nowhere'})
 
     assert result['status'] == 'error'
     assert result['code'] == 404
     assert 'nowhere' in result['message']
 
 
-def test_an_exception_becomes_a_500_with_its_type(processor):
-    result = processor.send({'operation': 'boom'})
+def test_an_exception_becomes_a_500_with_its_type(dispatcher):
+    result = dispatcher.send({'operation': 'boom'})
 
     assert result['status'] == 'error'
     assert result['code'] == 500
@@ -97,39 +97,39 @@ def test_an_exception_becomes_a_500_with_its_type(processor):
     assert 'missing thing' in result['message']
 
 
-def test_request_id_is_echoed_and_generated(processor):
-    given = processor.send({'operation': 'echo', 'request_id': 'abc-123'})
+def test_request_id_is_echoed_and_generated(dispatcher):
+    given = dispatcher.send({'operation': 'echo', 'request_id': 'abc-123'})
     assert given['request_id'] == 'abc-123'
 
-    auto = processor.send({'operation': 'echo'})
+    auto = dispatcher.send({'operation': 'echo'})
     assert auto['request_id'] and auto['request_id'] != 'abc-123'
 
 
-def test_the_context_is_visible_to_the_endpoint(processor):
-    result = processor.send({'operation': 'context', 'context': {'id': 7, 'username': 'ada'}})
+def test_the_context_is_visible_to_the_endpoint(dispatcher):
+    result = dispatcher.send({'operation': 'context', 'context': {'id': 7, 'username': 'ada'}})
 
     assert result['data'] == {'id': 7, 'username': 'ada'}
 
 
-def test_a_command_without_context_does_not_inherit_the_previous_one(processor):
+def test_a_command_without_context_does_not_inherit_the_previous_one(dispatcher):
     """The guarantee that a pooled, reused thread makes load-bearing."""
-    processor.send({'operation': 'context', 'context': {'id': 7, 'username': 'ada'}})
+    dispatcher.send({'operation': 'context', 'context': {'id': 7, 'username': 'ada'}})
 
-    result = processor.send({'operation': 'context'})
+    result = dispatcher.send({'operation': 'context'})
 
     assert result['data'] == {}, "context leaked from the previous command"
 
 
-def test_results_are_not_retained(processor):
+def test_results_are_not_retained(dispatcher):
     """Nothing may accumulate per request: a dispatcher is not a cache."""
     for _ in range(50):
-        processor.send({'operation': 'echo'})
+        dispatcher.send({'operation': 'echo'})
 
-    leftovers = [name for name in ('results', 'pending_commands') if getattr(processor, name, None)]
+    leftovers = [name for name in ('results', 'pending_commands') if getattr(dispatcher, name, None)]
     assert not leftovers, f"the dispatcher kept state in {leftovers}"
 
 
-def test_endpoint_decorator_registers_a_dispatchable_operation(processor):
+def test_endpoint_decorator_registers_a_dispatchable_operation(dispatcher):
     """Note the decorator registers the function and returns a wrapper, so this
     asserts on behaviour rather than on identity."""
     @endpoint('decorated')
@@ -137,8 +137,8 @@ def test_endpoint_decorator_registers_a_dispatchable_operation(processor):
         return 'ok'
 
     try:
-        processor.endpoints = dict(_ENDPOINTS)
-        assert processor.send({'operation': 'decorated'})['data'] == 'ok'
+        dispatcher.endpoints = dict(_ENDPOINTS)
+        assert dispatcher.send({'operation': 'decorated'})['data'] == 'ok'
     finally:
         _ENDPOINTS.pop('decorated', None)
 
@@ -149,9 +149,9 @@ def test_endpoint_decorator_registers_a_dispatchable_operation(processor):
 # id on both so what a person reports can be found again. Parameter values
 # never: a `db update` on a user carries the password.
 
-def test_a_request_leaves_one_line_with_who_and_how_long(processor, caplog):
+def test_a_request_leaves_one_line_with_who_and_how_long(dispatcher, caplog):
     with caplog.at_level(logging.INFO, logger='kitebase'):
-        result = processor.send({'operation': 'echo', 'parameters': {'a': 1},
+        result = dispatcher.send({'operation': 'echo', 'parameters': {'a': 1},
                                  'context': {'username': 'rossi'}, 'request_id': 'req-1'})
     lines = [r for r in caplog.records if r.name == 'kitebase']
     assert len(lines) == 1
@@ -161,28 +161,28 @@ def test_a_request_leaves_one_line_with_who_and_how_long(processor, caplog):
     assert result['request_id'] == 'req-1'
 
 
-def test_a_failure_logs_the_traceback_under_the_request_id(processor, caplog):
+def test_a_failure_logs_the_traceback_under_the_request_id(dispatcher, caplog):
     with caplog.at_level(logging.INFO, logger='kitebase'):
-        processor.send({'operation': 'boom', 'request_id': 'req-2'})
+        dispatcher.send({'operation': 'boom', 'request_id': 'req-2'})
     errors = [r for r in caplog.records if r.levelno == logging.ERROR]
     assert len(errors) == 1
     assert 'boom by - failed' in errors[0].getMessage() and '[req-2]' in errors[0].getMessage()
     assert errors[0].exc_text and 'KeyError' in errors[0].exc_text
 
 
-def test_a_refusal_is_a_warning_not_a_failure(processor, caplog):
+def test_a_refusal_is_a_warning_not_a_failure(dispatcher, caplog):
     with caplog.at_level(logging.INFO, logger='kitebase'):
-        processor.send({'operation': 'shaped'})
-        processor.send({'operation': 'nowhere'})
+        dispatcher.send({'operation': 'shaped'})
+        dispatcher.send({'operation': 'nowhere'})
     levels = [(r.levelno, r.getMessage().split(' ')[0]) for r in caplog.records if r.name == 'kitebase']
     assert (logging.WARNING, 'shaped') in levels
     assert (logging.WARNING, 'nowhere') in levels
     assert not any(lvl == logging.ERROR for lvl, _ in levels)
 
 
-def test_parameter_values_are_never_logged(processor, caplog):
+def test_parameter_values_are_never_logged(dispatcher, caplog):
     with caplog.at_level(logging.DEBUG, logger='kitebase'):
-        processor.send({'operation': 'echo',
+        dispatcher.send({'operation': 'echo',
                         'parameters': {'table': 'User', 'data': {'password': 'hunter2'}, 'ids': [1, 2]}})
     text = '\n'.join(r.getMessage() for r in caplog.records)
     assert 'hunter2' not in text
@@ -191,30 +191,30 @@ def test_parameter_values_are_never_logged(processor, caplog):
 
 # ── call(): an endpoint from the server's own code ───────────────────────────
 
-def test_call_runs_as_the_caller_and_leaves_the_context_alone(processor):
+def test_call_runs_as_the_caller_and_leaves_the_context_alone(dispatcher):
     """No context to pass by hand, and none replaced behind the caller's back."""
     import kitebase.context
     kitebase.context.replace({'username': 'alice'})
 
-    result = processor.call('context')
+    result = dispatcher.call('context')
 
     assert result['data'] == {'username': 'alice'}
     assert kitebase.context.current() == {'username': 'alice'}
 
 
-def test_call_with_a_context_of_its_own_gives_the_callers_back(processor):
+def test_call_with_a_context_of_its_own_gives_the_callers_back(dispatcher):
     import kitebase.context
     kitebase.context.replace({'username': 'alice'})
 
-    assert processor.call('context', context={'username': 'poller'})['data'] == {'username': 'poller'}
+    assert dispatcher.call('context', context={'username': 'poller'})['data'] == {'username': 'poller'}
     assert kitebase.context.current() == {'username': 'alice'}
 
 
-def test_call_outside_a_request_runs_as_nobody(processor):
+def test_call_outside_a_request_runs_as_nobody(dispatcher):
     import kitebase.context
     kitebase.context.replace(None)
 
-    assert processor.call('context')['data'] == {}
+    assert dispatcher.call('context')['data'] == {}
     assert kitebase.context.current() is None
 
 
@@ -235,9 +235,9 @@ def _raising(exc):
     (MediaError('Too large', 413), 413),
     (NotFound('Gone', code=410), 410),
 ])
-def test_a_refusal_becomes_its_envelope(processor, exc, code):
-    processor.endpoints['refuse'] = _raising(exc)
-    result = processor.send({'operation': 'refuse'})
+def test_a_refusal_becomes_its_envelope(dispatcher, exc, code):
+    dispatcher.endpoints['refuse'] = _raising(exc)
+    result = dispatcher.send({'operation': 'refuse'})
 
     assert result['status'] == 'error'
     assert result['code'] == code
@@ -247,26 +247,26 @@ def test_a_refusal_becomes_its_envelope(processor, exc, code):
     assert 'data' not in result
 
 
-def test_a_refusal_carries_its_data(processor):
-    processor.endpoints['refuse'] = _raising(Invalid('Check the rows', data={'rows': [3]}))
-    result = processor.send({'operation': 'refuse'})
+def test_a_refusal_carries_its_data(dispatcher):
+    dispatcher.endpoints['refuse'] = _raising(Invalid('Check the rows', data={'rows': [3]}))
+    result = dispatcher.send({'operation': 'refuse'})
 
     assert result['data'] == {'rows': [3]}
 
 
-def test_a_validation_error_answers_by_field(processor):
-    processor.endpoints['refuse'] = _raising(ValidationError({'email': 'Not a valid email address'}))
-    result = processor.send({'operation': 'refuse'})
+def test_a_validation_error_answers_by_field(dispatcher):
+    dispatcher.endpoints['refuse'] = _raising(ValidationError({'email': 'Not a valid email address'}))
+    result = dispatcher.send({'operation': 'refuse'})
 
     assert result['code'] == 400
     assert result['message'] == 'Some values are not valid'
     assert result['data'] == {'errors': {'email': 'Not a valid email address'}}
 
 
-def test_a_refusal_is_logged_without_a_traceback(processor, caplog):
-    processor.endpoints['refuse'] = _raising(NotFound('No page x'))
+def test_a_refusal_is_logged_without_a_traceback(dispatcher, caplog):
+    dispatcher.endpoints['refuse'] = _raising(NotFound('No page x'))
     with caplog.at_level(logging.WARNING, logger='kitebase'):
-        processor.send({'operation': 'refuse', 'context': {'username': 'ann'}})
+        dispatcher.send({'operation': 'refuse', 'context': {'username': 'ann'}})
 
     record = next(r for r in caplog.records if 'refuse' in r.getMessage())
     assert record.levelno == logging.WARNING

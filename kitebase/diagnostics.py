@@ -541,14 +541,14 @@ def _check_commands(app: Any, commands: List[Any], path: str,
     endpoint named after it (`reports.print` and `optional: {reports: [...]}`).
     Otherwise it is most likely a misspelt name, and the button vanishes silently.
     """
-    cp = getattr(app, 'dispatcher', None)
-    if cp is None:
+    dispatcher = getattr(app, 'dispatcher', None)
+    if dispatcher is None:
         return      # nothing loaded to compare with
     for cmd in commands:
         if not isinstance(cmd, dict) or not isinstance(cmd.get('endpoint'), str):
             continue
         name = cmd['endpoint']
-        if name in cp.endpoints:
+        if name in dispatcher.endpoints:
             continue
         owner = cmd.get('$plugin', plugin)
         declarer = app.plugins.plugins.get(owner) if owner else None
@@ -572,7 +572,7 @@ def _check_phases(app: Any, content: Dict[str, Any], path: str,
     layout = content.get('layout') if isinstance(content.get('layout'), list) else []
     tops = {n.get('id'): n for n in layout if isinstance(n, dict) and n.get('id')}
     placed: Dict[str, str] = {}
-    cp = getattr(app, 'dispatcher', None)
+    dispatcher = getattr(app, 'dispatcher', None)
     for phase in content['phases']:
         if not isinstance(phase, dict):
             continue
@@ -599,7 +599,7 @@ def _check_phases(app: Any, content: Dict[str, Any], path: str,
                     f"what the phase filled in", plugin))
         nxt = phase.get('next')
         endpoint = nxt.get('endpoint') if isinstance(nxt, dict) else None
-        if isinstance(endpoint, str) and cp is not None and endpoint not in cp.endpoints:
+        if isinstance(endpoint, str) and dispatcher is not None and endpoint not in dispatcher.endpoints:
             issues.append(make_issue(
                 'error', 'phase-endpoint-unknown', f'{where}.next.endpoint',
                 f"endpoint '{endpoint}' is not registered: the form could not "

@@ -22,7 +22,7 @@ import pytest
 import kitebase.context
 import kitebase.server_utils as srv
 from kitebase.access import AccessDenied
-from kitebase.endpoints import Dispatcher, FileResult, _ENDPOINTS
+from kitebase.endpoints import CommandDispatcher, FileResult, _ENDPOINTS
 from kitebase.errors import Conflict, NotFound, Unavailable
 from kitebase.media import MediaError
 from kitebase.transforms import ValidationError
@@ -39,7 +39,7 @@ CONFIG = {
 
 @pytest.fixture
 def kitebase_app():
-    """A stub application: a command processor with a few endpoints on it."""
+    """A stub application: a command dispatcher with a few endpoints on it."""
     registered = []
 
     def register(name, func):
@@ -71,9 +71,9 @@ def kitebase_app():
     register('a_pdf', lambda params: FileResult(b'%PDF-1.7', 'invoice.pdf',
                                                 'application/pdf', disposition='inline'))
 
-    cp = Dispatcher()
-    cp.endpoints = dict(_ENDPOINTS)
-    yield SimpleNamespace(dispatcher=cp)
+    dispatcher = CommandDispatcher()
+    dispatcher.endpoints = dict(_ENDPOINTS)
+    yield SimpleNamespace(dispatcher=dispatcher)
 
     for name in registered:
         _ENDPOINTS.pop(name, None)

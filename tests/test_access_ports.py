@@ -18,7 +18,7 @@ import kitebase.utils
 from kitebase import access
 from kitebase.app import App
 from kitebase.model_base import Base
-from kitebase.endpoints import _ACCESS, _ENDPOINTS, Dispatcher, endpoint
+from kitebase.endpoints import _ACCESS, _ENDPOINTS, CommandDispatcher, endpoint
 from kitebase.plugins import PluginsManager
 from kitebase.source import Generator
 
@@ -178,7 +178,7 @@ def guarded(app, denied=()):
 
 
 def send(operation, parameters):
-    return Dispatcher().send({'operation': operation, 'parameters': parameters})
+    return CommandDispatcher().send({'operation': operation, 'parameters': parameters})
 
 
 def count(app, model):

@@ -202,7 +202,7 @@ def handle_auth(
     Framework-agnostic authentication handler.
 
     Args:
-        dispatcher: Kitebase command processor instance
+        dispatcher: the CommandDispatcher
         data: Request data with 'username' and 'password'
         secret_key: JWT secret key
         jwt_expiration_hours: Token expiration in hours
@@ -477,7 +477,7 @@ class AuthMiddleware:
         Handle login using configured parameters.
 
         Args:
-            dispatcher: Kitebase command processor
+            dispatcher: the CommandDispatcher
             credentials: {'username': '...', 'password': '...'}
 
         Returns:

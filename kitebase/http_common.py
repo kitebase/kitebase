@@ -85,7 +85,7 @@ def handle_generic_endpoint(
     Framework-agnostic generic endpoint handler.
 
     Args:
-        dispatcher: Kitebase command processor
+        dispatcher: the CommandDispatcher
         operation: Endpoint operation name
         data: Operation parameters
         context: User context
@@ -133,7 +133,7 @@ def handle_download(
     """
     Framework-agnostic handler of the download route.
 
-    Same command processor as the dispatcher, so an operation is the same
+    Same dispatcher as the endpoint route, so an operation is the same
     endpoint with the same context; only the answer differs. Returns the
     FileResult to send as bytes, or an error dict to send as JSON - which
     includes an operation that answered with data instead of a file.
@@ -162,8 +162,8 @@ def handle_upload(dispatcher, fields: Dict[str, Any], upload: Any,
     """
     Framework-agnostic handler of the upload route.
 
-    The form fields and the file go to `media_upload` through the command
-    processor, so the upload runs with the same context, permissions and log
+    The form fields and the file go to `media_upload` through the
+    dispatcher, so the upload runs with the same context, permissions and log
     line as any operation, and the same statuses: 403, 404, 413, 415.
     """
 

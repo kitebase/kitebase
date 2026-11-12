@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 import kitebase.access
 import kitebase.media
 import kitebase.refsets
-from kitebase.endpoints import INHERIT, Dispatcher
+from kitebase.endpoints import INHERIT, CommandDispatcher
 from kitebase.model_base import BaseApp
 from kitebase.plugins import PluginsManager
 from kitebase.schema import DbTable, DbType, Schema
@@ -27,11 +27,11 @@ class App:
         - self.plugins: Plugin manager instance
         - self.schema: The declared types and tables
         - self.store: The database: engine, models, sessions
-        - self.dispatcher: Command processor instance
+        - self.dispatcher: CommandDispatcher instance
         """
         self.plugins: Optional[PluginsManager] = None
         self.schema: Schema = Schema()
-        self.dispatcher: Optional[Dispatcher] = None
+        self.dispatcher: Optional[CommandDispatcher] = None
         self.store: Store = Store()
         self.query_behaviors: List[Any] = []
         self.media: Optional[kitebase.media.Media] = None
@@ -114,7 +114,7 @@ class App:
 
     def call(self, operation: str, parameters: Optional[Dict[str, Any]] = None,
              context: Any = INHERIT) -> Dict[str, Any]:
-        """Call an endpoint from server code, as the caller: see Dispatcher.call()."""
+        """Call an endpoint from server code, as the caller: see CommandDispatcher.call()."""
         return self.dispatcher.call(operation, parameters, context)
 
     def _resolve_db_url(self, db_url: str) -> str:
@@ -234,7 +234,7 @@ class App:
         package and the plugins registered.
         """
         self.plugins.load_modules()
-        self.dispatcher = Dispatcher()
+        self.dispatcher = CommandDispatcher()
 
     def get_type_schema(self, include_builtin: bool = False) -> Dict[str, Any]:
         """
