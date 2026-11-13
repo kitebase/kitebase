@@ -6,6 +6,8 @@ register_translations('it', {
     "Table '{name}' not found":         "Tabella '{name}' non trovata",
     "Unsupported method: '{method}'":   "Metodo non supportato: '{method}'",
     'Record with id {id} not found':    'Record con id {id} non trovato',
+    # references to a record of any table (kitebase.refs)
+    'No {model} {id}':                  '{model} {id} non trovato',
     'No data provided for creation':    'Nessun dato fornito per la creazione',
     'Record created successfully':      'Record creato con successo',
     'Record ID is required for updates':'ID record obbligatorio per l\'aggiornamento',
