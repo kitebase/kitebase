@@ -28,7 +28,7 @@ pages.*.content.layout[].fields[]: [choices, choices_endpoint, help, label, name
 pages.*.content.layout[].fields[].choices[]: [label, value]
 pages.*.content.layout[].fields[].placeholders[]: [label, name]
 pages.*.content.layout[].pages[]: [count, id, label, layout]
-pages.*.content.layout[].pages[].layout[]: [columns, defaults, domain, fk, form, id, label, model, prefill, sequence, type, view]
+pages.*.content.layout[].pages[].layout[]: [columns, component, defaults, domain, fk, form, id, label, model, prefill, sequence, type, view]
 pages.*.content.layout[].pages[].layout[].columns[]: [fields, id]
 pages.*.content.layout[].pages[].layout[].columns[].fields[]: [choices_endpoint, filler, help, label, name, type, widget, width]
 pages.*.content.layout[].pages[].layout[].defaults: '*'
