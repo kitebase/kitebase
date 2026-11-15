@@ -111,8 +111,9 @@ views.*.navigator.commands[]: [endpoint, help, icon, id, key, label, params, row
 views.*.navigator.commands[].params: '*'
 views.*.policy: [button_style, editable, selection]
 views.*.props: '*'
-views.*.source: [autofocus, data, endpoint, filters, group_by, id, joins, model, order_by, pass, save_endpoint]
+views.*.source: [autofocus, data, defaults, endpoint, filters, group_by, id, joins, model, order_by, pass, save_endpoint]
 views.*.source.data: '*'
+views.*.source.defaults: '*'
 views.*.source.filters: [conditions]
 views.*.source.filters.conditions[]: '*'
 views.*.source.joins[]: '*'
