@@ -66,6 +66,7 @@ pages.*.panels[].content.props: '*'
 pages.*.panels[].panels[]: [component, height, id, pos, props, type, width]
 pages.*.panels[].panels[].props: '*'
 pages.*.panels[].props: '*'
+pages.*.panels[].props.*[]: '*'
 pages.*.panels[].tabs[]: [id, label]
 pages.*.panels[].trigger: [event, from, pass]
 schemas.*: '*'
