@@ -49,6 +49,14 @@ TABLES = {
             {'name': 'what', 'type': 'String', 'length': 60},
         ],
     },
+    # A column the database requires, which a rule may fill in
+    'Label': {
+        'name': 'labels',
+        'columns': [
+            {'name': 'id', 'type': 'Integer', 'primary_key': True, 'autoincrement': True},
+            {'name': 'text', 'type': 'String', 'length': 60, 'nullable': False},
+        ],
+    },
     'Page': {
         'name': 'pages',
         'columns': [
@@ -264,6 +272,24 @@ def test_a_value_set_by_a_check_rule_is_written(app):
 
     with app.get_session() as session:
         assert session.query(app.models['Loan']).one().note == 'set by the rule'
+
+
+def test_a_required_value_a_rule_fills_in_counts_as_given(app):
+    def create_label():
+        return send('db', {'table': 'Label', 'method': 'create', 'data': {'text': None}})
+
+    # With no rule to fill it, it is asked for by field
+    refused = create_label()
+    assert refused['status'] == 'error' and 'text' in str(refused)
+
+    @flow.on_write('Label')
+    def default_text(ctx):
+        if not ctx.record.get('text'):
+            ctx.record['text'] = 'Untitled'
+
+    assert create_label()['status'] == 'success'
+    with app.get_session() as session:
+        assert session.query(app.models['Label']).one().text == 'Untitled'
 
 
 def test_severity_decides_between_refusing_and_asking(app):

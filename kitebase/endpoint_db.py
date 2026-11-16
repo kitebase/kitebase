@@ -352,13 +352,14 @@ def handle_create(app, model_class, params: Dict[str, Any], db_table=None) -> Di
         record_data, sets = kitebase.refsets.split(db_table, record_data)
         record_data = write_values(db_table, record_data)
         coerced = {k: coerce_value(model_class, k, v) for k, v in record_data.items()}
-        require_columns(model_class, coerced)
 
-        # The table's rules first: a question or a refusal writes nothing
+        # The table's rules first: a question or a refusal writes nothing, and
+        # a value a rule fills in counts as given, as on save_tree
         ctx, refusal = flow.judge(model_class.__name__, 'insert', coerced, None,
                                   params.get('answers'))
         if refusal:
             return refusal
+        require_columns(model_class, ctx.record)
         new_record = model_class(**ctx.record)
 
         with app.get_session() as session:
