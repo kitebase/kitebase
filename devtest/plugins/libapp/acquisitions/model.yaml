@@ -16,6 +16,8 @@ tables:
       copies or stock.
     tags: [journal]
     mixins: [TimeStamp]
+    # The board of the orders: one column per status, fixed by the code
+    state: status
     columns:
       - name: id
         type: ID
@@ -62,6 +64,21 @@ tables:
         label: Discount on the order
         help: A discount on the whole order, beside the discount of each line.
         nullable: true
+
+      - name: status
+        type: ShortStr
+        label: Status
+        help: Where the order stands, from written to fulfilled.
+        default: "'draft'"
+        nullable: false
+        duplicate: false
+        choices:
+          - { value: draft, label: To send }
+          - { value: sent, label: Sent }
+          - { value: accepted, label: Accepted }
+          # Some titles are being reprinted: accepted, but not all can ship yet
+          - { value: waiting, label: Waiting for reprints }
+          - { value: fulfilled, label: Fulfilled }
 
   PurchaseOrderLine:
     name: purchase_order_lines

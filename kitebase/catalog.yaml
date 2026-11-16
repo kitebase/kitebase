@@ -44,6 +44,7 @@ forms:
       display_field: { type: str, ref: column, doc: "The column that names a record: in a combobox, a breadcrumb, a reference." }
       search_fields: { type: list, ref: column, doc: "The columns a text search matches, in place of the display field." }
       include_pk: { type: bool, doc: "Whether a text search also tries the key; true by default." }
+      state: { type: any, doc: "The column that says where a record stands, which a board shows as columns: a name, or {column, within, order, folded} when its values are rows of another table (kitebase/state.py)." }
 
   Column:
     doc: A column of a table, or of a composite type; under a type its keys are inherited.
@@ -79,6 +80,7 @@ forms:
       editable: { type: bool, doc: "False: generated forms show it read only." }
       hidden: { type: bool, doc: "Travels with the record but is never shown as a column or field." }
       widget: { type: str, ref: widget, doc: "The widget of forms, over the one the type implies." }
+      choices: { type: list, doc: "The values a column takes from a closed set the code owns, [{value, label}]: the form's drop-down and a board's columns." }
       choices_endpoint: { type: str, ref: endpoint, doc: "On a CodeSet, the endpoint serving the codes it picks from: the form and the filters both ask it." }
       searchable: { type: bool, doc: "Adds the column to what a text search matches." }
       query_rank: { values: [top, normal, low, more, none], doc: "Where the query editor offers the column; normal by default." }

@@ -1302,6 +1302,7 @@
    "mixins": [
     "TimeStamp"
    ],
+   "state": "status",
    "columns": [
     {
      "name": "id",
@@ -1362,6 +1363,38 @@
      "label": "Discount on the order",
      "help": "A discount on the whole order, beside the discount of each line.",
      "nullable": true,
+     "$plugin": "acquisitions"
+    },
+    {
+     "name": "status",
+     "type": "ShortStr",
+     "label": "Status",
+     "help": "Where the order stands, from written to fulfilled.",
+     "default": "'draft'",
+     "nullable": false,
+     "duplicate": false,
+     "choices": [
+      {
+       "value": "draft",
+       "label": "To send"
+      },
+      {
+       "value": "sent",
+       "label": "Sent"
+      },
+      {
+       "value": "accepted",
+       "label": "Accepted"
+      },
+      {
+       "value": "waiting",
+       "label": "Waiting for reprints"
+      },
+      {
+       "value": "fulfilled",
+       "label": "Fulfilled"
+      }
+     ],
      "$plugin": "acquisitions"
     }
    ],
@@ -2780,6 +2813,10 @@
      ],
      "$plugin": "acquisitions"
     },
+    "allow_views": [
+     "table",
+     "kanban"
+    ],
     "columns": [
      {
       "field": "id",
@@ -2795,10 +2832,29 @@
       "$plugin": "acquisitions"
      },
      {
+      "field": "status",
+      "$plugin": "acquisitions"
+     },
+     {
       "field": "notes",
       "$plugin": "acquisitions"
      }
     ],
+    "card": {
+     "title": "publisher",
+     "subtitle": "order_date",
+     "details": [
+      "id",
+      "notes"
+     ],
+     "$plugin": "acquisitions"
+    },
+    "kanban": {
+     "folded": [
+      "waiting"
+     ],
+     "$plugin": "acquisitions"
+    },
     "navigator": {
      "commands": [
       {
@@ -2962,6 +3018,10 @@
          },
          {
           "filler": null
+         },
+         {
+          "name": "status",
+          "width": "20%"
          },
          {
           "name": "default_discount",

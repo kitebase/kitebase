@@ -26,6 +26,10 @@ tables.PurchaseOrder.columns.footer_discount:
   en: A discount on the whole order, beside the discount of each line.
   it: ''
 
+tables.PurchaseOrder.columns.status:
+  en: Where the order stands, from written to fulfilled.
+  it: A che punto è l'ordine, da quando è scritto a quando è evaso.
+
 tables.PurchaseOrderLine.columns.book_id:
   en: A book of the order's publisher.
   it: ''

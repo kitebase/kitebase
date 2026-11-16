@@ -8,6 +8,7 @@ from kitebase.endpoints import INHERIT, CommandDispatcher
 from kitebase.model_base import BaseApp
 from kitebase.plugins import PluginsManager
 from kitebase.schema import DbTable, DbType, Schema
+from kitebase.state import state_info
 from kitebase.store import Store
 
 
@@ -288,7 +289,7 @@ class App:
                 col_dict = {'name': col.name}
                 for attr in ('type', 'label', 'virtual', 'editable', 'nullable', 'secret',
                              'default', 'deferred', 'index', 'unique', 'query_rank',
-                             'granularity', 'choices_endpoint'):
+                             'granularity', 'choices_endpoint', 'choices'):
                     if attr in col.attributes:
                         col_dict[attr] = col.attributes[attr]
                     elif hasattr(col, 'db_type') and col.db_type and attr == 'type':
@@ -325,6 +326,10 @@ class App:
                     {'name': idx.get('name'), 'columns': idx.get('columns', [])}
                     for idx in indexes
                 ]
+
+            state = state_info(table)
+            if state:
+                table_dict['state'] = state
 
             search = table.search_info
             if search['display_field']:

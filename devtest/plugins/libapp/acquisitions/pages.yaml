@@ -13,12 +13,22 @@ pages:
         joins:
           - Publisher: "PurchaseOrder.publisher_id = Publisher.id"
         order_by: [-id]
+      # The same orders on a board, one column per status (the model's state)
+      allow_views: [table, kanban]
       columns:
         - field: id
         - field: order_date
         - field: Publisher.name as publisher
           title: Publisher
+        - field: status
         - field: notes
+      card:
+        title: publisher
+        subtitle: order_date
+        details: [id, notes]
+      # Waiting for reprints is rare: a narrow strip with its count, opened on a click
+      kanban:
+        folded: [waiting]
       # Orders from a spreadsheet (order_import.py): the command asks for the
       # file, and the sheet is written whole or not at all.
       navigator:
@@ -106,6 +116,8 @@ pages:
                 - name: supplier_reference
                   width: 20%
                 - filler:
+                - name: status
+                  width: 20%
                 # A help for writing the lines, not a fact of the order: no
                 # column holds it, the new lines take it (prefill below).
                 - name: default_discount

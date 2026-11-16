@@ -23,7 +23,7 @@ import difflib
 import re
 from typing import Any, Dict, List, Optional, Set
 
-from kitebase import access, help_texts, media, settings
+from kitebase import access, help_texts, media, settings, state
 from kitebase.sections import get_section, sections
 
 # Only plain identifiers ('title') and dotted fields ('Publisher.name') are
@@ -114,6 +114,7 @@ def run_checks(app: Any) -> List[Dict[str, Any]]:
     _check_vocabulary(app, issues)
     issues.extend(access.diagnose(app))
     issues.extend(media.diagnose(app))
+    issues.extend(state.diagnose(app))
     issues.extend(help_texts.diagnose(app))
     issues.extend(settings.diagnose(app, _descriptor_sections(pm)))
     _check_sections(app, issues)
@@ -218,6 +219,7 @@ def _check_view(app: Any, view: Dict[str, Any], path: str,
             _check_tone(col, f'{path}.columns[{field}]', plugin, issues)
 
     _check_card(view, keys, path, plugin, issues)
+    issues.extend(state.check_board(table, view.get('kanban'), path, plugin))
     _check_fields(view.get('fields') or [], colnames, model,
                   f'{path}.fields', plugin, issues)
 

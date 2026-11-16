@@ -300,10 +300,11 @@ def seed_acquisitions(session, model, rng=None) -> int:
              .order_by(model.Book.id).limit(5).all())
     today = apptime.today()
 
-    first = model.PurchaseOrder(publisher_id=publisher_id, notes='Spring titles',
+    first = model.PurchaseOrder(publisher_id=publisher_id, notes='Spring titles', status='accepted',
                                 order_date=today - timedelta(days=20),
                                 expected_delivery=today - timedelta(days=6))
-    second = model.PurchaseOrder(publisher_id=publisher_id, order_date=today - timedelta(days=4),
+    second = model.PurchaseOrder(publisher_id=publisher_id, status='sent',
+                                 order_date=today - timedelta(days=4),
                                  expected_delivery=today + timedelta(days=10))
     session.add_all([first, second])
     session.flush()
