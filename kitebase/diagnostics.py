@@ -226,7 +226,7 @@ def _check_view(app: Any, view: Dict[str, Any], path: str,
 
 # The tones a view may give a row (client: components/tone.ts): names, drawn
 # by each renderer with the theme's tokens.
-TONES = ('accent', 'success', 'warning', 'danger', 'muted')
+TONES = ('accent', 'success', 'warning', 'danger', 'neutral', 'muted')
 
 
 def _check_tone(col: Dict[str, Any], path: str, plugin: Optional[str],
