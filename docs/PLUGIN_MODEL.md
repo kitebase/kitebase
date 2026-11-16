@@ -28,7 +28,7 @@ framework merges them into a coherent whole at startup.
 7. [Table View](#7-table-view)
 8. [Form View](#8-form-view)
 9. [Menu](#9-menu)
-10. Other View Types *(future: kanban, cards, calendar)*
+10. [Other View Types: cards and the board](#10-other-view-types-cards-and-the-board)
 11. Locale and Help *(future)*
 12. Roles and Permissions *(future)*
 13. Workflows *(future)*
@@ -1152,6 +1152,7 @@ tables:
 | `display_field` | by convention | Column shown as the record's label |
 | `search_fields` | `[display_field]` | Columns a text search matches — replaces the display field, see below |
 | `include_pk` | `true` | Whether the key takes part in a text search |
+| `state` | — | The column that says where a record stands, which a board shows as columns: a column name, or `{column, within, order, folded}` when its values are rows of another table (§ 10) |
 
 #### What a text search looks at
 
@@ -1201,6 +1202,7 @@ hybrid carries an SQL expression. A table that declares nothing searchable
 | `label` | string | UI label (overrides type-level label) |
 | `help` | string | What the field is for: shown on request in a form, by the `?` beside the label or F1 on the field |
 | `widget` | string | UI widget override |
+| `choices` | list | A closed set the code owns, `[{value, label}]`: the form's drop-down, the labels a list and a card show for the value, a board's columns (§ 10) |
 | `choices_endpoint` | string | On a `CodeSet`: the endpoint serving the codes, read by the form widget and by the query editor (§ 3.3.2) |
 | `searchable` | bool | Adds the column to what a text search matches (§ 4.3) |
 | `query_rank` | string | Where the column stands when a query is built — the query editor's fields and its order combo: `top`, `normal` (default), `low`, `more` (behind "Show more"), `none` (never offered). Within a rank the declaration order holds, so a derived plugin moves a field by ranking it, without reordering the base's columns. A value off the scale is an error in `check` |
@@ -2489,13 +2491,72 @@ sneaking into an already-declared menu.
 
 ---
 
-## 10. Other View Types *(future)*
+## 10. Other View Types: cards and the board
 
-Beyond `table` (Chapter 7) and `form` (Chapter 8), further view types are
-planned — **kanban**, **cards**, **calendar/gantt**. They share the same
-`source` block (Chapter 6) and the same merge semantics; only the rendering and
-a few type-specific properties differ. A view's `type` selects the renderer, so
-adding a view type is additive — no change to the plugin model.
+A list is a set of rows (its `source`, rules, search, commands, the form a row
+opens) and a way of looking at it. Beside `table` (Chapter 7) there are two
+more: **`cards`**, tiles, and **`kanban`**, a board. They read the rows the list
+loaded; the navigator, the commands and the form stay the list's. A view opens
+in its `type` and switches among `allow_views`:
+
+```yaml
+ticket_list:
+  content:
+    type: table                      # what it opens in
+    allow_views: [table, cards, kanban]
+    source: { model: Ticket }
+    columns:
+      - field: subject
+      - field: Customer.name as customer
+      - field: status
+      - field: due_state             # a column a card reads may be hidden in the grid
+        visible: false
+        tone: { values: { overdue: danger, today: warning } }
+    card:                            # by the key of a column of the view
+      title: subject
+      subtitle: customer
+      details: [status]
+      ribbon: due_state              # a band in the tone of its column
+    kanban:
+      sum: hours                     # the total heading each column
+      folded: [waiting]              # columns that start folded (choices only)
+```
+
+A card shows the labels of a column's `choices`, as the grid does; `check` warns
+about a card naming a key the view does not have.
+
+**The board needs a state.** The table declares which column says where a
+record stands (§ 4.3), and the board shows its values as columns, empty ones
+included, in their order:
+
+```yaml
+tables:
+  Ticket:
+    state: status                    # values: the column's own choices
+  Job:
+    state:
+      column: stage_id               # values: the rows of the table it points to
+      within: team_id                # one team's stages at a time
+      order: sequence                # their order, left to right
+      folded: folded                 # a column of the stages: starts folded
+```
+
+`within` names a column both tables have: the board shows one value of it at a
+time, picked above the board, and a record added from the board is born in that
+value and in the first column. Dragging a card onto another column writes the
+state through the `db` port, so the table's write rules judge it; a refusal
+leaves the card where it was. A row whose state is none of the columns goes to
+a last column, where nothing is dropped. `check` warns about a state that names
+what is not there, and about `kanban.folded` on a state whose values are rows:
+those fold by their own `folded` column, since ids differ by installation.
+
+The board shows the rows the list loaded (a page at a time) with the rules it
+opens with. Moving a card from the keyboard and an order inside a column are
+not there yet. **Calendar** and **gantt** are planned on the same footing: the
+model will declare the roles they need (a period, a duration), and the view
+will offer them.
+
+The choice between a board and other forms is in [PATTERNS.md](PATTERNS.md).
 
 ## 11. Localization and Help *(partly implemented)*
 

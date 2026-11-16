@@ -93,6 +93,8 @@ GETTING_STARTED § 1 explains the layout, and § 5 how a workstation is verified
   model, the interface and the menu, and how the merge composes them.
 - [docs/APPLICATION.md](docs/APPLICATION.md): the anatomy of an application,
   its bootstrap, entry points and servers.
+- [docs/PATTERNS.md](docs/PATTERNS.md): recurring requests and the form kitebase
+  answers them with: the problem, the form, an example, what to avoid.
 - [CHANGELOG.md](CHANGELOG.md): one entry per release.
 
 ## License
