@@ -20,7 +20,7 @@ may register their own system defaults via register_default() (same spirit as
 add_query_behavior).
 """
 from datetime import date, datetime
-from typing import Callable, Optional, Set
+from typing import Any, Callable, Optional, Set
 from uuid import uuid4
 
 import kitebase.context
@@ -69,10 +69,20 @@ def uuid() -> str:
     return str(uuid4())
 
 
+def user_id() -> Optional[Any]:
+    """The id of the user writing the row, from the request context; None for
+    the work of the system (a batch, a seed), which has nobody behind it.
+
+    `default: $user_id` on the person responsible for a record (a salesperson,
+    an assignee): whoever writes it, unless someone else is named.
+    """
+    return (kitebase.context.current() or {}).get('id')
+
+
 # Registry: token name (without the leading '$') -> callable used as a
 # SQLAlchemy column default.
 _DEFAULTS: Registry[Callable] = Registry('defaults', 'default')
-for _name, _func in (('op_date', op_date), ('now', now), ('uuid', uuid)):
+for _name, _func in (('op_date', op_date), ('now', now), ('uuid', uuid), ('user_id', user_id)):
     _DEFAULTS.add(_name, _func, owner=__name__)
 
 
