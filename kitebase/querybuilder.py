@@ -60,7 +60,7 @@ else:
         return frozenset()
 
     def search_info(db_table: Any) -> Dict[str, Any]:
-        return {'display_field': None, 'search_fields': [], 'search_pk': None}
+        return {'display_field': None, 'search_fields': [], 'search_key': None, 'code_field': None}
 
     def _query_behaviors() -> List[Any]:
         return []
@@ -464,6 +464,7 @@ class DynamicQueryBuilder:
         },
 
         "search": "rossi",             # Text search (optional) — see below
+        "code": "ICL",                 # Lookup by code (optional) — see below
 
         "group_by": [                  # GROUP BY clause (optional)
             "column_name",
@@ -518,9 +519,12 @@ class DynamicQueryBuilder:
     ----------------
     One text, in OR over the columns the table declares as searchable — the
     cascade of DATA_MODEL.md §4.4, resolved from the table definition, so the
-    caller sends what the user typed and never a list of columns. The primary
-    key joins the OR as one branch matched exactly, when the text is a value its
-    type could hold.
+    caller sends what the user typed and never a list of columns. The key joins
+    the OR as one branch matched exactly: the declared code without regard to
+    case, or else the primary key when the text is a value its type could hold.
+
+    The "code" key is that exact branch alone: the record whose code is this
+    text, or whose id is where the table declares no code.
 
     It is a key of its own rather than one more condition group because it is
     ANDed with the filters: it can only narrow them, and the two are cleared
@@ -675,6 +679,12 @@ class DynamicQueryBuilder:
         search_text = str(query_def.get('search') or '').strip()
         if search_text:
             query = query.where(filter_builder.build_search(main_model, search_text))
+
+        # The lookup by code: the exact branch alone, what Enter or Tab on a
+        # typed code means, and a reference written as a code in a seed.
+        code_text = str(query_def.get('code') or '').strip()
+        if code_text:
+            query = query.where(filter_builder.build_code(main_model, code_text))
 
         # Apply grouping (GROUP BY)
         if 'group_by' in query_def:
@@ -1707,7 +1717,7 @@ class FilterBuilder:
         info = search_info(table_definition(model_class))
         table_name = getattr(model_class, '__name__', self.main_table)
 
-        if not info['search_fields'] and not info['search_pk']:
+        if not info['search_fields'] and not info['search_key']:
             raise ValueError(
                 f"Table '{table_name}' has no searchable columns: declare "
                 f"search_fields, or searchable: true on a column"
@@ -1720,9 +1730,9 @@ class FilterBuilder:
         ]
         branches = [b for b in branches if b is not None]
 
-        pk_value = self._as_key_value(model_class, info['search_pk'], text)
-        if pk_value is not None:
-            branches.append(getattr(model_class, info['search_pk']) == pk_value)
+        key_match = self._key_match(model_class, info, text)
+        if key_match is not None:
+            branches.append(key_match)
 
         # Searchable only by key, and the text is not one: no row can match, and
         # saying so is not the same as dropping the search and returning all.
@@ -1730,6 +1740,44 @@ class FilterBuilder:
             return false()
 
         return or_(*branches)
+
+    def build_code(self, model_class: Type[DeclarativeMeta], text: str) -> ClauseElement:
+        """
+        The record whose key is exactly this text: the declared code, else the id.
+
+        What a user means by typing a code and pressing Enter or Tab, and what a
+        seed or an import means by a reference written as a code. Only the
+        exact branch of the search, never the content one: "3" finds the code 3
+        and nothing that merely contains a 3.
+
+        Raises:
+            ValueError: if the table has no key a user can type
+        """
+        info = search_info(table_definition(model_class))
+        if not info['search_key']:
+            table_name = getattr(model_class, '__name__', self.main_table)
+            raise ValueError(
+                f"Table '{table_name}' has no code to look up: declare code_field, "
+                f"or give it a single-column key"
+            )
+        key_match = self._key_match(model_class, info, text)
+        return key_match if key_match is not None else false()
+
+    def _key_match(self, model_class: Type[DeclarativeMeta], info: Dict[str, Any],
+                   text: str) -> Optional[ClauseElement]:
+        """
+        The exact branch: the code without regard to case, or the key as a value
+        of its type. None when the text cannot be one.
+        """
+        key = info['search_key']
+        if not key:
+            return None
+        column = getattr(model_class, key)
+        value = self._as_key_value(model_class, key, text)
+        # A text code is matched without regard to case; a number is a number.
+        if key == info.get('code_field') and isinstance(value, str):
+            return func.lower(column) == text.lower()
+        return column == value if value is not None else None
 
     @staticmethod
     def _as_key_value(model_class: Type[DeclarativeMeta], pk: Optional[str], text: str) -> Any:

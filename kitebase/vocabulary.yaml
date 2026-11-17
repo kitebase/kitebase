@@ -72,7 +72,7 @@ pages.*.panels[].tabs[]: [id, label]
 pages.*.panels[].trigger: [event, from, pass]
 schemas.*: '*'
 schemas.*.*: [scale, type]
-tables.*: [columns, display_field, doc, help, indexes, label, many_to_many, mixins, name, search_fields, state, tags]
+tables.*: [code_field, columns, display_field, doc, help, indexes, label, many_to_many, mixins, name, search_fields, state, tags]
 tables.*.columns[]: [accept, autoincrement, base, case, choices, choices_endpoint, column_group, columns, default, deferred, description, doc, duplicate, editable, foreign_key, granularity, help, help_how, hidden, index, label, length, max_size, media, name, nullable, on_write, onupdate, plugin, precision, prefix, primary_key, query_rank, resize, root, scale, searchable, secret, type, unique, validate, virtual, widget]
 tables.*.columns[].choices[]: [label, value]
 tables.*.columns[].columns[]: [base, length, name, nullable, type]

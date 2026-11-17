@@ -4,4 +4,5 @@ menu_items:
   acquisitions: { label: Acquisitions, icon: truck, order: 40 }
   orders:   { label: Orders,   icon: clipboard-list, parent: acquisitions, order: 10, action: stack_push, panel: purchaseorder_list }
   receipts: { label: Receipts, icon: package-check,  parent: acquisitions, order: 20, action: stack_push, panel: receipt_list }
+  payment_methods: { label: Payment methods, icon: credit-card, parent: acquisitions, order: 30, action: stack_push, panel: paymentmethod_list }
   acquisitions_settings: { label: Settings, icon: settings, parent: acquisitions, order: 90, action: stack_push, panel: acquisitions_settings }

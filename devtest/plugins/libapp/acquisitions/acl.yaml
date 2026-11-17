@@ -11,4 +11,5 @@ roles:
       - ReceiptLine.*
       - Book.read
       - Publisher.read
+      - PaymentMethod.read
       - '*.label'

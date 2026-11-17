@@ -276,7 +276,8 @@ class App:
                 columns: [ {name, type, virtual, editable, label, ...} ],
                 display_field: 'name',       # column to show in FK comboboxes
                 search_fields: ['name'],     # columns a text search matches (ILIKE)
-                search_pk: 'id',             # primary key, matched exactly (optional)
+                search_key: 'id',            # matched exactly: the code, else the key (optional)
+                code_field: 'code',          # the declared code column (optional)
                 mixins: [...],               # optional
                 indexes: [{name, columns}],  # compound indexes, optional
               }
@@ -336,8 +337,10 @@ class App:
                 table_dict['display_field'] = search['display_field']
             if search['search_fields']:
                 table_dict['search_fields'] = search['search_fields']
-            if search['search_pk']:
-                table_dict['search_pk'] = search['search_pk']
+            if search['search_key']:
+                table_dict['search_key'] = search['search_key']
+            if search['code_field']:
+                table_dict['code_field'] = search['code_field']
 
             result[name] = table_dict
         return result

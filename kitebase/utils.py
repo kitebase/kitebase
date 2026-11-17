@@ -119,7 +119,7 @@ def search_info(db_table) -> dict:
     with plain models is told the table is not searchable rather than crashing.
     """
     if db_table is None:
-        return {'display_field': None, 'search_fields': [], 'search_pk': None}
+        return {'display_field': None, 'search_fields': [], 'search_key': None, 'code_field': None}
     return db_table.search_info
 
 

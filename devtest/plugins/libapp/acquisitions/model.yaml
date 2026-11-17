@@ -39,6 +39,13 @@ tables:
         foreign_key:
           target: Publisher.id
 
+      - name: payment_method_id
+        label: Payment
+        help: "How the order is paid: type its code, like WT, or search by name."
+        nullable: true
+        foreign_key:
+          target: PaymentMethod.id
+
       - name: supplier_reference
         type: String
         label: Supplier reference
@@ -79,6 +86,31 @@ tables:
           # Some titles are being reprinted: accepted, but not all can ship yet
           - { value: waiting, label: Waiting for reprints }
           - { value: fulfilled, label: Fulfilled }
+
+  # A small table typed by hand, with a code: the bench of `code_field`, which
+  # replaces the id in every exact match (typing 30 finds the code 30, never
+  # the record numbered 30).
+  PaymentMethod:
+    name: payment_methods
+    label: Payment method
+    help: The ways an order can be paid.
+    tags: [reference]
+    code_field: code
+    columns:
+      - name: id
+        type: ID
+
+      - name: code
+        type: UpperCode
+        label: Code
+        help: A short code, typed in place of the name.
+        nullable: false
+        unique: true
+
+      - name: name
+        type: Description
+        label: Name
+        nullable: false
 
   PurchaseOrderLine:
     name: purchase_order_lines

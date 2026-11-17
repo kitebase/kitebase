@@ -527,7 +527,8 @@ class DbTable:
         {
           'display_field': 'name',        # label column, or None
           'search_fields': ['name'],      # columns matched with ILIKE
-          'search_pk': 'id',              # column matched exactly, or None
+          'search_key': 'id',             # column matched exactly, or None
+          'code_field': None,             # the declared code column, or None
         }
 
         The same answer serves the FK combobox, the quick search box and the
@@ -537,14 +538,19 @@ class DbTable:
 
         The cascade (DATA_MODEL.md §4.4):
 
-          [primary key, exact]  + [display fields, ILIKE] + [searchable: true, ILIKE]
+          [key, exact]  + [display fields, ILIKE] + [searchable: true, ILIKE]
+
+        The key is the table's code where it declares one (`code_field: code`),
+        matched without regard to case, and otherwise its primary key. Never
+        both: where a code exists, typing 3 means the code 3 and not the record
+        numbered 3, which nobody sees.
 
         An explicit `search_fields` on the table replaces the display fields;
         the key and the `searchable` columns stay added. The key is dropped by
         `include_pk: false` on the table, or globally by
         `schema.include_pk_in_search: false`, and it only takes part when the
         table has a single-column key — a composite one has no value a user can
-        type.
+        type. A declared code is always the key: declaring it is asking for it.
 
         Secret columns never enter: a search matching them answers whether a
         value is right, which is how a password is guessed one query at a time.
@@ -600,14 +606,21 @@ class DbTable:
 
         pk_fields = [col.name for col in columns if col.attributes.get('primary_key')]
         include_pk = self.attributes.get('include_pk', schema_cfg.get('include_pk_in_search', True))
-        search_pk = None
-        if include_pk and len(pk_fields) == 1 and pk_fields[0] not in secrets:
-            search_pk = pk_fields[0]
+        code_field = self.attributes.get('code_field')
+        if code_field and (not is_real(code_field) or code_field in secrets):
+            raise ValueError(
+                f"Table '{self.name}': code_field '{code_field}' must name one of "
+                f"its columns, neither virtual nor secret")
+
+        search_key = code_field or None
+        if not search_key and include_pk and len(pk_fields) == 1 and pk_fields[0] not in secrets:
+            search_key = pk_fields[0]
 
         return {
             'display_field': display_field,
             'search_fields': fields,
-            'search_pk': search_pk,
+            'search_key': search_key,
+            'code_field': code_field or None,
         }
 
     def update(self, attributes: Dict[str, Any], plugin: Plugin) -> None:

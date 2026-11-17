@@ -53,6 +53,19 @@ pages:
             endpoint: duplicate
             params: { page: purchaseorder_form }
 
+  paymentmethod_list:
+    title: Payment methods
+    help: The ways an order can be paid. The code is what is typed in an order to pick one.
+    content:
+      type: table
+      source:
+        model: PaymentMethod
+        order_by: [code]
+      columns:
+        - field: code
+        - field: name
+      navigator: true
+
   receipt_list:
     title: Receipts
     content:
@@ -113,6 +126,8 @@ pages:
                   width: 20%
                 - name: publisher_id
                   width: 40%
+                - name: payment_method_id
+                  width: 25%
                 - name: supplier_reference
                   width: 20%
                 - filler:

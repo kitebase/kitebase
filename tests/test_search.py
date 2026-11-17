@@ -63,7 +63,7 @@ def search_of(tmp_path, monkeypatch, columns, table_attrs=None, app_config=None)
 def test_convention_alone_makes_a_table_searchable(tmp_path, monkeypatch):
     """Nothing declared: the display field comes from the naming convention."""
     info = search_of(tmp_path, monkeypatch, [pk(), col('name')])
-    assert info == {'display_field': 'name', 'search_fields': ['name'], 'search_pk': 'id'}
+    assert info == {'display_field': 'name', 'search_fields': ['name'], 'search_key': 'id', 'code_field': None}
 
 
 def test_a_searchable_column_joins_the_pool(tmp_path, monkeypatch):
@@ -81,7 +81,7 @@ def test_explicit_search_fields_replace_the_display_field(tmp_path, monkeypatch)
     )
     assert info['display_field'] == 'name'          # still the label
     assert info['search_fields'] == ['tax_id', 'sku']   # the key and searchable stay added
-    assert info['search_pk'] == 'id'
+    assert info['search_key'] == 'id'
 
 
 def test_a_secret_column_is_never_searched(tmp_path, monkeypatch):
@@ -108,14 +108,14 @@ def test_a_virtual_display_field_falls_back_to_a_real_column(tmp_path, monkeypat
 def test_the_key_is_dropped_by_the_table(tmp_path, monkeypatch):
     """`include_pk: false` — a surrogate key nobody types is noise in the OR."""
     info = search_of(tmp_path, monkeypatch, [pk(), col('name')], {'include_pk': False})
-    assert info['search_pk'] is None
+    assert info['search_key'] is None
     assert info['search_fields'] == ['name']
 
 
 def test_the_key_is_dropped_by_the_app(tmp_path, monkeypatch):
     info = search_of(tmp_path, monkeypatch, [pk(), col('name')],
                      app_config={'schema': {'include_pk_in_search': False}})
-    assert info['search_pk'] is None
+    assert info['search_key'] is None
 
 
 def test_a_composite_key_has_no_value_to_type(tmp_path, monkeypatch):
@@ -124,13 +124,36 @@ def test_a_composite_key_has_no_value_to_type(tmp_path, monkeypatch):
         {'name': 'b_id', 'type': 'Integer', 'primary_key': True},
         col('name'),
     ])
-    assert info['search_pk'] is None
+    assert info['search_key'] is None
 
 
 def test_a_table_with_nothing_to_match_says_so(tmp_path, monkeypatch):
     """No convention match, nothing declared: searchable by key only."""
     info = search_of(tmp_path, monkeypatch, [pk(), col('note')])
-    assert info == {'display_field': None, 'search_fields': [], 'search_pk': 'id'}
+    assert info == {'display_field': None, 'search_fields': [], 'search_key': 'id', 'code_field': None}
+
+
+def test_a_declared_code_is_the_key(tmp_path, monkeypatch):
+    """
+    Where a code exists, typing 3 means the code 3: the record numbered 3 is
+    one nobody sees, and offering both is the ambiguity the code removes.
+    """
+    info = search_of(tmp_path, monkeypatch, [pk(), col('code'), col('name')],
+                     {'code_field': 'code'})
+    assert info['search_key'] == 'code'
+    assert info['code_field'] == 'code'
+
+
+def test_a_declared_code_survives_include_pk_false(tmp_path, monkeypatch):
+    """Declaring a code is asking for it: the switch is about the id."""
+    info = search_of(tmp_path, monkeypatch, [pk(), col('code'), col('name')],
+                     {'code_field': 'code', 'include_pk': False})
+    assert info['search_key'] == 'code'
+
+
+def test_a_code_field_must_be_a_column(tmp_path, monkeypatch):
+    with pytest.raises(ValueError, match="code_field 'sigla'"):
+        search_of(tmp_path, monkeypatch, [pk(), col('name')], {'code_field': 'sigla'})
 
 
 def test_the_convention_is_the_app_s_to_set(tmp_path, monkeypatch):
@@ -149,8 +172,9 @@ Base = declarative_base()
 class StubTable:
     """The part of a DbTable the search and the secret check read."""
 
-    def __init__(self, fields, search_pk='id', secrets=()):
-        self.search_info = {'display_field': None, 'search_fields': fields, 'search_pk': search_pk}
+    def __init__(self, fields, search_key='id', secrets=(), code_field=None):
+        self.search_info = {'display_field': None, 'search_fields': fields,
+                            'search_key': code_field or search_key, 'code_field': code_field}
         self.secret_columns = frozenset(secrets)
 
 
@@ -174,7 +198,19 @@ class Country(Base):
 
     @classmethod
     def get_table_definition(cls):
-        return StubTable(['name'], search_pk='code')
+        return StubTable(['name'], search_key='code')
+
+
+class Method(Base):
+    """A declared code: it replaces the id in every exact match."""
+    __tablename__ = 'method'
+    id = Column(Integer, primary_key=True)
+    code = Column(String)
+    name = Column(String)
+
+    @classmethod
+    def get_table_definition(cls):
+        return StubTable(['name'], code_field='code')
 
 
 class Ledger(Base):
@@ -195,7 +231,7 @@ class Note(Base):
 
     @classmethod
     def get_table_definition(cls):
-        return StubTable([], search_pk=None)
+        return StubTable([], search_key=None)
 
 
 class Book(Base):
@@ -229,7 +265,7 @@ def no_behaviors(monkeypatch):
     monkeypatch.setattr(kitebase.utils, 'get_app', lambda: AppStub(), raising=False)
 
 
-MODELS = {'Partner': Partner, 'Country': Country, 'Ledger': Ledger,
+MODELS = {'Partner': Partner, 'Country': Country, 'Method': Method, 'Ledger': Ledger,
           'Note': Note, 'Book': Book, 'Publisher': Publisher}
 
 
@@ -265,6 +301,44 @@ def test_the_key_stays_out_when_the_text_could_not_be_one():
 def test_a_key_the_user_types_is_always_a_branch():
     """A string key holds any text, so the exact match is always worth asking."""
     assert "country.code = 'IT'" in where('Country', search='IT', select=['code'])
+
+
+def test_a_declared_code_replaces_the_id_in_the_search():
+    clause = where('Method', search='WT')
+    assert "lower(method.code) = 'wt'" in clause
+    assert "lower(method.name) LIKE lower('%WT%')" in clause
+    assert 'method.id' not in where('Method', search='3')
+
+
+def test_the_code_key_is_the_exact_branch_alone():
+    """Enter on a typed code: nothing that merely contains it."""
+    assert where('Method', code='wt') == "lower(method.code) = 'wt'"
+
+
+def test_a_numeric_code_is_compared_as_a_number():
+    """`code_field: id` where the number is the name people use: no lower()."""
+    Partner.get_table_definition = classmethod(
+        lambda cls: StubTable(['name', 'city'], secrets={'password'}, code_field='id'))
+    try:
+        assert where('Partner', code='42') == 'partner.id = 42'
+    finally:
+        Partner.get_table_definition = classmethod(
+            lambda cls: StubTable(['name', 'city'], secrets={'password'}))
+
+
+def test_the_code_key_falls_back_to_the_id():
+    """No code declared: the id is what a user types for a record."""
+    assert where('Partner', code='42') == 'partner.id = 42'
+
+
+def test_the_code_key_on_an_id_that_text_cannot_be():
+    clause = where('Partner', code='rossi')
+    assert 'false' in clause.lower() or '1 != 1' in clause or '0 = 1' in clause
+
+
+def test_the_code_key_needs_a_key_to_look_up():
+    with pytest.raises(ValueError, match="Table 'Note' has no code to look up"):
+        where('Note', code='x')
 
 
 def test_wildcards_the_user_typed_are_escaped():

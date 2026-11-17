@@ -14,6 +14,10 @@ tables.PurchaseOrder.columns.publisher_id:
   en: The publisher the books are ordered from.
   it: L'editore a cui si ordinano i libri.
 
+tables.PurchaseOrder.columns.payment_method_id:
+  en: 'How the order is paid: type its code, like WT, or search by name.'
+  it: 'Come si paga l''ordine: scrivi il codice, come WT, o cerca per nome.'
+
 tables.PurchaseOrder.columns.supplier_reference:
   en: 'The publisher''s own reference: their quote, or the sheet they sent.'
   it: ''
@@ -30,20 +34,20 @@ tables.PurchaseOrder.columns.status:
   en: Where the order stands, from written to fulfilled.
   it: A che punto è l'ordine, da quando è scritto a quando è evaso.
 
+tables.PaymentMethod:
+  en: The ways an order can be paid.
+  it: I modi in cui si può pagare un ordine.
+
+tables.PaymentMethod.columns.code:
+  en: A short code, typed in place of the name.
+  it: Un codice breve, da scrivere al posto del nome.
+
 tables.PurchaseOrderLine.columns.book_id:
   en: A book of the order's publisher.
   it: ''
 
 tables.PurchaseOrderLine.columns.discount:
   en: The discount on this line. A new line starts from the discount set in the header.
-  it: ''
-
-settings.acquisitions:
-  en: How a new purchase order starts
-  it: ''
-
-settings.acquisitions.items.default_discount:
-  en: 'The discount a new order proposes for its lines: each order may change it'
   it: ''
 
 pages.purchaseorder_list:
@@ -65,6 +69,10 @@ pages.purchaseorder_list.content.navigator.commands.duplicate:
     copy the lines. Nothing is written until you save.
   it: ''
 
+pages.paymentmethod_list:
+  en: The ways an order can be paid. The code is what is typed in an order to pick one.
+  it: I modi in cui si può pagare un ordine. Il codice è ciò che si scrive in un ordine per sceglierne uno.
+
 pages.purchaseorder_form:
   en: An order is written in three steps, and each step is checked before you move on.
   it: Un ordine si scrive in tre passi, e ogni passo si controlla prima di andare avanti.
@@ -79,4 +87,12 @@ pages.purchaseorder_form.content.layout.relations.pages.lines_tab.layout.lines.v
 
 pages.purchaseorder_form.content.layout.relations.pages.lines_tab.layout.lines.view.navigator.commands.sort_by_publication:
   en: Puts all the lines in the order their books came out, oldest first. A book without a date goes last.
+  it: ''
+
+settings.acquisitions:
+  en: How a new purchase order starts
+  it: ''
+
+settings.acquisitions.items.default_discount:
+  en: 'The discount a new order proposes for its lines: each order may change it'
   it: ''
