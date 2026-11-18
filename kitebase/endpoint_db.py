@@ -68,7 +68,7 @@ def pk_field(db_table) -> str:
     return pk_cols[0] if pk_cols else 'id'
 
 
-def write_values(db_table, record_data: Dict[str, Any]) -> Dict[str, Any]:
+def write_values(db_table, record_data: Dict[str, Any], system: bool = False) -> Dict[str, Any]:
     """
     Prepare incoming values for storage, following what the columns declare.
 
@@ -83,6 +83,10 @@ def write_values(db_table, record_data: Dict[str, Any]) -> Dict[str, Any]:
     - a column with `on_write` gets its value passed through that transform, so
       what reaches the database is the stored form (a hash, a canonical code).
 
+    `system` is a write nobody makes from a request — the seed of an
+    installation — so no column is refused for the user's permissions; the
+    rules of the columns still apply.
+
     Raises:
         ValidationError: the values that break their rule, as {field: message}
         ValueError: if a column names a validator or a transform nobody registered
@@ -91,7 +95,7 @@ def write_values(db_table, record_data: Dict[str, Any]) -> Dict[str, Any]:
         return dict(record_data)
 
     attributes = {col.name: col.attributes for col in db_table.effective_columns}
-    unwritable = access.unwritable_columns(db_table)
+    unwritable = frozenset() if system else access.unwritable_columns(db_table)
     result = {}
     errors = {}
     for key, value in record_data.items():

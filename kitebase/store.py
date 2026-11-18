@@ -88,8 +88,15 @@ class Store:
         url = self._resolve_db_url(db_url)
         self._log_engine(db_url, url)
         engine = create_engine(url)
+        # The tables created now are the ones a seed may fill (kitebase.seed):
+        # a table that existed before, empty or not, is never seeded by itself.
+        self.born_tables = []
         if create_all:
+            from sqlalchemy import inspect as sa_inspect
+            existing = set(sa_inspect(engine).get_table_names())
             Base.metadata.create_all(engine)
+            self.born_tables = [t.name for t in Base.metadata.sorted_tables
+                                if t.name not in existing]
         self.engine = engine
         self.db_type = self.get_database_type()
 

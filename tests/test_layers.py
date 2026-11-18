@@ -25,7 +25,7 @@ SPINE = [
 # importer -> the higher modules it reaches from inside a function.
 KNOWN_UPWARD = {
     'access': {'endpoints', 'querybuilder'},
-    'app': {'source'},
+    'app': {'seed', 'source'},
     'dev': {'plugins'},
     'diagnostics': {'pages'},
     'endpoint_db': {'endpoint_export'},

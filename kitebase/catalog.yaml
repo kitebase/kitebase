@@ -43,6 +43,7 @@ forms:
       many_to_many: { form: ManyToMany, doc: "Makes the table a junction between two others." }
       display_field: { type: str, ref: column, doc: "The column that names a record: in a combobox, a breadcrumb, a reference." }
       search_fields: { type: list, ref: column, doc: "The columns a text search matches, in place of the display field." }
+      code_field: { type: str, ref: column, doc: "The column people type to name a record, matched exactly and in place of the key: in a combobox, and in a seed or an import citing the record." }
       include_pk: { type: bool, doc: "Whether a text search also tries the key; true by default." }
       state: { type: any, doc: "The column that says where a record stands, which a board shows as columns: a name, or {column, within, order, folded} when its values are rows of another table (kitebase/state.py)." }
 

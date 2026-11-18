@@ -1,0 +1,12 @@
+- code: WT
+  name: Wire transfer
+- code: CASH
+  name: Cash
+- code: CC
+  name: Credit card
+- code: DD
+  name: Direct debit
+- code: '30'
+  name: Wire transfer, 30 days
+- code: '60'
+  name: Wire transfer, 60 days

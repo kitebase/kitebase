@@ -194,7 +194,16 @@ class App:
         engine = self.initialize_db(self.plugins.config["db_engine"], model,
                                     create_all=create_all, check_schema=check_schema)
         self.plugins.load_all_locales()
+        # After the translations: a seed writes its labels in the app's language
+        from kitebase.seed import on_birth
+        on_birth(self, self.models_of_tables(self.store.born_tables))
         return engine
+
+    def models_of_tables(self, table_names: Any) -> List[str]:
+        """The model names of these database tables, in the same order."""
+        by_table = {getattr(cls, '__tablename__', None): name
+                    for name, cls in self.models.items()}
+        return [by_table[t] for t in table_names if t in by_table]
 
     def calc_db(self, plugins: PluginsManager) -> None:
         """

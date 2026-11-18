@@ -14,7 +14,7 @@ Two layers:
                     write output to file or stdout.  Accepts an output_dir
                     so callers can point it at their project's data folder.
 
-Commands needing a live database (db-check, db-sync, db-backup, db-copy) are listed in DB_COMMANDS:
+Commands needing a live database (db-check, db-sync, db-seed, db-backup, db-copy) are listed in DB_COMMANDS:
 the caller builds the app with an engine for those, and with the schema alone
 for the rest.
 
@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import yaml
 
+from kitebase import seed
 from kitebase.dump import dump_app, table_dict
 
 
@@ -277,7 +278,7 @@ def dump_types(app: Any, include_builtin: bool = False) -> Tuple[str, str]:
 
 # Commands that need app.initialize_db() to have run — the others work on the
 # merged schema alone.
-DB_COMMANDS = {'db-check', 'db-sync', 'db-backup', 'db-copy'}
+DB_COMMANDS = {'db-check', 'db-sync', 'db-seed', 'db-backup', 'db-copy'}
 
 
 def db_check(app: Any) -> Tuple[str, bool]:
@@ -345,8 +346,39 @@ def db_sync(app: Any, dry_run: bool = False, force: bool = False,
         executed = apply_diff(app.engine, diff, logger=app.plugins.logger, force=bool(forced))
         lines += ['', f'Applied {count} change(s):']
         lines += [f'  {statement}' for statement in executed]
+        # A table born here gets the `base` set of its plugin, as on a new database
+        born = [c.target for c in diff.safe if c.kind == 'add_table']
+        seeded = seed.on_birth(app, app.models_of_tables(born)) if born else []
+        if seeded:
+            lines += ['', 'Seed:'] + [f'  {line}' for line in seeded]
 
     return '\n'.join(lines), len(diff.refused) == len(forced)
+
+
+def db_seed(app: Any, words: List[str], to: Optional[str] = None,
+            dry_run: bool = False) -> Tuple[str, bool]:
+    """
+    `db-seed`: with no words the sets and their tables; `<plugin>/<set>` applies
+    a set where its tables are empty; `export <Model> --to <plugin>/<set>`
+    writes a table as a set. See kitebase.seed.
+
+    Returns:
+        (report, ok)
+    """
+    try:
+        if not words:
+            return '\n'.join(seed.describe(app)), True
+        if words[0] == 'export':
+            if len(words) != 2 or not to:
+                return 'Usage: db-seed export <Model> --to <plugin>/<set>', False
+            path, count = seed.export(app, words[1], to)
+            return f'{count} rows of {words[1]} written to {path}', True
+        if len(words) != 1:
+            return 'Usage: db-seed [<plugin>/<set>] [--dry-run]', False
+        lines, ok = seed.apply(app, seed.seed_files(app, words[0]), dry_run=dry_run)
+        return '\n'.join(lines), ok
+    except seed.SeedError as e:
+        return f'Error: {e}', False
 
 
 def db_backup(app: Any, dest: Optional[str] = None, media: bool = False) -> Tuple[str, str]:
@@ -699,6 +731,23 @@ examples:
                    help='With --force, do not ask for confirmation')
     _engine_option(p)
 
+    # ── db-seed ────────────────────────────────────────────────────────────────
+    p = sub.add_parser(
+        'db-seed',
+        help='The seed sets of the plugins: list them, apply one to empty tables, '
+             'or export a table as one',
+        description='kitebase db-seed                      list the sets\n'
+                    'kitebase db-seed <plugin>/<set>       apply a set to its empty tables\n'
+                    'kitebase db-seed export <Model> --to <plugin>/<set>',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument('words', nargs='*', metavar='SET | export MODEL',
+                   help='<plugin>/<set> to apply, or `export <Model>`')
+    p.add_argument('--to', metavar='PLUGIN/SET', help='With export: the set to write into')
+    p.add_argument('--dry-run', action='store_true',
+                   help='Say what would be written, writing nothing')
+    _engine_option(p)
+
     # ── db-backup ──────────────────────────────────────────────────────────────
     p = sub.add_parser(
         'db-backup',
@@ -966,6 +1015,12 @@ def run_cli(app: Any, args: argparse.Namespace, output_dir: Path = Path('.')) ->
                                   confirm=confirm)
         print(report)
         if not aligned:
+            sys.exit(1)
+
+    elif args.command == 'db-seed':
+        report, ok = db_seed(app, args.words, to=args.to, dry_run=args.dry_run)
+        print(report)
+        if not ok:
             sys.exit(1)
 
     elif args.command == 'db-backup':

@@ -541,6 +541,15 @@
    "panel": "receipt_list",
    "$plugin": "acquisitions"
   },
+  "payment_methods": {
+   "label": "Payment methods",
+   "icon": "credit-card",
+   "parent": "acquisitions",
+   "order": 30,
+   "action": "stack_push",
+   "panel": "paymentmethod_list",
+   "$plugin": "acquisitions"
+  },
   "acquisitions_settings": {
    "label": "Settings",
    "icon": "settings",
@@ -1332,6 +1341,16 @@
      "$plugin": "acquisitions"
     },
     {
+     "name": "payment_method_id",
+     "label": "Payment",
+     "help": "How the order is paid: type its code, like WT, or search by name.",
+     "nullable": true,
+     "foreign_key": {
+      "target": "PaymentMethod.id"
+     },
+     "$plugin": "acquisitions"
+    },
+    {
      "name": "supplier_reference",
      "type": "String",
      "label": "Supplier reference",
@@ -1395,6 +1414,39 @@
        "label": "Fulfilled"
       }
      ],
+     "$plugin": "acquisitions"
+    }
+   ],
+   "$plugin": "acquisitions"
+  },
+  "PaymentMethod": {
+   "name": "payment_methods",
+   "label": "Payment method",
+   "help": "The ways an order can be paid.",
+   "tags": [
+    "reference"
+   ],
+   "code_field": "code",
+   "columns": [
+    {
+     "name": "id",
+     "type": "ID",
+     "$plugin": "acquisitions"
+    },
+    {
+     "name": "code",
+     "type": "UpperCode",
+     "label": "Code",
+     "help": "A short code, typed in place of the name.",
+     "nullable": false,
+     "unique": true,
+     "$plugin": "acquisitions"
+    },
+    {
+     "name": "name",
+     "type": "Description",
+     "label": "Name",
+     "nullable": false,
      "$plugin": "acquisitions"
     }
    ],
@@ -2890,6 +2942,33 @@
    },
    "$plugin": "acquisitions"
   },
+  "paymentmethod_list": {
+   "title": "Payment methods",
+   "help": "The ways an order can be paid. The code is what is typed in an order to pick one.",
+   "content": {
+    "type": "table",
+    "source": {
+     "model": "PaymentMethod",
+     "order_by": [
+      "code"
+     ],
+     "$plugin": "acquisitions"
+    },
+    "columns": [
+     {
+      "field": "code",
+      "$plugin": "acquisitions"
+     },
+     {
+      "field": "name",
+      "$plugin": "acquisitions"
+     }
+    ],
+    "navigator": true,
+    "$plugin": "acquisitions"
+   },
+   "$plugin": "acquisitions"
+  },
   "receipt_list": {
    "title": "Receipts",
    "content": {
@@ -3011,6 +3090,10 @@
          {
           "name": "publisher_id",
           "width": "40%"
+         },
+         {
+          "name": "payment_method_id",
+          "width": "25%"
          },
          {
           "name": "supplier_reference",
@@ -5536,6 +5619,7 @@
     "ReceiptLine.*",
     "Book.read",
     "Publisher.read",
+    "PaymentMethod.read",
     "*.label"
    ],
    "$plugin": "acquisitions"

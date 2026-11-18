@@ -6,7 +6,8 @@ The development data of devtest, in the order it builds on itself.
     covers       the covers on disk, linked to the books without one
     members      readers of the library, invented
     circulation  loans and reviews, over the last months
-    acquisitions payment methods, two orders and a receipt
+    acquisitions two orders and a receipt (the payment methods are the
+                 plugin's seed, acquisitions/seed/base)
 
 Each step runs while its own table is empty, so what is entered from the UI is
 left alone, and a database made before a step gets it on the next start. The
@@ -281,30 +282,14 @@ def seed_circulation(session, model, rng) -> int:
 
 # ── Acquisitions ───────────────────────────────────────────────────────────────
 
-# Codes chosen to try the exact match: 30 and 60 look like ids, and the id 3
-# (CC) is not found by typing 3.
-PAYMENT_METHODS = [('WT', 'Wire transfer'), ('CASH', 'Cash'), ('CC', 'Credit card'),
-                   ('DD', 'Direct debit'), ('30', 'Wire transfer, 30 days'),
-                   ('60', 'Wire transfer, 60 days')]
-
-
-def _seed_payment_methods(session, model) -> int:
-    if session.query(model.PaymentMethod).first():
-        return 0
-    session.add_all(model.PaymentMethod(code=code, name=name) for code, name in PAYMENT_METHODS)
-    session.flush()
-    return len(PAYMENT_METHODS)
-
-
 def seed_acquisitions(session, model, rng=None) -> int:
     """Two orders to the publisher with the most books, the first half received.
 
     Enough to open a document, and to have something still to arrive. It needs
     a publisher with three books, and skips quietly without.
     """
-    added = _seed_payment_methods(session, model)
     if session.query(model.PurchaseOrder).first():
-        return added
+        return 0
     row = (session.query(model.Book.publisher_id, func.count())
            .filter(model.Book.publisher_id.isnot(None))
            .group_by(model.Book.publisher_id)
