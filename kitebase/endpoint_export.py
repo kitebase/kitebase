@@ -29,9 +29,10 @@ import datetime
 import decimal
 import io
 import json
-from typing import Any, Dict, Iterator, List, Optional, Sequence
+from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Tuple
 
 import kitebase
+import kitebase.refsets
 from kitebase.apptime import today
 from kitebase.endpoint_db import pk_field
 from kitebase import access
@@ -124,8 +125,12 @@ def export_file(data: Dict[str, Any]) -> Any:
     headers = [pk] + [str(c.get('title') or c['field']) for c in columns if c['field'] != pk]
     keys = [pk] + [_key(f) for f in fields]
 
+    db_table = app.tables.get(table)
     with app.get_session() as session:
-        rows = _rows(DynamicQueryBuilder(session, app.models), query, pk, [pk] + fields, ids)
+        builder = DynamicQueryBuilder(session, app.models,
+                                      covered=kitebase.refsets.junctions(db_table))
+        rows = _rows(builder, query, pk, [pk] + fields, ids,
+                     _attacher(app, session, db_table))
         content = WRITERS[fmt](table, headers, keys, rows)
 
     spec = FORMATS[fmt]
@@ -141,8 +146,30 @@ def _key(field: str) -> str:
     return field.rsplit('.', 1)[-1]
 
 
+def _attacher(app: Any, session: Any, db_table: Any) -> Callable:
+    """`attach(select, rows)`: the select without its RefSets, and a function
+    that turns the rows of that select into rows of the original one, the
+    RefSets read as lists (kitebase.refsets) in their places."""
+    def attach(select: List[str]) -> Tuple[List[str], Callable]:
+        query, names = kitebase.refsets.from_select(db_table, {'select': select})
+        if not names:
+            return select, lambda rows: rows
+        kept = query['select']
+        prefix = f'{db_table.name}.'
+
+        def fill(rows: List[Sequence[Any]]) -> List[Sequence[Any]]:
+            records = [dict(zip(kept, row)) for row in rows]
+            kitebase.refsets.attach(app, session, db_table, records, names)
+            name = lambda item: item.removeprefix(prefix)
+            return [tuple(r[name(item)] if name(item) in names else r[item] for item in select)
+                    for r in records]
+        return kept, fill
+    return attach
+
+
 def _rows(builder: DynamicQueryBuilder, query: Dict[str, Any], pk: str,
-          select: List[str], ids: Sequence[Any]) -> Iterator[Sequence[Any]]:
+          select: List[str], ids: Sequence[Any],
+          attacher: Optional[Callable] = None) -> Iterator[Sequence[Any]]:
     """
     The rows of `ids` that the view's query admits, in the order of `ids`.
 
@@ -150,19 +177,21 @@ def _rows(builder: DynamicQueryBuilder, query: Dict[str, Any], pk: str,
     the block is a sibling group, so they are ANDed whatever the view's group
     opens with (an ['op', 'or'] would otherwise take the block in); ordering
     and pagination are dropped, because the order is the ids' and the set is
-    the ids'.
+    the ids'. A RefSet in the select is not a column: `attacher` takes it out
+    of the query and puts it back as a list.
     """
     base = {k: v for k, v in query.items()
             if k not in ('select', 'filters', 'order_by', 'limit', 'offset')}
     inner = (query.get('filters') or {}).get('conditions')
     view = inner if isinstance(inner, list) else ([inner] if inner else [])
+    columns, fill = attacher(select) if attacher else (select, lambda rows: rows)
 
     for start in range(0, len(ids), BLOCK):
         block = ids[start:start + BLOCK]
         only = [{pk: ['in', block]}]
-        q = {**base, 'select': select,
+        q = {**base, 'select': columns,
              'filters': {'conditions': [view, only] if view else only}}
-        by_id = {row[0]: row for row in builder.execute_query(q)}
+        by_id = {row[0]: row for row in fill(list(builder.execute_query(q)))}
         for i in block:
             row = by_id.get(i)
             if row is not None:

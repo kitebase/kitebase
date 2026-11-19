@@ -39,6 +39,20 @@ TABLES = {
             {'name': 'author_id', 'type': 'Integer', 'foreign_key': {'target': 'Author.id'}},
         ],
     },
+    # A RefSet: `Book.tags` reads as the list of the tags' keys
+    'Tag': {
+        'columns': [
+            {'name': 'id', 'type': 'Integer', 'primary_key': True, 'autoincrement': True},
+            {'name': 'name', 'type': 'String', 'length': 30},
+        ],
+    },
+    'BookTagLink': {
+        'many_to_many': {
+            'target1': {'table': 'Book.id', 'column': 'book_id',
+                        'collection': 'tags', 'field': True},
+            'target2': {'table': 'Tag.id', 'column': 'tag_id'},
+        },
+    },
 }
 
 BOOKS = [
@@ -154,6 +168,22 @@ def test_a_joined_field_is_exported(app):
     rows = sheet(export.export_file(situation([2, 1], columns=columns, query=query)))
 
     assert rows[1:] == [[2, 'Dune', 'Herbert'], [1, 'Kindred', 'Butler']]
+
+
+def test_a_ref_set_is_exported_as_the_list_of_its_keys(app):
+    Tag, Link = app.find_model_class('Tag'), app.find_model_class('BookTagLink')
+    with app.get_session() as session:
+        session.add_all([Tag(name='classic'), Tag(name='sf')])
+        session.flush()
+        session.add_all([Link(book_id=2, tag_id=2), Link(book_id=2, tag_id=1)])
+        session.commit()
+    columns = COLUMNS[:1] + [{'field': 'tags', 'title': 'Tags'}]
+
+    rows = sheet(export.export_file(situation([2, 1], columns=columns)))
+    assert rows[1:] == [[2, 'Dune', '[2, 1]'], [1, 'Kindred', '[]']]
+
+    data = export.export_file(situation([2], fmt='json', columns=columns))
+    assert '"tags": [2, 1]' in data.content.decode('utf-8')
 
 
 def test_an_id_the_view_does_not_admit_stays_out(app):
