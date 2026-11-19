@@ -342,261 +342,66 @@
    "$plugin": "devtypes"
   }
  },
- "menus": {
-  "main": {
-   "label": "DevTest",
-   "home_page": "welcome",
-   "$plugin": "menu"
-  },
-  "$plugin": "menu"
- },
- "menu_items": {
-  "masters": {
-   "label": "Masters",
-   "icon": "database",
-   "order": 10,
-   "$plugin": "menu"
-  },
-  "catalog": {
-   "label": "Catalog",
-   "icon": "book",
-   "order": 20,
-   "$plugin": "menu"
-  },
-  "library": {
-   "label": "Library",
-   "icon": "library",
-   "order": 30,
-   "$plugin": "menu"
-  },
-  "playground": {
-   "label": "Playground",
-   "icon": "flask-conical",
-   "order": 90,
-   "$plugin": "menu"
-  },
-  "account": {
-   "label": "Account",
-   "icon": "user-round",
-   "order": 95,
-   "$plugin": "menu"
-  },
-  "users": {
-   "label": "Users",
-   "icon": "users",
-   "parent": "masters",
-   "order": 10,
-   "action": "stack_push",
-   "panel": "user_list",
-   "$plugin": "menu"
-  },
-  "userlogs": {
-   "label": "User logs",
-   "icon": "file-text",
-   "parent": "masters",
-   "order": 20,
-   "action": "stack_push",
-   "panel": "userlog_list",
-   "$plugin": "menu"
-  },
-  "maillog": {
-   "label": "Email log",
-   "icon": "mail",
-   "parent": "masters",
-   "order": 80,
-   "action": "stack_push",
-   "panel": "smtp_log",
-   "$plugin": "menu"
-  },
-  "settings": {
-   "label": "Settings",
-   "icon": "settings",
-   "parent": "masters",
-   "order": 90,
-   "action": "stack_push",
-   "panel": "settings_admin",
-   "$plugin": "menu"
-  },
-  "tables": {
-   "label": "Tables",
-   "icon": "table",
-   "parent": "masters",
-   "order": 95,
-   "action": "stack_push",
-   "panel": "tables_browser",
-   "$plugin": "menu"
-  },
-  "password": {
-   "label": "Change password",
-   "icon": "lock",
-   "parent": "account",
-   "order": 10,
-   "action": "stack_push",
-   "panel": "password_change",
-   "$plugin": "menu"
-  },
-  "$plugin": "menu",
-  "demo_hello": {
-   "label": "Hello demo",
-   "icon": "sparkles",
-   "parent": "playground",
-   "order": 10,
-   "action": "stack_push",
-   "panel": "hello_demo",
-   "$plugin": "panels"
-  },
-  "demo_msgbox": {
-   "label": "Msgbox demo",
-   "icon": "message-square",
-   "parent": "playground",
-   "order": 15,
-   "action": "stack_push",
-   "panel": "msgbox_demo",
-   "$plugin": "panels"
-  },
-  "demo_panels": {
-   "label": "Book panels",
-   "icon": "layout",
-   "parent": "playground",
-   "order": 20,
-   "action": "stack_push",
-   "panel": "book_demo_nested",
-   "$plugin": "panels"
-  },
-  "demo_reviews": {
-   "label": "Book + reviews",
-   "icon": "git-branch",
-   "parent": "playground",
-   "order": 30,
-   "action": "stack_push",
-   "panel": "book_with_reviews",
-   "$plugin": "panels"
-  },
-  "wizard_payment": {
-   "label": "Payment wizard",
-   "icon": "wand",
-   "parent": "playground",
-   "order": 40,
-   "action": "stack_push",
-   "panel": "payment_wizard_params",
-   "$plugin": "wizards"
-  },
-  "wizard_product": {
-   "label": "Product demo",
-   "icon": "package",
-   "parent": "playground",
-   "order": 50,
-   "action": "stack_push",
-   "panel": "product_demo_form",
-   "$plugin": "wizards"
-  },
-  "authors": {
-   "label": "Authors",
-   "icon": "user",
-   "parent": "catalog",
-   "order": 10,
-   "action": "stack_push",
-   "panel": "author_list",
-   "$plugin": "books"
-  },
-  "publishers": {
-   "label": "Publishers",
-   "icon": "building",
-   "parent": "catalog",
-   "order": 20,
-   "action": "stack_push",
-   "panel": "publisher_list",
-   "$plugin": "books"
-  },
-  "books": {
-   "label": "Books",
-   "icon": "book",
-   "parent": "catalog",
-   "order": 30,
-   "action": "stack_push",
-   "panel": "book_list",
-   "$plugin": "books"
-  },
-  "acquisitions": {
-   "label": "Acquisitions",
-   "icon": "truck",
-   "order": 40,
-   "$plugin": "acquisitions"
-  },
-  "orders": {
-   "label": "Orders",
-   "icon": "clipboard-list",
-   "parent": "acquisitions",
-   "order": 10,
-   "action": "stack_push",
-   "panel": "purchaseorder_list",
-   "$plugin": "acquisitions"
-  },
-  "receipts": {
-   "label": "Receipts",
-   "icon": "package-check",
-   "parent": "acquisitions",
-   "order": 20,
-   "action": "stack_push",
-   "panel": "receipt_list",
-   "$plugin": "acquisitions"
-  },
-  "payment_methods": {
-   "label": "Payment methods",
-   "icon": "credit-card",
-   "parent": "acquisitions",
-   "order": 30,
-   "action": "stack_push",
-   "panel": "paymentmethod_list",
-   "$plugin": "acquisitions"
-  },
-  "acquisitions_settings": {
-   "label": "Settings",
-   "icon": "settings",
-   "parent": "acquisitions",
-   "order": 90,
-   "action": "stack_push",
-   "panel": "acquisitions_settings",
-   "$plugin": "acquisitions"
-  },
-  "members": {
-   "label": "Members",
-   "icon": "users",
-   "parent": "library",
-   "order": 5,
-   "action": "stack_push",
-   "panel": "libraryuser_list",
-   "$plugin": "library"
-  },
-  "loans": {
-   "label": "Loans",
-   "icon": "repeat",
-   "parent": "library",
-   "order": 10,
-   "action": "stack_push",
-   "panel": "loan_manager",
-   "$plugin": "library"
-  },
-  "stats": {
-   "label": "Loan statistics",
-   "icon": "chart-column",
-   "parent": "library",
-   "order": 15,
-   "action": "stack_push",
-   "panel": "loan_stats",
-   "$plugin": "library"
-  },
-  "reviews": {
-   "label": "Reviews",
-   "icon": "star",
-   "parent": "library",
-   "order": 20,
-   "action": "stack_push",
-   "panel": "review_list",
-   "$plugin": "library"
-  }
- },
  "tables": {
+  "EditMarker": {
+   "name": "edit_markers",
+   "label": "Edit marker",
+   "help": "One row per document opened in a form: the version of what it holds.\nA marker locks nothing; a row deleted only makes the next save of that\ndocument a conflict, never a loss.\n",
+   "columns": [
+    {
+     "name": "id",
+     "type": "Integer",
+     "primary_key": true,
+     "autoincrement": true,
+     "$plugin": "concurrency"
+    },
+    {
+     "name": "model",
+     "type": "String",
+     "length": 64,
+     "nullable": false,
+     "label": "Table",
+     "$plugin": "concurrency"
+    },
+    {
+     "name": "record_id",
+     "type": "String",
+     "length": 64,
+     "nullable": false,
+     "label": "Record",
+     "$plugin": "concurrency"
+    },
+    {
+     "name": "token",
+     "type": "String",
+     "length": 32,
+     "nullable": false,
+     "label": "Version",
+     "$plugin": "concurrency"
+    },
+    {
+     "name": "touched_at",
+     "type": "DateTime",
+     "nullable": false,
+     "label": "Touched at",
+     "$plugin": "concurrency"
+    }
+   ],
+   "indexes": [
+    {
+     "name": "idx_edit_marker_record",
+     "columns": [
+      "model",
+      "record_id"
+     ],
+     "unique": true,
+     "description": "One marker per document",
+     "$plugin": "concurrency"
+    }
+   ],
+   "$plugin": "concurrency"
+  },
+  "$plugin": "concurrency",
   "Setting": {
    "name": "settings",
    "label": "Setting",
@@ -632,7 +437,6 @@
    ],
    "$plugin": "settings"
   },
-  "$plugin": "settings",
   "User": {
    "name": "users",
    "label": "User",
@@ -1790,6 +1594,260 @@
      "$plugin": "library"
     }
    ],
+   "$plugin": "library"
+  }
+ },
+ "menus": {
+  "main": {
+   "label": "DevTest",
+   "home_page": "welcome",
+   "$plugin": "menu"
+  },
+  "$plugin": "menu"
+ },
+ "menu_items": {
+  "masters": {
+   "label": "Masters",
+   "icon": "database",
+   "order": 10,
+   "$plugin": "menu"
+  },
+  "catalog": {
+   "label": "Catalog",
+   "icon": "book",
+   "order": 20,
+   "$plugin": "menu"
+  },
+  "library": {
+   "label": "Library",
+   "icon": "library",
+   "order": 30,
+   "$plugin": "menu"
+  },
+  "playground": {
+   "label": "Playground",
+   "icon": "flask-conical",
+   "order": 90,
+   "$plugin": "menu"
+  },
+  "account": {
+   "label": "Account",
+   "icon": "user-round",
+   "order": 95,
+   "$plugin": "menu"
+  },
+  "users": {
+   "label": "Users",
+   "icon": "users",
+   "parent": "masters",
+   "order": 10,
+   "action": "stack_push",
+   "panel": "user_list",
+   "$plugin": "menu"
+  },
+  "userlogs": {
+   "label": "User logs",
+   "icon": "file-text",
+   "parent": "masters",
+   "order": 20,
+   "action": "stack_push",
+   "panel": "userlog_list",
+   "$plugin": "menu"
+  },
+  "maillog": {
+   "label": "Email log",
+   "icon": "mail",
+   "parent": "masters",
+   "order": 80,
+   "action": "stack_push",
+   "panel": "smtp_log",
+   "$plugin": "menu"
+  },
+  "settings": {
+   "label": "Settings",
+   "icon": "settings",
+   "parent": "masters",
+   "order": 90,
+   "action": "stack_push",
+   "panel": "settings_admin",
+   "$plugin": "menu"
+  },
+  "tables": {
+   "label": "Tables",
+   "icon": "table",
+   "parent": "masters",
+   "order": 95,
+   "action": "stack_push",
+   "panel": "tables_browser",
+   "$plugin": "menu"
+  },
+  "password": {
+   "label": "Change password",
+   "icon": "lock",
+   "parent": "account",
+   "order": 10,
+   "action": "stack_push",
+   "panel": "password_change",
+   "$plugin": "menu"
+  },
+  "$plugin": "menu",
+  "demo_hello": {
+   "label": "Hello demo",
+   "icon": "sparkles",
+   "parent": "playground",
+   "order": 10,
+   "action": "stack_push",
+   "panel": "hello_demo",
+   "$plugin": "panels"
+  },
+  "demo_msgbox": {
+   "label": "Msgbox demo",
+   "icon": "message-square",
+   "parent": "playground",
+   "order": 15,
+   "action": "stack_push",
+   "panel": "msgbox_demo",
+   "$plugin": "panels"
+  },
+  "demo_panels": {
+   "label": "Book panels",
+   "icon": "layout",
+   "parent": "playground",
+   "order": 20,
+   "action": "stack_push",
+   "panel": "book_demo_nested",
+   "$plugin": "panels"
+  },
+  "demo_reviews": {
+   "label": "Book + reviews",
+   "icon": "git-branch",
+   "parent": "playground",
+   "order": 30,
+   "action": "stack_push",
+   "panel": "book_with_reviews",
+   "$plugin": "panels"
+  },
+  "wizard_payment": {
+   "label": "Payment wizard",
+   "icon": "wand",
+   "parent": "playground",
+   "order": 40,
+   "action": "stack_push",
+   "panel": "payment_wizard_params",
+   "$plugin": "wizards"
+  },
+  "wizard_product": {
+   "label": "Product demo",
+   "icon": "package",
+   "parent": "playground",
+   "order": 50,
+   "action": "stack_push",
+   "panel": "product_demo_form",
+   "$plugin": "wizards"
+  },
+  "authors": {
+   "label": "Authors",
+   "icon": "user",
+   "parent": "catalog",
+   "order": 10,
+   "action": "stack_push",
+   "panel": "author_list",
+   "$plugin": "books"
+  },
+  "publishers": {
+   "label": "Publishers",
+   "icon": "building",
+   "parent": "catalog",
+   "order": 20,
+   "action": "stack_push",
+   "panel": "publisher_list",
+   "$plugin": "books"
+  },
+  "books": {
+   "label": "Books",
+   "icon": "book",
+   "parent": "catalog",
+   "order": 30,
+   "action": "stack_push",
+   "panel": "book_list",
+   "$plugin": "books"
+  },
+  "acquisitions": {
+   "label": "Acquisitions",
+   "icon": "truck",
+   "order": 40,
+   "$plugin": "acquisitions"
+  },
+  "orders": {
+   "label": "Orders",
+   "icon": "clipboard-list",
+   "parent": "acquisitions",
+   "order": 10,
+   "action": "stack_push",
+   "panel": "purchaseorder_list",
+   "$plugin": "acquisitions"
+  },
+  "receipts": {
+   "label": "Receipts",
+   "icon": "package-check",
+   "parent": "acquisitions",
+   "order": 20,
+   "action": "stack_push",
+   "panel": "receipt_list",
+   "$plugin": "acquisitions"
+  },
+  "payment_methods": {
+   "label": "Payment methods",
+   "icon": "credit-card",
+   "parent": "acquisitions",
+   "order": 30,
+   "action": "stack_push",
+   "panel": "paymentmethod_list",
+   "$plugin": "acquisitions"
+  },
+  "acquisitions_settings": {
+   "label": "Settings",
+   "icon": "settings",
+   "parent": "acquisitions",
+   "order": 90,
+   "action": "stack_push",
+   "panel": "acquisitions_settings",
+   "$plugin": "acquisitions"
+  },
+  "members": {
+   "label": "Members",
+   "icon": "users",
+   "parent": "library",
+   "order": 5,
+   "action": "stack_push",
+   "panel": "libraryuser_list",
+   "$plugin": "library"
+  },
+  "loans": {
+   "label": "Loans",
+   "icon": "repeat",
+   "parent": "library",
+   "order": 10,
+   "action": "stack_push",
+   "panel": "loan_manager",
+   "$plugin": "library"
+  },
+  "stats": {
+   "label": "Loan statistics",
+   "icon": "chart-column",
+   "parent": "library",
+   "order": 15,
+   "action": "stack_push",
+   "panel": "loan_stats",
+   "$plugin": "library"
+  },
+  "reviews": {
+   "label": "Reviews",
+   "icon": "star",
+   "parent": "library",
+   "order": 20,
+   "action": "stack_push",
+   "panel": "review_list",
    "$plugin": "library"
   }
  },
