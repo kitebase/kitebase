@@ -35,21 +35,112 @@ keeps `load_tree`'s answer and `save_tree`'s request one shape.
 
 `db` stays what it is — a single record, one call, its own transaction. Whether
 this becomes the only write path is a decision for the day the client moves.
+
+Two hooks let a plugin take part in both verbs without the core knowing why
+(the concurrency plugin is the first to use them):
+
+    @before_tree_load
+    def version(model, record_id):          # before the data is read
+        return {'$version': ...}            # `$` keys, set on the root node
+
+    @before_tree_write
+    def check(write):                       # in the save's transaction, before the rows
+        if stale(write.meta):
+            raise Conflict(...)             # 409, with the tree as it is now
+        return {'$version': ...}            # set on the root that is answered
+
+A tree that leaves the server carries what the load hooks said, and a root that
+comes back carries it again in its own `$` keys: the client keeps them without
+reading them. A `Conflict` raised by a write hook rolls back the whole save
+and answers with the tree re-read, so the client can show what changed.
 """
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import kitebase.utils
 import kitebase.media
 import kitebase.refsets
 from kitebase import access, flow
 from kitebase.access import AccessDenied
-from kitebase.errors import Invalid, NotFound, Refusal
+from kitebase.errors import Conflict, Invalid, NotFound, Refusal
 from kitebase.endpoints import endpoint
 from kitebase.endpoint_db import pk_field, write_values, coerce_value, require_columns
 from kitebase.pages import Aggregate, Collection, page_aggregate
 from kitebase.querybuilder import DynamicQueryBuilder
+from kitebase.registry import Registry
 
 _OPS = ('create', 'update', 'delete')
+
+
+# ── Hooks ───────────────────────────────────────────────────────────────────
+
+@dataclass
+class TreeWrite:
+    """What a write hook sees of one tree about to be saved."""
+    session: Any                     # the save's: what a hook writes commits with the tree
+    model: str                       # the root's model
+    id: Any                          # the root's key; on a create, its temporary id
+    action: str                      # create, update or delete, as the root is written
+    meta: Dict[str, Any] = field(default_factory=dict)   # the `$` keys of the root node
+
+
+_LOAD_HOOKS: Registry[Callable[[str, Any], Optional[Dict[str, Any]]]] = Registry(
+    'tree_load_hooks', 'load hook of trees')
+_WRITE_HOOKS: Registry[Callable[[TreeWrite], Optional[Dict[str, Any]]]] = Registry(
+    'tree_write_hooks', 'write hook of trees')
+
+
+def _hook_name(fn: Callable) -> str:
+    return f'{fn.__module__}.{fn.__qualname__}'
+
+
+def before_tree_load(fn: Callable) -> Callable:
+    """
+    Register `fn(model, record_id)`, called when a tree is read for the client,
+    before its data. It returns `$` keys for the root node, or None.
+    """
+    _LOAD_HOOKS.add(_hook_name(fn), fn)
+    return fn
+
+
+def before_tree_write(fn: Callable) -> Callable:
+    """
+    Register `fn(write: TreeWrite)`, called inside the save's transaction
+    before any row of the tree is written, once the access to the root is
+    checked: what it writes or locks comes first. It may raise `Conflict` to
+    refuse the save, and returns `$` keys for the root it answers with, or None.
+    """
+    _WRITE_HOOKS.add(_hook_name(fn), fn)
+    return fn
+
+
+def _metadata(found: Optional[Dict[str, Any]], hook: Callable) -> Dict[str, Any]:
+    """What a hook returned: `$` keys only, so a hook never writes over the node."""
+    if not found:
+        return {}
+    wrong = [k for k in found if not str(k).startswith('$')]
+    if wrong:
+        raise ValueError(f"The tree hook {_hook_name(hook)} returned keys without '$': "
+                         f"{', '.join(map(str, wrong))}")
+    return dict(found)
+
+
+def _load_metadata(model: str, record_id: Any) -> Dict[str, Any]:
+    meta: Dict[str, Any] = {}
+    for hook in _LOAD_HOOKS.values():
+        meta.update(_metadata(hook(model, record_id), hook))
+    return meta
+
+
+def _write_metadata(write: TreeWrite) -> Dict[str, Any]:
+    meta: Dict[str, Any] = {}
+    for hook in _WRITE_HOOKS.values():
+        meta.update(_metadata(hook(write), hook))
+    return meta
+
+
+def _node_metadata(node: Dict[str, Any]) -> Dict[str, Any]:
+    return {k: v for k, v in node.items() if isinstance(k, str) and k.startswith('$')}
 
 
 def _conditions_of(domain: Any) -> List[Any]:
@@ -261,12 +352,28 @@ def load_tree(data: Dict[str, Any]) -> Dict[str, Any]:
 
     app = kitebase.utils.get_app()
     aggregate = page_aggregate(app, page_id)
-    with app.get_session() as session:
-        root = _load_tree(app, session, aggregate, data['id'])
+    # The hooks may write (a marker): only for whoever may read the record
+    access.check_table(aggregate.model, 'read')
+    root = _read_for_client(app, aggregate, data['id'])
     if root is None:
         raise NotFound(f"No record {data['id']} in '{aggregate.model}'")
 
     return {'status': 'success', 'data': root, 'code': 200}
+
+
+def _read_for_client(app, aggregate: Aggregate, record_id: Any,
+                     covered: List[str] = ()) -> Optional[Dict[str, Any]]:
+    """
+    A tree as it leaves the server: the load hooks first, then the data. The
+    order is the hooks' guarantee: what they say (a version) is never newer
+    than the rows read after it.
+    """
+    meta = _load_metadata(aggregate.model, record_id)
+    with app.get_session() as session:
+        root = _load_tree(app, session, aggregate, record_id, covered)
+    if root is not None:
+        root.update(meta)
+    return root
 
 
 # ── Save ────────────────────────────────────────────────────────────────────
@@ -544,12 +651,18 @@ def save_tree(data: Dict[str, Any]) -> Dict[str, Any]:
         return refusal
 
     id_map: Dict[int, Any] = {}
-    with app.get_session() as session:
-        root_id = _write(app, session, aggregate, root_node, ctx, id_map)
-        session.commit()
-        # What was just written comes back under the permission that wrote it.
-        root = _load_tree(app, session, aggregate, root_id,
-                          covered=_aggregate_models(aggregate)) if root_id is not None else None
+    try:
+        with app.get_session() as session:
+            root_id, meta = _write(app, session, aggregate, root_node, ctx, id_map)
+            session.commit()
+            # What was just written comes back under the permission that wrote it.
+            root = _load_tree(app, session, aggregate, root_id,
+                              covered=_aggregate_models(aggregate)) if root_id is not None else None
+    except Conflict as conflict:
+        # Nothing was written: the answer is the tree as it stands now
+        raise _with_fresh_tree(app, aggregate, root_node, conflict)
+    if root is not None:
+        root.update(meta)
 
     return flow.finish(ctx, {'status': 'success',
                              'data': {'id': root_id, 'id_map': id_map, 'root': root},
@@ -582,13 +695,19 @@ def save_trees(page_id: str, roots: List[Dict[str, Any]],
 
         written = []
         with app.get_session() as session:
+            metas = []
             for index, (aggregate, ctx, root_node) in enumerate(prepared):
                 id_map: Dict[int, Any] = {}
-                written.append((_write(app, session, aggregate, root_node, ctx, id_map), id_map))
+                root_id, meta = _write(app, session, aggregate, root_node, ctx, id_map)
+                written.append((root_id, id_map))
+                metas.append(meta)
             session.commit()
             loaded = [_load_tree(app, session, aggregate, root_id,
                                  covered=_aggregate_models(aggregate)) if root_id is not None else None
                       for (aggregate, _, _), (root_id, _) in zip(prepared, written)]
+        for root, meta in zip(loaded, metas):
+            if root is not None:
+                root.update(meta)
 
         infos: List[str] = []
         actions: List[Dict[str, Any]] = []
@@ -622,10 +741,22 @@ def _prepare(app, page_id: str, root_node: Dict[str, Any], answers):
     return aggregate, ctx, refusal
 
 
+def _with_fresh_tree(app, aggregate: Aggregate, root_node: Dict[str, Any],
+                     conflict: Conflict) -> Conflict:
+    """A write hook's refusal, carrying the tree re-read (None if it is gone)."""
+    root_id = root_node.get('id')
+    fresh = None
+    if isinstance(root_id, int) and not isinstance(root_id, bool) and root_id > 0:
+        fresh = _read_for_client(app, aggregate, root_id, covered=_aggregate_models(aggregate))
+    return Conflict(conflict.message, data={**(conflict.data or {}), 'root': fresh},
+                    code=conflict.code)
+
+
 def _write(app, session, aggregate, root_node: Dict[str, Any], ctx,
-           id_map: Dict[int, Any]) -> Any:
-    """Write one judged tree in `session`, up to its `commit` rules; the
-    caller commits. Returns the root's key."""
+           id_map: Dict[int, Any]) -> Tuple[Any, Dict[str, Any]]:
+    """Write one judged tree in `session`, its write hooks first and its
+    `commit` rules last; the caller commits. Returns the root's key and the
+    hooks' `$` keys."""
     deletes: List[Tuple[int, str, Any]] = []
     root_class, _, _ = _table_of(app, aggregate.model)
     action = _root_action(root_node)
@@ -638,6 +769,8 @@ def _write(app, session, aggregate, root_node: Dict[str, Any], ctx,
             raise NotFound(f"No record {root_key} in '{aggregate.model}'")
         access.check_row(session, root_class, root_key, action)
 
+    meta = _write_metadata(TreeWrite(session, aggregate.model, root_key, action,
+                                     _node_metadata(root_node)))
     root_id = _save_node(app, session, aggregate, root_node, {}, {}, id_map, deletes, 0)
     # and a created root as inserted, before anything is committed
     if action == 'create':
@@ -653,4 +786,4 @@ def _write(app, session, aggregate, root_node: Dict[str, Any], ctx,
 
     root_obj = session.get(root_class, root_id) if root_id is not None else None
     flow.commit(ctx, session, root_obj)
-    return root_id
+    return root_id, meta
