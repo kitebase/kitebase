@@ -157,6 +157,26 @@ def test_a_hook_may_only_add_dollar_keys(app, hooks):
         load_tree({'page': 'book_form', 'id': book})
 
 
+def test_two_hooks_may_not_return_the_same_key(app, versions):
+    @before_tree_load
+    def another(model, record_id):
+        return {'$version': 'mine'}
+
+    book = create_book()['id']
+    with pytest.raises(ValueError, match=r"hand_out and .*another both return '\$version'"):
+        load_tree({'page': 'book_form', 'id': book})
+
+
+def test_two_hooks_with_different_keys_add_up(app, versions):
+    @before_tree_load
+    def presence(model, record_id):
+        return {'$presence': []}
+
+    book = create_book()['id']
+    tree = ok(load_tree({'page': 'book_form', 'id': book}))
+    assert tree['$version'] == 1 and tree['$presence'] == []
+
+
 def test_without_hooks_a_tree_has_no_metadata(app, hooks):
     book = create_book()['id']
     tree = ok(load_tree({'page': 'book_form', 'id': book}))

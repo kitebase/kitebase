@@ -125,18 +125,27 @@ def _metadata(found: Optional[Dict[str, Any]], hook: Callable) -> Dict[str, Any]
     return dict(found)
 
 
-def _load_metadata(model: str, record_id: Any) -> Dict[str, Any]:
+def _merged(results) -> Dict[str, Any]:
+    """The keys of every hook together; two hooks returning one key is an error,
+    or the import order would choose between them in silence."""
     meta: Dict[str, Any] = {}
-    for hook in _LOAD_HOOKS.values():
-        meta.update(_metadata(hook(model, record_id), hook))
+    owners: Dict[str, Callable] = {}
+    for hook, found in results:
+        for key, value in _metadata(found, hook).items():
+            if key in owners:
+                raise ValueError(f"The tree hooks {_hook_name(owners[key])} and "
+                                 f"{_hook_name(hook)} both return '{key}'")
+            owners[key] = hook
+            meta[key] = value
     return meta
+
+
+def _load_metadata(model: str, record_id: Any) -> Dict[str, Any]:
+    return _merged((hook, hook(model, record_id)) for hook in _LOAD_HOOKS.values())
 
 
 def _write_metadata(write: TreeWrite) -> Dict[str, Any]:
-    meta: Dict[str, Any] = {}
-    for hook in _WRITE_HOOKS.values():
-        meta.update(_metadata(hook(write), hook))
-    return meta
+    return _merged((hook, hook(write)) for hook in _WRITE_HOOKS.values())
 
 
 def _node_metadata(node: Dict[str, Any]) -> Dict[str, Any]:
