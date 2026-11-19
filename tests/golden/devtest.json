@@ -1811,6 +1811,29 @@
    "content": {
     "type": "plugin",
     "component": "tables.browser",
+    "props": {
+     "commands": [
+      {
+       "id": "seed_compare",
+       "label": "Compare with seed or file",
+       "scope": "row",
+       "endpoint": "seed_choose",
+       "icon": "git-compare",
+       "$plugin": "tables"
+      }
+     ],
+     "$plugin": "tables"
+    },
+    "$plugin": "tables"
+   },
+   "$plugin": "tables"
+  },
+  "tables_seed_compare": {
+   "title": "Comparison",
+   "access": "tables.seed",
+   "content": {
+    "type": "plugin",
+    "component": "tables.seedcompare",
     "$plugin": "tables"
    },
    "$plugin": "tables"
@@ -3798,6 +3821,10 @@
  "permissions": {
   "tables.browse": {
    "label": "Browse every table",
+   "$plugin": "tables"
+  },
+  "tables.seed": {
+   "label": "Compare a table with a seed or a file and add its new rows",
    "$plugin": "tables"
   },
   "$plugin": "tables",

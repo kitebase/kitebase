@@ -14,7 +14,7 @@ import pytest
 import yaml
 
 import kitebase.utils
-from kitebase import seed
+from kitebase import access, seed
 from kitebase.app import App
 from kitebase.i18n import register_translations
 from kitebase.model_base import Base
@@ -265,3 +265,218 @@ def test_export_then_apply_then_export_gives_the_same_file(tmp_path, monkeypatch
     assert ok, lines
     path, _ = seed.export(app, 'Account', 'bench/copy')
     assert path.read_text(encoding='utf-8') == first
+
+
+# ── Comparing ──────────────────────────────────────────────────────────────
+
+def states(result):
+    return [(c.state, c.key) for c in result]
+
+
+def test_the_set_just_applied_compares_equal(tmp_path, monkeypatch):
+    app = build(tmp_path, monkeypatch, standard_files())
+    assert states(seed.compare(app, 'Pipeline', PIPELINE)) == [('equal', 'Sales')]
+    methods = seed.read_file(tmp_path / 'plugins/bench/seed/base/Method.csv')
+    assert states(seed.compare(app, 'Method', methods)) == [('equal', 'WT'), ('equal', 'CASH')]
+
+
+def test_a_row_meets_by_its_code_whatever_the_case(tmp_path, monkeypatch):
+    app = build(tmp_path, monkeypatch, standard_files())
+    result = seed.compare(app, 'Method', [{'code': 'wt', 'name': 'Bank transfer'},
+                                          {'code': 'DD', 'name': 'Direct debit'}])
+    assert states(result) == [('different', 'wt'), ('new', 'DD'), ('only_db', 'CASH')]
+    assert result[0].changes == [{'path': 'name', 'kind': 'changed',
+                                  'db': 'Wire transfer', 'seed': 'Bank transfer'}]
+    assert result[0].db_id == rows(app, 'Method', 'id')[0][0]
+
+
+def test_without_a_code_a_row_meets_by_its_name_and_the_children_are_said(tmp_path, monkeypatch):
+    app = build(tmp_path, monkeypatch, standard_files())
+    changed = [{'name': 'Sales', 'sequence': 20,
+                'Stage': [{'name': 'New', 'sequence': 5}, {'name': 'Lost', 'sequence': 3}]}]
+    (item,) = seed.compare(app, 'Pipeline', changed)
+    assert item.state == 'different'
+    assert item.changes == [
+        {'path': 'sequence', 'kind': 'changed', 'db': 10, 'seed': 20},
+        {'path': 'Stage[New].sequence', 'kind': 'changed', 'db': 1, 'seed': 5},
+        {'path': 'Stage[Lost]', 'kind': 'added', 'db': None, 'seed': 'Lost'},
+        {'path': 'Stage[Won]', 'kind': 'missing', 'db': 'Won', 'seed': None}]
+
+
+def test_the_name_is_compared_as_the_installation_reads_it(tmp_path, monkeypatch):
+    register_translations('it', {'Sales': 'Vendite', 'New': 'Nuova'})
+    app = build(tmp_path, monkeypatch, standard_files(), config={'locale': 'it'})
+    assert states(seed.compare(app, 'Pipeline', PIPELINE)) == [('equal', 'Vendite')]
+
+
+def test_a_row_born_in_another_language_is_met_by_the_text_of_the_file(tmp_path, monkeypatch):
+    """The language changed after the birth: the rows keep their text, and are the same rows."""
+    app = build(tmp_path, monkeypatch, standard_files(), config={'locale': 'fr'})
+    register_translations('fr', {'Sales': 'Ventes', 'New': 'Nouvelle'})
+    (item,) = seed.compare(app, 'Pipeline', PIPELINE)
+    assert (item.state, item.key, item.changes) == ('equal', 'Ventes', [])
+
+
+def test_a_default_left_out_is_the_default(tmp_path, monkeypatch):
+    """`active: true` written or not, and the CSV's text, are the same row."""
+    app = build(tmp_path, monkeypatch, standard_files())
+    explicit = [dict(PIPELINE[0], active='true')]
+    assert states(seed.compare(app, 'Pipeline', explicit)) == [('equal', 'Sales')]
+
+
+def test_a_name_twice_is_ambiguous_and_never_matched(tmp_path, monkeypatch):
+    app = build(tmp_path, monkeypatch, standard_files())
+    with app.get_session() as s:
+        s.add(app.models['Pipeline'](name='Sales', sequence=30))
+        s.commit()
+    result = seed.compare(app, 'Pipeline', PIPELINE + [{'name': 'Renewals'}, {'name': 'Renewals'}])
+    assert states(result) == [('ambiguous', 'Sales'), ('ambiguous', 'Renewals'),
+                              ('ambiguous', 'Renewals')]
+    assert result[0].note == '2 rows of the table have it'
+    assert result[1].note == '2 rows of the file have it'
+
+
+def test_a_key_outside_and_a_label_compare_by_what_they_name(tmp_path, monkeypatch):
+    app = build(tmp_path, monkeypatch, standard_files())
+    seed.apply(app, seed.seed_files(app, 'bench/demo'))
+    # the labels of the file are not those of the export: the parent is the same
+    accounts = [{'id': 7, 'code': '40', 'name': 'Revenue'},
+                {'code': '40.01', 'name': 'Sales revenue', 'parent_id': 7}]
+    assert [c.state for c in seed.compare(app, 'Account', accounts)] == ['equal', 'equal']
+    moved = [{'id': 7, 'code': '40', 'name': 'Revenue'}, {'id': 8, 'code': '41', 'name': 'Other'},
+             {'code': '40.01', 'name': 'Sales revenue', 'parent_id': 8}]
+    result = seed.compare(app, 'Account', moved)
+    assert [c.state for c in result] == ['equal', 'new', 'different']
+    assert result[2].changes == [{'path': 'parent_id', 'kind': 'changed',
+                                  'db': 'Revenue', 'seed': 'Other'}]
+
+
+def test_rows_meant_for_another_table_are_refused(tmp_path, monkeypatch):
+    """Not passed over in silence: the keys the table does not have are said."""
+    app = build(tmp_path, monkeypatch, standard_files())
+    with pytest.raises(seed.SeedError, match=r'do not fit Method: it has no sequence\.'):
+        seed.compare(app, 'Method', [{'code': 'WT', 'sequence': 1}])
+    with pytest.raises(seed.SeedError, match=r'it has no Stage\.nope\.'):
+        seed.compare(app, 'Pipeline', [{'name': 'Sales', 'Stage': [{'name': 'New', 'nope': 1}]}])
+    # a key by code, a label and a collection are the table's own
+    assert not seed._unknown_keys(app, 'Order', [{'id': 1, 'reference': 'A1', 'method_id.code': 'WT'}])
+    assert not seed._unknown_keys(app, 'Pipeline', PIPELINE)
+
+
+def test_a_file_a_person_made_may_name_the_columns_by_their_titles(tmp_path, monkeypatch):
+    """What the export of a list writes: the id first, the titles of the columns."""
+    app = build(tmp_path, monkeypatch, standard_files())
+    code = next(c for c in app.tables['Method'].effective_columns if c.name == 'code')
+    monkeypatch.setitem(code.attributes, 'label', 'Code')
+    rows = seed.parse_rows('id,CODE,Name,Colour\n1,WT,Wire transfer,red\n', '.csv', 'mine.csv')
+    assert seed.by_titles(app, 'Method', rows) == [
+        {'id': '1', 'code': 'WT', 'name': 'Wire transfer', 'Colour': 'red'}]
+
+
+def test_a_column_of_one_s_own_starts_with_a_hash_and_is_never_read(tmp_path, monkeypatch):
+    app = build(tmp_path, monkeypatch, standard_files())
+    rows = seed.parse_rows('code,name,#to check,#\nWT,Wire transfer,ask Anna,x\n', '.csv', 'm.csv')
+    assert rows == [{'code': 'WT', 'name': 'Wire transfer'}]
+    nested = seed.parse_rows('- {name: Sales, "#why": old, Stage: [{name: New, "#": x}]}', '.yaml', 'p')
+    assert nested == [{'name': 'Sales', 'Stage': [{'name': 'New'}]}]
+    with pytest.raises(seed.SeedError, match='Tip: start the columns of your own with #'):
+        seed.compare(app, 'Method', [{'code': 'WT', 'remark': 'x'}])
+
+
+def test_a_file_of_some_columns_compares_only_those(tmp_path, monkeypatch):
+    """A seed leaves out a default; a file a person made leaves out what it does not say."""
+    app = build(tmp_path, monkeypatch, standard_files())
+    some = [{'name': 'Sales', 'Stage': [{'name': 'New'}, {'name': 'Won'}]}]
+    full = seed.compare(app, 'Pipeline', some)
+    assert full[0].state == 'different'       # sequence 0, the default, against 10
+    (item,) = seed.compare(app, 'Pipeline', some, only_given=True)
+    assert (item.state, item.changes) == ('equal', [])
+    (item,) = seed.compare(app, 'Pipeline', [{'name': 'Sales'}], only_given=True)
+    assert item.state == 'equal'              # no Stage in the file: the stages are not said
+
+
+def test_a_table_with_nothing_to_meet_by_is_refused(tmp_path, monkeypatch):
+    app = build(tmp_path, monkeypatch, standard_files())
+    app.tables['Order'].search_info['display_field'] = None   # as a table with no text
+    with pytest.raises(seed.SeedError, match='nothing to meet its rows by'):
+        seed.compare(app, 'Order', ORDERS)
+
+
+def test_the_cli_lists_what_differs_and_counts_the_rest(tmp_path, monkeypatch):
+    app = build(tmp_path, monkeypatch, standard_files())
+    with app.get_session() as s:
+        s.add(app.models['Method'](code='DD', name='Direct debit'))
+        s.commit()
+    lines = seed.compare_lines(app, seed.seed_files(app, 'bench/base'))
+    assert lines == ['bench/base/Method: 2 equal, 1 only db',
+                     '  only db    DD',
+                     'bench/base/Pipeline: 1 equal']
+
+
+# ── Writing what was chosen ────────────────────────────────────────────────
+
+RENEWALS = {'name': 'Renewals', 'sequence': 20,
+            'Stage': [{'name': 'Expiring', 'sequence': 1}, {'name': 'Signed', 'sequence': 2}]}
+
+
+def test_only_the_rows_chosen_are_written_whole(tmp_path, monkeypatch):
+    app = build(tmp_path, monkeypatch, standard_files())
+    file = PIPELINE + [RENEWALS, {'name': 'Support'}]
+    lines, written = seed.apply_new(app, 'Pipeline', file, ['renewals'], system=True)
+    assert written == 1
+    assert lines == ['Renewals: written, with 2 rows it owns']
+    assert rows(app, 'Pipeline', 'name') == [('Sales',), ('Renewals',)]
+    assert rows(app, 'Stage', 'name', 'pipeline_id')[2:] == [('Expiring', 2), ('Signed', 2)]
+
+
+def test_a_row_no_longer_new_is_skipped_and_said(tmp_path, monkeypatch):
+    """Created by hand between the comparison and the writing: never twice."""
+    app = build(tmp_path, monkeypatch, standard_files())
+    with app.get_session() as s:
+        s.add(app.models['Pipeline'](name='Renewals'))
+        s.commit()
+    lines, written = seed.apply_new(app, 'Pipeline', PIPELINE + [RENEWALS],
+                                    ['Renewals', 'Sales', 'Nope'], system=True)
+    assert written == 0
+    assert lines == ['Sales: skipped, no longer new (equal)',
+                     'Renewals: skipped, no longer new (different)',
+                     'Nope: skipped, not in the file']
+    assert len(rows(app, 'Pipeline', 'id')) == 2
+
+
+def test_a_label_naming_a_row_the_table_has_is_that_row(tmp_path, monkeypatch):
+    app = build(tmp_path, monkeypatch, standard_files())
+    seed.apply(app, seed.seed_files(app, 'bench/demo'))
+    file = [{'id': 1, 'code': '40', 'name': 'Revenue'},
+            {'code': '40.02', 'name': 'Service revenue', 'parent_id': 1}]
+    _lines, written = seed.apply_new(app, 'Account', file, ['Service revenue'], system=True)
+    assert written == 1
+    revenue = rows(app, 'Account', 'id')[0][0]
+    assert rows(app, 'Account', 'name', 'parent_id')[-1] == ('Service revenue', revenue)
+
+
+def test_one_row_that_fails_leaves_nothing(tmp_path, monkeypatch):
+    app = build(tmp_path, monkeypatch, standard_files())
+    seed.apply(app, seed.seed_files(app, 'bench/demo'))
+    file = [{'reference': 'B1'}, {'reference': 'B2', 'method_id.code': 'XX'}]
+    app.tables['Order'].search_info['display_field'] = 'reference'
+    with pytest.raises(seed.SeedError, match="B2: .*XX"):
+        seed.apply_new(app, 'Order', file, ['B1', 'B2'], system=True)
+    assert rows(app, 'Order', 'reference') == [('A1',), ('A2',)]
+
+
+def test_the_dry_run_says_and_writes_nothing(tmp_path, monkeypatch):
+    app = build(tmp_path, monkeypatch, standard_files())
+    lines, written = seed.apply_new(app, 'Pipeline', [RENEWALS], ['Renewals'],
+                                    system=True, dry_run=True)
+    assert (lines, written) == (['Renewals: would be written, with 2 rows it owns'], 1)
+    assert rows(app, 'Pipeline', 'name') == [('Sales',)]
+
+
+def test_as_a_user_a_column_they_may_not_write_takes_its_default(tmp_path, monkeypatch):
+    app = build(tmp_path, monkeypatch, standard_files())
+    monkeypatch.setattr(app.tables['Pipeline'], '_column_groups', {'sequence': 'pricing'})
+    with access.holding(lambda p: p != 'pricing.write'):
+        _lines, written = seed.apply_new(app, 'Pipeline', [RENEWALS], ['Renewals'])
+    assert written == 1
+    assert rows(app, 'Pipeline', 'name', 'sequence')[-1] == ('Renewals', 0)

@@ -359,8 +359,9 @@ def db_seed(app: Any, words: List[str], to: Optional[str] = None,
             dry_run: bool = False) -> Tuple[str, bool]:
     """
     `db-seed`: with no words the sets and their tables; `<plugin>/<set>` applies
-    a set where its tables are empty; `export <Model> --to <plugin>/<set>`
-    writes a table as a set. See kitebase.seed.
+    a set where its tables are empty; `compare <plugin>/<set>` says how the
+    tables differ from it; `export <Model> --to <plugin>/<set>` writes a table
+    as a set. See kitebase.seed.
 
     Returns:
         (report, ok)
@@ -373,6 +374,10 @@ def db_seed(app: Any, words: List[str], to: Optional[str] = None,
                 return 'Usage: db-seed export <Model> --to <plugin>/<set>', False
             path, count = seed.export(app, words[1], to)
             return f'{count} rows of {words[1]} written to {path}', True
+        if words[0] == 'compare':
+            if len(words) != 2:
+                return 'Usage: db-seed compare <plugin>/<set>', False
+            return '\n'.join(seed.compare_lines(app, seed.seed_files(app, words[1]))), True
         if len(words) != 1:
             return 'Usage: db-seed [<plugin>/<set>] [--dry-run]', False
         lines, ok = seed.apply(app, seed.seed_files(app, words[0]), dry_run=dry_run)
@@ -735,14 +740,15 @@ examples:
     p = sub.add_parser(
         'db-seed',
         help='The seed sets of the plugins: list them, apply one to empty tables, '
-             'or export a table as one',
+             'compare one with the tables, or export a table as one',
         description='kitebase db-seed                      list the sets\n'
                     'kitebase db-seed <plugin>/<set>       apply a set to its empty tables\n'
+                    'kitebase db-seed compare <plugin>/<set>   how the tables differ from it\n'
                     'kitebase db-seed export <Model> --to <plugin>/<set>',
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument('words', nargs='*', metavar='SET | export MODEL',
-                   help='<plugin>/<set> to apply, or `export <Model>`')
+    p.add_argument('words', nargs='*', metavar='SET | compare SET | export MODEL',
+                   help='<plugin>/<set> to apply, `compare <plugin>/<set>`, or `export <Model>`')
     p.add_argument('--to', metavar='PLUGIN/SET', help='With export: the set to write into')
     p.add_argument('--dry-run', action='store_true',
                    help='Say what would be written, writing nothing')
