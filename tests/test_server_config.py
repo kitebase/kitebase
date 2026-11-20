@@ -8,6 +8,7 @@ class FakeApp:
     def __init__(self, config):
         self.plugins = PluginsManager()
         self.plugins.config = config
+        self.plugins.data = {}
 
     def get_type_schema(self, include_builtin):
         return {}
@@ -48,3 +49,19 @@ def test_a_column_s_granularity_reaches_the_client(tmp_path, monkeypatch):
     columns = {c['name']: c for c in db.get_table_schema()['Visit']['columns']}
     assert columns['arrived']['granularity'] == 'second'
     assert 'granularity' not in columns['left']
+
+
+def test_the_components_plugins_put_in_forms_reach_the_client(monkeypatch):
+    """Keyed by id in the YAML, so two plugins add to an area; a list for the client."""
+    app = FakeApp({})
+    app.plugins.data = {'form_areas': {'top': {
+        'concurrency.presence': None, 'notes.badge': {'tone': 'info', '$plugin': 'notes'}, '$plugin': 'x'}}}
+    monkeypatch.setattr(kitebase.utils, 'get_app', lambda: app)
+    assert get_server_config({})['data']['form_areas'] == {'top': [
+        {'component': 'concurrency.presence', 'props': {}},
+        {'component': 'notes.badge', 'props': {'tone': 'info'}}]}
+
+
+def test_without_plugins_no_area_has_components(monkeypatch):
+    monkeypatch.setattr(kitebase.utils, 'get_app', lambda: FakeApp({}))
+    assert get_server_config({})['data']['form_areas'] == {}

@@ -5803,5 +5803,14 @@
    "$plugin": "acquisitions"
   },
   "$plugin": "acquisitions"
+ },
+ "form_areas": {
+  "top": {
+   "library.formpulse": {
+    "$plugin": "library"
+   },
+   "$plugin": "library"
+  },
+  "$plugin": "library"
  }
 }

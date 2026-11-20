@@ -1,0 +1,6 @@
+# A strip on top of every form of a table, showing what a plugin mounted
+# there hears of the form: the bench for components such as the list of who
+# else is editing a document.
+form_areas:
+  top:
+    library.formpulse: {}
