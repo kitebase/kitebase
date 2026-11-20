@@ -401,6 +401,93 @@
    ],
    "$plugin": "concurrency"
   },
+  "EditPresence": {
+   "name": "edit_presences",
+   "label": "Presence",
+   "help": "Who is editing a document now: a person with a form gone dirty, or a\nprocedure that says so. Advice, not a lock: it expires by itself when\nnothing renews it, and nothing rests on its release.\n",
+   "columns": [
+    {
+     "name": "id",
+     "type": "Integer",
+     "primary_key": true,
+     "autoincrement": true,
+     "$plugin": "concurrency"
+    },
+    {
+     "name": "model",
+     "type": "String",
+     "length": 64,
+     "nullable": false,
+     "label": "Table",
+     "$plugin": "concurrency"
+    },
+    {
+     "name": "record_id",
+     "type": "String",
+     "length": 64,
+     "nullable": false,
+     "label": "Record",
+     "$plugin": "concurrency"
+    },
+    {
+     "name": "holder",
+     "type": "String",
+     "length": 64,
+     "nullable": false,
+     "label": "Holder",
+     "$plugin": "concurrency"
+    },
+    {
+     "name": "user_name",
+     "type": "String",
+     "length": 120,
+     "label": "User",
+     "$plugin": "concurrency"
+    },
+    {
+     "name": "doing",
+     "type": "String",
+     "length": 120,
+     "label": "Doing",
+     "$plugin": "concurrency"
+    },
+    {
+     "name": "since",
+     "type": "DateTime",
+     "nullable": false,
+     "label": "Since",
+     "$plugin": "concurrency"
+    },
+    {
+     "name": "last_activity",
+     "type": "DateTime",
+     "nullable": false,
+     "label": "Last activity",
+     "$plugin": "concurrency"
+    },
+    {
+     "name": "expires_at",
+     "type": "DateTime",
+     "nullable": false,
+     "label": "Expires at",
+     "$plugin": "concurrency"
+    }
+   ],
+   "indexes": [
+    {
+     "name": "idx_edit_presence_holder",
+     "columns": [
+      "model",
+      "record_id",
+      "holder"
+     ],
+     "unique": true,
+     "description": "One presence per holder and document",
+     "$plugin": "concurrency"
+    }
+   ],
+   "$plugin": "concurrency"
+  },
   "$plugin": "concurrency",
   "Setting": {
    "name": "settings",
