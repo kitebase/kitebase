@@ -181,3 +181,38 @@ def test_without_hooks_a_tree_has_no_metadata(app, hooks):
     book = create_book()['id']
     tree = ok(load_tree({'page': 'book_form', 'id': book}))
     assert not [k for k in tree if k.startswith('$')]
+
+
+# ── A form without collections is a tree of one node ─────────────────────────
+
+def test_a_flat_form_carries_the_version_and_meets_the_conflict(app, versions):
+    book = create_book()['id']
+    first = ok(load_tree({'page': 'book_quick_form', 'id': book}))
+    second = ok(load_tree({'page': 'book_quick_form', 'id': book}))
+    assert first['children'] == {}
+
+    ok(save_tree({'page': 'book_quick_form',
+                  'root': {'op': 'update', 'id': book, '$version': first['$version'],
+                           'values': {'title': 'Children of Dune'}}}))
+    with pytest.raises(Conflict) as refused:
+        save_tree({'page': 'book_quick_form',
+                   'root': {'op': 'update', 'id': book, '$version': second['$version'],
+                            'values': {'isbn': '978'}}})
+    assert refused.value.data['root']['values']['title'] == 'Children of Dune'
+    assert rows(app, 'Book')[0]['isbn'] is None
+
+
+def test_a_typed_key_reaches_the_hooks_and_comes_back_fresh(app, versions):
+    _, calls = versions
+    ok(save_tree({'page': 'shelf_form',
+                  'root': {'op': 'create', 'id': 'A1', 'values': {'code': 'A1'}}}))
+    first = ok(load_tree({'page': 'shelf_form', 'id': 'A1'}))
+    ok(save_tree({'page': 'shelf_form',
+                  'root': {'op': 'update', 'id': 'A1', '$version': first['$version'],
+                           'values': {'room': 'Hall'}}}))
+    with pytest.raises(Conflict) as refused:
+        save_tree({'page': 'shelf_form',
+                   'root': {'op': 'update', 'id': 'A1', '$version': first['$version'],
+                            'values': {'room': 'Attic'}}})
+    assert ('write', 'Shelf', 'A1', 'update') in calls
+    assert refused.value.data['root']['values']['room'] == 'Hall'

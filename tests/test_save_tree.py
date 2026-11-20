@@ -24,6 +24,7 @@ from kitebase.endpoint_tree import load_tree, save_tree
 from kitebase.errors import Refusal
 from kitebase.plugins import PluginsManager
 from kitebase.source import Generator
+from kitebase.transforms import ValidationError
 
 TABLES = {
     'Author': {
@@ -93,6 +94,14 @@ TABLES = {
             {'name': 'place', 'type': 'String', 'length': 60},
         ],
     },
+    # A key someone types: a shelf is known by its code before it is saved.
+    'Shelf': {
+        'name': 'shelves',
+        'columns': [
+            {'name': 'code', 'type': 'String', 'length': 8, 'primary_key': True},
+            {'name': 'room', 'type': 'String', 'length': 60},
+        ],
+    },
     'Report': {
         'name': 'reports',
         'columns': [
@@ -129,6 +138,7 @@ PAGES = {
     # Tabs of one collection are domain + defaults, and nothing else.
     # The collection is tied to the column its foreign key targets, not to the id.
     'visit_form': _form('Visit', _collection('reports', 'Report', 'visit_code')),
+    'shelf_form': _form('Shelf'),
     'book_appendix_form': _form(
         'Book',
         _collection('appendix', 'Chapter', 'book_id',
@@ -924,3 +934,25 @@ def test_a_child_cannot_cite_another_parent_by_key(app):
 
     assert result.code == 400
     assert rows(app, 'Report') == []
+
+
+# ── A typed key, refused on its field as `db` refuses it ──────────────────────
+
+def test_a_typed_key_already_taken_is_refused_on_its_field(app):
+    ok(save_tree({'page': 'shelf_form',
+                  'root': {'op': 'create', 'id': 'A1', 'values': {'code': 'A1', 'room': 'Hall'}}}))
+    with pytest.raises(ValidationError) as refusal:
+        save_tree({'page': 'shelf_form',
+                   'root': {'op': 'create', 'id': 'A1', 'values': {'code': 'A1'}}})
+    assert set(refusal.value.data['errors']) == {'code'}
+    assert [r['room'] for r in rows(app, 'Shelf')] == ['Hall']
+
+
+def test_a_typed_key_cannot_be_changed_by_an_update(app):
+    ok(save_tree({'page': 'shelf_form',
+                  'root': {'op': 'create', 'id': 'A1', 'values': {'code': 'A1'}}}))
+    with pytest.raises(ValidationError) as refusal:
+        save_tree({'page': 'shelf_form',
+                   'root': {'op': 'update', 'id': 'A1', 'values': {'code': 'B2'}}})
+    assert set(refusal.value.data['errors']) == {'code'}
+    assert [r['code'] for r in rows(app, 'Shelf')] == ['A1']

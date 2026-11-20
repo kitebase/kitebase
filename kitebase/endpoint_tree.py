@@ -64,7 +64,8 @@ from kitebase import access, flow
 from kitebase.access import AccessDenied
 from kitebase.errors import Conflict, Invalid, NotFound, Refusal
 from kitebase.endpoints import endpoint
-from kitebase.endpoint_db import pk_field, write_values, coerce_value, require_columns
+from kitebase.endpoint_db import (pk_field, write_values, coerce_value, require_columns,
+                                  refuse_duplicate_key, refuse_key_change)
 from kitebase.pages import Aggregate, Collection, page_aggregate
 from kitebase.querybuilder import DynamicQueryBuilder
 from kitebase.registry import Registry
@@ -408,9 +409,18 @@ def _resolve_temp_ids(model_name: str, db_table, values: Dict[str, Any],
     return resolved
 
 
+def _is_saved_id(node_id: Any) -> bool:
+    """A key the database holds: anything but nothing, a flag, or the negative
+    integer the client mints for a row not yet written. A typed key (a code)
+    is a saved id as much as an assigned one."""
+    if node_id is None or node_id == '' or isinstance(node_id, (bool, dict, list)):
+        return False
+    return not (isinstance(node_id, int) and node_id < 0)
+
+
 def _require_saved_id(model_name: str, node_id: Any, op: str) -> None:
-    """An update or a delete addresses a row that exists: a real, positive key."""
-    if not isinstance(node_id, int) or isinstance(node_id, bool) or node_id < 0:
+    """An update or a delete addresses a row that exists: a key, not a temporary id."""
+    if not _is_saved_id(node_id):
         raise Invalid(
             f"A {op} on '{model_name}' needs the id of a saved row, got {node_id!r}")
 
@@ -512,6 +522,7 @@ def _save_node(app, session, node_def, node: Dict[str, Any],
             del values[pk]
 
         require_columns(model_class, values)
+        refuse_duplicate_key(session, model_class, values)
         obj = model_class(**values)
         session.add(obj)
         session.flush()                     # the key, without closing the transaction
@@ -529,14 +540,16 @@ def _save_node(app, session, node_def, node: Dict[str, Any],
 
     else:   # update
         _require_saved_id(node_def.model, node_id, 'update')
+        obj = session.get(model_class, node_id)
+        if obj is None:
+            raise NotFound(f"No record {node_id} in '{node_def.model}'")
+        # A typed key is refused on its field, as a form shows it; an assigned
+        # one is never typed, and moving it is a malformed payload
+        refuse_key_change(obj, model_class, values)
         if pk in values and values[pk] != node_id:
             raise Invalid(
                 f"An update on '{node_def.model}' cannot move the row from {node_id} "
                 f"to {values[pk]!r}")
-
-        obj = session.get(model_class, node_id)
-        if obj is None:
-            raise NotFound(f"No record {node_id} in '{node_def.model}'")
         for key, value in values.items():
             if key != pk and hasattr(obj, key):
                 setattr(obj, key, value)
@@ -755,7 +768,7 @@ def _with_fresh_tree(app, aggregate: Aggregate, root_node: Dict[str, Any],
     """A write hook's refusal, carrying the tree re-read (None if it is gone)."""
     root_id = root_node.get('id')
     fresh = None
-    if isinstance(root_id, int) and not isinstance(root_id, bool) and root_id > 0:
+    if _is_saved_id(root_id):
         fresh = _read_for_client(app, aggregate, root_id, covered=_aggregate_models(aggregate))
     return Conflict(conflict.message, data={**(conflict.data or {}), 'root': fresh},
                     code=conflict.code)
@@ -772,7 +785,7 @@ def _write(app, session, aggregate, root_node: Dict[str, Any], ctx,
     # A row condition is judged on the root as stored, before the change
     root_key = root_node.get('id')
     # a malformed root is _save_node's to refuse, in its own words
-    if action != 'create' and isinstance(root_key, int) and root_key > 0 \
+    if action != 'create' and _is_saved_id(root_key) \
             and str(root_node.get('op') or 'update').lower() in _OPS:
         if not access.row_visible(session, root_class, root_key):
             raise NotFound(f"No record {root_key} in '{aggregate.model}'")
