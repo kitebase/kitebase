@@ -342,165 +342,7 @@
    "$plugin": "devtypes"
   }
  },
- "form_areas": {
-  "top": {
-   "concurrency.presence": {
-    "$plugin": "concurrency"
-   },
-   "$plugin": "concurrency",
-   "library.formpulse": {
-    "$plugin": "library"
-   }
-  },
-  "$plugin": "concurrency"
- },
  "tables": {
-  "EditMarker": {
-   "name": "edit_markers",
-   "label": "Edit marker",
-   "help": "One row per document opened in a form: the version of what it holds.\nA marker locks nothing; a row deleted only makes the next save of that\ndocument a conflict, never a loss.\n",
-   "columns": [
-    {
-     "name": "id",
-     "type": "Integer",
-     "primary_key": true,
-     "autoincrement": true,
-     "$plugin": "concurrency"
-    },
-    {
-     "name": "model",
-     "type": "String",
-     "length": 64,
-     "nullable": false,
-     "label": "Table",
-     "$plugin": "concurrency"
-    },
-    {
-     "name": "record_id",
-     "type": "String",
-     "length": 64,
-     "nullable": false,
-     "label": "Record",
-     "$plugin": "concurrency"
-    },
-    {
-     "name": "token",
-     "type": "String",
-     "length": 32,
-     "nullable": false,
-     "label": "Version",
-     "$plugin": "concurrency"
-    },
-    {
-     "name": "touched_at",
-     "type": "DateTime",
-     "nullable": false,
-     "label": "Touched at",
-     "$plugin": "concurrency"
-    }
-   ],
-   "indexes": [
-    {
-     "name": "idx_edit_marker_record",
-     "columns": [
-      "model",
-      "record_id"
-     ],
-     "unique": true,
-     "description": "One marker per document",
-     "$plugin": "concurrency"
-    }
-   ],
-   "$plugin": "concurrency"
-  },
-  "EditPresence": {
-   "name": "edit_presences",
-   "label": "Presence",
-   "help": "Who is editing a document now: a person with a form gone dirty, or a\nprocedure that says so. Advice, not a lock: it expires by itself when\nnothing renews it, and nothing rests on its release.\n",
-   "columns": [
-    {
-     "name": "id",
-     "type": "Integer",
-     "primary_key": true,
-     "autoincrement": true,
-     "$plugin": "concurrency"
-    },
-    {
-     "name": "model",
-     "type": "String",
-     "length": 64,
-     "nullable": false,
-     "label": "Table",
-     "$plugin": "concurrency"
-    },
-    {
-     "name": "record_id",
-     "type": "String",
-     "length": 64,
-     "nullable": false,
-     "label": "Record",
-     "$plugin": "concurrency"
-    },
-    {
-     "name": "holder",
-     "type": "String",
-     "length": 64,
-     "nullable": false,
-     "label": "Holder",
-     "$plugin": "concurrency"
-    },
-    {
-     "name": "user_name",
-     "type": "String",
-     "length": 120,
-     "label": "User",
-     "$plugin": "concurrency"
-    },
-    {
-     "name": "doing",
-     "type": "String",
-     "length": 120,
-     "label": "Doing",
-     "$plugin": "concurrency"
-    },
-    {
-     "name": "since",
-     "type": "DateTime",
-     "nullable": false,
-     "label": "Since",
-     "$plugin": "concurrency"
-    },
-    {
-     "name": "last_activity",
-     "type": "DateTime",
-     "nullable": false,
-     "label": "Last activity",
-     "$plugin": "concurrency"
-    },
-    {
-     "name": "expires_at",
-     "type": "DateTime",
-     "nullable": false,
-     "label": "Expires at",
-     "$plugin": "concurrency"
-    }
-   ],
-   "indexes": [
-    {
-     "name": "idx_edit_presence_holder",
-     "columns": [
-      "model",
-      "record_id",
-      "holder"
-     ],
-     "unique": true,
-     "description": "One presence per holder and document",
-     "$plugin": "concurrency"
-    }
-   ],
-   "$plugin": "concurrency"
-  },
-  "$plugin": "concurrency",
   "Lease": {
    "name": "leases",
    "label": "Lease",
@@ -632,6 +474,7 @@
    ],
    "$plugin": "transient"
   },
+  "$plugin": "transient",
   "Setting": {
    "name": "settings",
    "label": "Setting",
@@ -793,6 +636,64 @@
     }
    ],
    "$plugin": "users"
+  },
+  "EditMarker": {
+   "name": "edit_markers",
+   "label": "Edit marker",
+   "help": "One row per document opened in a form: the version of what it holds.\nA marker locks nothing; a row deleted only makes the next save of that\ndocument a conflict, never a loss.\n",
+   "columns": [
+    {
+     "name": "id",
+     "type": "Integer",
+     "primary_key": true,
+     "autoincrement": true,
+     "$plugin": "concurrency"
+    },
+    {
+     "name": "model",
+     "type": "String",
+     "length": 64,
+     "nullable": false,
+     "label": "Table",
+     "$plugin": "concurrency"
+    },
+    {
+     "name": "record_id",
+     "type": "String",
+     "length": 64,
+     "nullable": false,
+     "label": "Record",
+     "$plugin": "concurrency"
+    },
+    {
+     "name": "token",
+     "type": "String",
+     "length": 32,
+     "nullable": false,
+     "label": "Version",
+     "$plugin": "concurrency"
+    },
+    {
+     "name": "touched_at",
+     "type": "DateTime",
+     "nullable": false,
+     "label": "Touched at",
+     "$plugin": "concurrency"
+    }
+   ],
+   "indexes": [
+    {
+     "name": "idx_edit_marker_record",
+     "columns": [
+      "model",
+      "record_id"
+     ],
+     "unique": true,
+     "description": "One marker per document",
+     "$plugin": "concurrency"
+    }
+   ],
+   "$plugin": "concurrency"
   },
   "MailLog": {
    "name": "mail_logs",
@@ -5907,6 +5808,18 @@
    "$plugin": "wizards"
   },
   "$plugin": "wizards"
+ },
+ "form_areas": {
+  "top": {
+   "concurrency.presence": {
+    "$plugin": "concurrency"
+   },
+   "$plugin": "concurrency",
+   "library.formpulse": {
+    "$plugin": "library"
+   }
+  },
+  "$plugin": "concurrency"
  },
  "chrome_areas": {
   "status": {

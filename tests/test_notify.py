@@ -33,6 +33,8 @@ class Recorder(notify_mod.Notifier):
 def recorder():
     snapshot = notify_mod.NOTIFIER.snapshot()
     rec = Recorder()
+    # An application loaded by an earlier test may have registered its own
+    notify_mod.NOTIFIER.reset()
     notify_mod.NOTIFIER.set(rec, owner='test')
     yield rec
     notify_mod.NOTIFIER.restore(snapshot)
