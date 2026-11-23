@@ -15,6 +15,7 @@ endpoint raises is a failure, answered with a 500 and its traceback.
 | `AccessDenied`| 403  | a permission is missing (`kitebase.access`) |
 | `NotFound`    | 404  | what the request names is not there, or not visible to the caller |
 | `Conflict`    | 409  | the request is right but the state does not allow it now |
+| `Cancelled`   | 409  | the person asked to stop, and the work stopped (`kitebase.notify`) |
 | `Unavailable` | 503  | something the server depends on does not answer |
 
 `code` can be set on a single refusal when the HTTP answer is more precise
@@ -56,6 +57,13 @@ class NotFound(Refusal, LookupError):
 
 class Conflict(Refusal):
     """The request is right, but the state of the data does not allow it now."""
+
+    code = 409
+
+
+class Cancelled(Refusal):
+    """The work stopped because the person asked to, at a point it said it could.
+    What was done before stays done."""
 
     code = 409
 

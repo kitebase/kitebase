@@ -7,8 +7,11 @@ description from Open Library, through its ISBN. The command runs on the row
 under the cursor and writes the record; a text already there is replaced only
 once the person says so, the same command called again with `replace`.
 
-One request at a time, with a short timeout, while the person waits: a batch
-over the whole catalogue is a job, not a command.
+While it waits for the source the command says so (`notify`): with the jobs
+plugin the line shows beside the status bar. The same command on the ticked
+books goes one book at a time, with a counter, and may be stopped between two
+books: the ones done stay written. A batch over the whole catalogue would be a
+job of its own, not a command.
 """
 import json
 import re
@@ -20,6 +23,7 @@ import kitebase
 from kitebase import access
 from kitebase import errors
 from kitebase.endpoints import endpoint
+from kitebase.notify import notify
 
 TIMEOUT = 10
 USER_AGENT = 'kitebase-devtest/1.0 (https://github.com/kitebase)'
@@ -58,19 +62,31 @@ def _fetch(table: str, data: dict, column: str, what: str, find) -> dict:
                 'action': 'endpoint', 'op': data['$op'],
                 'params': {'id': record_id, 'replace': True},
                 'confirm': f'{what} is already there. Replace it?'}}
+        notify(f'Fetching {what.lower()} of {_name(record)}')
         try:
             text, source = find(record)
         except NotFound:
             raise errors.NotFound(f'No {what.lower()} found') from None
         except LookupError as e:
             raise errors.Invalid(str(e)) from None
-        except (urllib.error.URLError, TimeoutError, OSError) as e:
-            reason = getattr(e, 'reason', None) or e
-            raise errors.Unavailable(f'The source did not answer: {reason}', code=502) from None
+        except NETWORK as e:
+            raise _unavailable(e) from None
         setattr(record, column, text)
         session.commit()
     return {'status': 'success', 'data': {
         'message': f'{what} from {source}', 'touched': [record_id]}}
+
+
+NETWORK = (urllib.error.URLError, TimeoutError, OSError)
+
+
+def _unavailable(e: Exception) -> errors.Unavailable:
+    reason = getattr(e, 'reason', None) or e
+    return errors.Unavailable(f'The source did not answer: {reason}', code=502)
+
+
+def _name(record) -> str:
+    return getattr(record, 'title', None) or getattr(record, 'name', None) or str(record.id)
 
 
 # ── Author: Wikidata -> Wikipedia ──────────────────────────────────────────────
@@ -143,3 +159,48 @@ def book_fetch_description(data):
     """The list's command: the description of the book under the cursor."""
     return _fetch('Book', {**data, '$op': 'book_fetch_description'}, 'description',
                   'Description', _book_description)
+
+
+@endpoint('book_fetch_descriptions', access=access.PER_TABLE)
+def book_fetch_descriptions(data):
+    """
+    The list's command on the ticked books: the description of each one that
+    has none, one book at a time. A book already described is left as it is
+    (one at a time asks before replacing). Cancellable between two books; each
+    book is written as it is found, so a stop keeps what was done.
+    """
+    access.check_table('Book', 'update')
+    ids = data.get('ids') or []
+    if not ids:
+        raise errors.Invalid('Tick the books first')
+    app = kitebase.utils.get_app()
+    found, missing, kept, touched = 0, 0, 0, []
+    stopped = False
+    try:
+        for done, book_id in enumerate(ids):
+            with app.get_session() as session:
+                access.guard_session(session)
+                book = session.get(app.model.Book, book_id)
+                if book is None:
+                    continue
+                notify(f'Fetching description of {book.title}', done=done, total=len(ids),
+                       cancellable=True)
+                if book.description:
+                    kept += 1
+                    continue
+                try:
+                    text, _source = _book_description(book)
+                except (NotFound, LookupError):
+                    missing += 1
+                    continue
+                except NETWORK as e:
+                    raise _unavailable(e) from None
+                book.description = text
+                session.commit()
+                found += 1
+                touched.append(book_id)
+    except errors.Cancelled:
+        stopped = True
+    message = (f'{found} found, {missing} not found, {kept} already described'
+               + (f', stopped after {found + missing + kept} of {len(ids)}' if stopped else ''))
+    return {'status': 'success', 'data': {'message': message, 'touched': touched}}

@@ -15,7 +15,7 @@ author: "Claudio Driussi"
 # What devtest adds to them is in its own plugins (devtypes, libapp/library).
 plugins:
   - path: ../../commons/plugins
-    include: [common, users, acl, settings, tags, tables, smtp, concurrency]
+    include: [common, users, acl, settings, tags, tables, smtp, concurrency, jobs]
   - plugins
   - plugins/libapp
 
@@ -96,6 +96,13 @@ schema:
 dataview:
   page_size: 100
   reload_all_threshold: 5000   # on refresh: silent restore if rowCount ≤ threshold, banner if above
+
+# The progress channel of long commands (commons plugin jobs). Commented out,
+# these are its defaults: uncomment and change what this application needs.
+# jobs:
+#   work_ttl: 120     # seconds a work lives without a notify
+#   poll_slow: 30     # seconds between two polls with nothing open
+#   poll_fast: 1.5    # seconds between two polls while a work is open
 
 # Application locale (default 'en' = no translation)
 locale: en

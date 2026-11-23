@@ -405,6 +405,13 @@ views:
           help: Looks up the description on Open Library by ISBN, and asks before replacing a text.
           scope: row
           endpoint: book_fetch_description
+        # The same on the ticked books, one at a time with a counter, and a
+        # Cancel between two books (the jobs plugin shows the line).
+        - id: fetch_descriptions
+          label: Fetch descriptions of the ticked books
+          help: Looks up on Open Library the description of each ticked book that has none, one at a time; it can be stopped between two books.
+          scope: selection
+          endpoint: book_fetch_descriptions
     actions:
       row:
         - id: edit

@@ -77,4 +77,21 @@ def setup_logging(level: str = 'INFO', file: Optional[str] = None, *,
     # bury the one line per request this exists for. WARNING still passes.
     for noisy in ('alembic', 'sqlalchemy'):
         logging.getLogger(noisy).setLevel(logging.WARNING)
+    # A poll every few seconds per user would fill the access log with nothing
+    for access in ('uvicorn.access', 'werkzeug'):
+        logger = logging.getLogger(access)
+        if not any(isinstance(f, QuietAccess) for f in logger.filters):
+            logger.addFilter(QuietAccess())
     return logging.getLogger('kitebase')
+
+
+class QuietAccess(logging.Filter):
+    """Drops the access lines of the operations declared `quiet` that succeeded."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        from kitebase.endpoints import quiet_operations
+        line = record.getMessage()
+        if ' 200' not in line:
+            return True
+        return not any(f'/{op} ' in line or f'/{op}"' in line or line.rstrip().endswith(f'/{op}')
+                       for op in quiet_operations())

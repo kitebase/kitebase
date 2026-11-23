@@ -638,21 +638,25 @@ def _each_to_client(names: Dict[str, Any]) -> Dict[str, Any]:
     return {name: to_client(value) for name, value in names.items()}
 
 
-def _form_areas(app) -> Dict[str, list]:
+def _plugin_areas(app, key: str) -> Dict[str, list]:
     """
-    The plugin components every form of a table shows, by area.
+    The plugin components a frame of the client shows, by area.
 
     A plugin declares them in its YAML, keyed by component id so that two
     plugins add to an area instead of replacing each other:
 
-        form_areas:
+        form_areas:             # on every form of a tree, by area
           top:
             concurrency.presence: {}     # the props it is mounted with
 
-    The client mounts them in that order on the root of a tree, the form a page
-    reads and writes; a component with nothing to say shows nothing.
+        chrome_areas:           # in the chrome, beside the status line
+          status:
+            jobs.status: {}
+
+    The client mounts them in that order; a component with nothing to say
+    shows nothing.
     """
-    areas = app.plugins.data.get('form_areas') or {}
+    areas = app.plugins.data.get(key) or {}
     # The `$` keys are the merge's (`$plugin`), on the props too
     return {area: [{'component': cid,
                     'props': {k: v for k, v in (props or {}).items() if not k.startswith('$')}}
@@ -707,7 +711,8 @@ def get_server_config(data: Dict[str, Any]) -> Dict[str, Any]:
             'tables': _each_to_client(app.get_table_schema()),
             'schemas': {schema_id: _each_to_client(fields)
                         for schema_id, fields in app.get_schema_registry().items()},
-            'form_areas': _form_areas(app),
+            'form_areas': _plugin_areas(app, 'form_areas'),
+            'chrome_areas': _plugin_areas(app, 'chrome_areas'),
         },
         'code': 200,
     }

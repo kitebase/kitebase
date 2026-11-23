@@ -34,6 +34,10 @@ views.book_list_view.navigator.commands.fetch_description:
   en: Looks up the description on Open Library by ISBN, and asks before replacing a text.
   it: ''
 
+views.book_list_view.navigator.commands.fetch_descriptions:
+  en: Looks up on Open Library the description of each ticked book that has none, one at a time; it can be stopped between two books.
+  it: ''
+
 views.loan_list_view.navigator.commands.print_ticket:
   en: Prints the ticket of the selected loan again.
   it: ''

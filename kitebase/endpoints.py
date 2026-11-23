@@ -3,9 +3,10 @@ import time
 import uuid
 import traceback as _traceback
 from functools import wraps
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, Set
 import kitebase
 import kitebase.context
+import kitebase.notify
 from kitebase.access import UNDECLARED, AccessDenied, check_endpoint
 from kitebase.errors import Refusal
 from kitebase.registry import Registry
@@ -14,10 +15,17 @@ from kitebase.registry import Registry
 _ENDPOINTS: Registry[Callable] = Registry('endpoints', 'endpoint')
 # What each endpoint declared with `access=`; absent means undeclared
 _ACCESS: Dict[str, Optional[str]] = {}
+# The operations that come back by themselves: one log line each would bury the rest
+_QUIET: Set[str] = set()
+
+
+def quiet_operations() -> Set[str]:
+    """The operations declared `quiet`, for a filter of the server's access log."""
+    return set(_QUIET)
 
 
 def endpoint(name: str, access: Optional[str] = UNDECLARED, *,
-             replace: bool = False) -> Callable[[Callable], Callable]:
+             replace: bool = False, quiet: bool = False) -> Callable[[Callable], Callable]:
     """
     Decorator to register an endpoint function.
 
@@ -36,6 +44,8 @@ def endpoint(name: str, access: Optional[str] = UNDECLARED, *,
                 under this name. Without it, a name already taken is an error:
                 two plugins cannot answer the same call, and the one loaded
                 last would win without anyone having chosen it.
+        quiet: A call that comes back every few seconds by itself (a poll): its
+                successes are logged at DEBUG, its refusals as any other.
 
     Returns:
         The decorated function with registration side effect
@@ -43,6 +53,10 @@ def endpoint(name: str, access: Optional[str] = UNDECLARED, *,
     def decorator(func: Callable) -> Callable:
         _ENDPOINTS.add(name, func, replace=replace)
         _ACCESS[name] = access
+        if quiet:
+            _QUIET.add(name)
+        else:
+            _QUIET.discard(name)
 
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -358,7 +372,10 @@ class CommandDispatcher:
             kitebase.context.replace(command.context)
 
             check_endpoint(command.operation, _ACCESS.get(command.operation, UNDECLARED))
-            result_data = self.endpoints[command.operation](command.parameters)
+            # A work per request: what the endpoint says while it runs
+            # (kitebase.notify) is kept under the request id, and closed here.
+            with kitebase.notify.work(command.request_id):
+                result_data = self.endpoints[command.operation](command.parameters)
 
             # An endpoint may either return its own envelope or a plain payload
             if isinstance(result_data, dict) and "status" in result_data:
@@ -403,6 +420,8 @@ class CommandDispatcher:
         # An endpoint that refused (its own error envelope) is not a failure of
         # the server, but it is something the person who asked will report.
         level = logging.INFO if result.status == 'success' else logging.WARNING
+        if level == logging.INFO and command.operation in _QUIET:
+            level = logging.DEBUG
         _log.log(level, '%s by %s → %s %s in %dms [%s]', command.operation, who,
                  result.status, result.code, (time.perf_counter() - started) * 1000,
                  command.request_id)

@@ -342,6 +342,18 @@
    "$plugin": "devtypes"
   }
  },
+ "form_areas": {
+  "top": {
+   "concurrency.presence": {
+    "$plugin": "concurrency"
+   },
+   "$plugin": "concurrency",
+   "library.formpulse": {
+    "$plugin": "library"
+   }
+  },
+  "$plugin": "concurrency"
+ },
  "tables": {
   "EditMarker": {
    "name": "edit_markers",
@@ -489,6 +501,137 @@
    "$plugin": "concurrency"
   },
   "$plugin": "concurrency",
+  "Lease": {
+   "name": "leases",
+   "label": "Lease",
+   "help": "One row per holder of a subject: a person editing a document, a work in\nprogress, a process that must run alone. It expires by itself when\nnothing renews it. Nothing durable is kept here: a row lost costs a\nline on a screen, never data.\n",
+   "columns": [
+    {
+     "name": "id",
+     "type": "Integer",
+     "primary_key": true,
+     "autoincrement": true,
+     "$plugin": "transient"
+    },
+    {
+     "name": "model",
+     "type": "String",
+     "length": 64,
+     "nullable": false,
+     "default": "''",
+     "label": "Table",
+     "$plugin": "transient"
+    },
+    {
+     "name": "record_id",
+     "type": "String",
+     "length": 64,
+     "nullable": false,
+     "default": "''",
+     "label": "Record",
+     "$plugin": "transient"
+    },
+    {
+     "name": "holder",
+     "type": "String",
+     "length": 80,
+     "nullable": false,
+     "label": "Holder",
+     "$plugin": "transient"
+    },
+    {
+     "name": "user_id",
+     "type": "Integer",
+     "label": "User id",
+     "$plugin": "transient"
+    },
+    {
+     "name": "user_name",
+     "type": "String",
+     "length": 120,
+     "label": "User",
+     "$plugin": "transient"
+    },
+    {
+     "name": "doing",
+     "type": "String",
+     "length": 200,
+     "label": "Doing",
+     "$plugin": "transient"
+    },
+    {
+     "name": "done",
+     "type": "Integer",
+     "label": "Done",
+     "$plugin": "transient"
+    },
+    {
+     "name": "total",
+     "type": "Integer",
+     "label": "Total",
+     "$plugin": "transient"
+    },
+    {
+     "name": "cancellable",
+     "type": "Boolean",
+     "nullable": false,
+     "default": false,
+     "label": "Cancellable",
+     "$plugin": "transient"
+    },
+    {
+     "name": "cancel_requested",
+     "type": "Boolean",
+     "nullable": false,
+     "default": false,
+     "label": "Cancel requested",
+     "$plugin": "transient"
+    },
+    {
+     "name": "since",
+     "type": "DateTime",
+     "nullable": false,
+     "label": "Since",
+     "$plugin": "transient"
+    },
+    {
+     "name": "last_activity",
+     "type": "DateTime",
+     "nullable": false,
+     "label": "Last activity",
+     "$plugin": "transient"
+    },
+    {
+     "name": "expires_at",
+     "type": "DateTime",
+     "nullable": false,
+     "label": "Expires at",
+     "$plugin": "transient"
+    }
+   ],
+   "indexes": [
+    {
+     "name": "idx_lease_holder",
+     "columns": [
+      "model",
+      "record_id",
+      "holder"
+     ],
+     "unique": true,
+     "description": "One lease per holder and subject",
+     "$plugin": "transient"
+    },
+    {
+     "name": "idx_lease_user",
+     "columns": [
+      "user_id"
+     ],
+     "description": "What a person has open",
+     "$plugin": "transient"
+    }
+   ],
+   "$plugin": "transient"
+  },
   "Setting": {
    "name": "settings",
    "label": "Setting",
@@ -4270,6 +4413,14 @@
       "scope": "row",
       "endpoint": "book_fetch_description",
       "$plugin": "panels"
+     },
+     {
+      "id": "fetch_descriptions",
+      "label": "Fetch descriptions of the ticked books",
+      "help": "Looks up on Open Library the description of each ticked book that has none, one at a time; it can be stopped between two books.",
+      "scope": "selection",
+      "endpoint": "book_fetch_descriptions",
+      "$plugin": "panels"
      }
     ],
     "$plugin": "panels"
@@ -5757,6 +5908,15 @@
   },
   "$plugin": "wizards"
  },
+ "chrome_areas": {
+  "status": {
+   "jobs.status": {
+    "$plugin": "jobs"
+   },
+   "$plugin": "jobs"
+  },
+  "$plugin": "jobs"
+ },
  "smtp": {
   "timeout": 30,
   "attachments": {
@@ -5890,14 +6050,5 @@
    "$plugin": "acquisitions"
   },
   "$plugin": "acquisitions"
- },
- "form_areas": {
-  "top": {
-   "library.formpulse": {
-    "$plugin": "library"
-   },
-   "$plugin": "library"
-  },
-  "$plugin": "library"
  }
 }
