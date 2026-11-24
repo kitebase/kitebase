@@ -1177,13 +1177,15 @@ def test_a_duplicate_is_the_document_without_keys_links_and_what_must_not_repeat
 
 def test_a_duplicator_changes_the_draft(app, stored_loan):
     @dup.duplicator('loan_tree')
-    def fresh(tree, choices):
+    def fresh(tree, choices, source):
         tree['values']['title'] += ' (copy)'
+        tree['values']['note'] = f"copy of #{source['id']}"
         tree['children']['pages'] = []
 
     draft = send('duplicate', {'page': 'loan_tree', 'id': stored_loan, 'confirm': False})['data']['draft']
 
     assert draft['values']['title'] == 'Dune (copy)' and draft['children']['pages'] == []
+    assert draft['values']['note'] == f'copy of #{stored_loan}'
 
 
 def test_a_duplicator_with_options_asks_them_first(app, stored_loan):
@@ -1191,7 +1193,7 @@ def test_a_duplicator_with_options_asks_them_first(app, stored_loan):
         'layout': [{'name': 'pages', 'type': 'Boolean', 'default': True}]}
 
     @dup.duplicator('loan_tree', options='loan_copy')
-    def choose(tree, choices):
+    def choose(tree, choices, source):
         if not choices['pages']:
             tree['children']['pages'] = []
 

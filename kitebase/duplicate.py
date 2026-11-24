@@ -27,7 +27,7 @@ opens it, with an options view to ask through, as a print does, and the
 first values of that view computed from the record:
 
     @duplicator('purchaseorder_form', options='purchaseorder_duplicate')
-    def order_duplicate(tree, choices): ...
+    def order_duplicate(tree, choices, source): ...
 
     @order_duplicate.options_values
     def order_duplicate_values(source): return {'order_date': ...}
@@ -58,9 +58,11 @@ _DUPLICATORS: Registry[_Duplicator] = Registry('duplicators', 'duplicator of pag
 
 def duplicator(page: str, options: Optional[str] = None):
     """
-    Register what a page changes in a duplicate: `fn(tree, choices)`, the
-    tree as the form will open it and the values of the options view (empty
-    without one). One per page; a module reloaded replaces its own.
+    Register what a page changes in a duplicate: `fn(tree, choices, source)`,
+    the tree as the form will open it, the values of the options view (empty
+    without one), and the record copied as it was read, keys and all: where
+    a copy records its origin, it is `source['id']`. One per page; a module
+    reloaded replaces its own.
 
     `fn.options_values` registers `values(source) -> dict`, the first values
     of the options view computed from the record copied, as it was read
@@ -143,7 +145,7 @@ def duplicate(data: Dict[str, Any]) -> Dict[str, Any]:
                     'data': {**again, 'confirm': _f('Duplicate #{id}?', id=record_id)}}
 
     if custom:
-        custom.fn(tree, {k: v for k, v in data.items() if k not in _CALL_KEYS})
+        custom.fn(tree, {k: v for k, v in data.items() if k not in _CALL_KEYS}, source)
     return {'status': 'success', 'data': {
         'action': 'open_form', 'page': page_id, 'draft': tree,
         'title': _f('Duplicate of #{id}', id=record_id)}}

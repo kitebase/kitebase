@@ -105,7 +105,7 @@ def purchase_order_sort_by_publication(ctx):
 
 
 @duplicator('purchaseorder_form', options='purchaseorder_duplicate')
-def order_duplicate(tree, choices):
+def order_duplicate(tree, choices, source):
     """A new order from another: the same publisher, the date chosen, the lines if asked."""
     tree['values']['order_date'] = choices['order_date']
     if not choices.get('lines', True):
