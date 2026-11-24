@@ -47,6 +47,16 @@ TABLES = {
              'foreign_key': {'target': 'Book.id', 'owned': True}},
         ],
     },
+    # Rows with a life of their own, shown under a book
+    'Review': {
+        'name': 'reviews',
+        'columns': [
+            {'name': 'id', 'type': 'Integer', 'primary_key': True, 'autoincrement': True},
+            {'name': 'text', 'type': 'String', 'length': 120},
+            {'name': 'book_id', 'type': 'Integer', 'nullable': True,
+             'foreign_key': {'target': 'Book.id', 'owned': False}},
+        ],
+    },
 }
 
 PAGES = {
@@ -54,6 +64,12 @@ PAGES = {
         'type': 'form', 'source': {'model': 'Book'},
         'layout': [{'name': 'title'}, {'name': 'author_id'},
                    {'type': 'collection', 'id': 'chapters', 'model': 'Chapter',
+                    'fk': 'book_id'}],
+    }},
+    'book_reviews': {'content': {
+        'type': 'form', 'source': {'model': 'Book'},
+        'layout': [{'name': 'title'},
+                   {'type': 'collection', 'id': 'reviews', 'model': 'Review',
                     'fk': 'book_id'}],
     }},
     'chapter_list': {'content': {
@@ -353,6 +369,27 @@ def test_save_tree_asks_for_the_root_only(app):
     assert result['status'] == 'success', result.get('message')
     # Re-reading what was written asks nothing more: the write answered for it.
     assert guard.asked == ['Book.create']
+
+
+def test_the_rows_of_a_collection_not_owned_answer_for_themselves(app):
+    # Not parts of the book: each written row needs its own table's permission
+    guard = guarded(app)
+    result = send('save_tree', {'page': 'book_reviews', 'root': {
+        'id': 1, 'op': 'update', 'values': {},
+        'children': {'reviews': [{'op': 'create', 'id': -2, 'values': {'text': 'Fine'}}]}}})
+
+    assert result['status'] == 'success', result.get('message')
+    assert guard.asked == ['Book.update', 'Review.create']
+
+
+def test_a_row_not_owned_without_its_permission_refuses_the_tree(app):
+    guarded(app, denied={'Review.create'})
+    result = send('save_tree', {'page': 'book_reviews', 'root': {
+        'id': 1, 'op': 'update', 'values': {'title': 'Changed'},
+        'children': {'reviews': [{'op': 'create', 'id': -2, 'values': {'text': 'Fine'}}]}}})
+
+    assert result['code'] == 403
+    assert count(app, 'Review') == 0
 
 
 def test_a_change_below_the_root_modifies_the_root(app):

@@ -124,6 +124,12 @@ class Context:
     with the changes over it; on a delete, the stored row. A `check` rule may
     change it, and the change is written. `original` is the stored row, None on
     an insert.
+
+    `parent` is set when the row is written as a row of a collection
+    (save_tree): the parent as it will be written, `parent_model` its table.
+    A rule reads from it what the row takes from its parent, rather than from
+    the database: the parent may be changing in the same save, or be new, its
+    key a temporary one (a negative number) that no query finds.
     """
 
     def __init__(self, table: str, mode: str, record: Dict[str, Any],
@@ -141,6 +147,8 @@ class Context:
         self.infos: List[str] = []
         self.actions: List[Dict[str, Any]] = []
         self.upload = None           # the file the client sent, after ctx.file asked for it
+        self.parent: Optional[Dict[str, Any]] = None
+        self.parent_model: Optional[str] = None
 
     # Questions: an answer present is used, an answer missing stops the write.
 
@@ -269,13 +277,15 @@ def row_values(obj) -> Dict[str, Any]:
 
 
 def judge(table: str, mode: str, record: Dict[str, Any],
-          original: Optional[Dict[str, Any]], answers: Optional[Dict[str, Any]]):
+          original: Optional[Dict[str, Any]], answers: Optional[Dict[str, Any]],
+          parent: Optional[Dict[str, Any]] = None, parent_model: Optional[str] = None):
     """
     Run the `check` rules. Returns `(ctx, refusal)`: a refusal is the envelope
     the endpoint answers with (a question or a refusal), None when the write
-    may go on with `ctx.record`.
+    may go on with `ctx.record`. `parent` and `parent_model`: see Context.
     """
     ctx = Context(table, mode, dict(record), original, dict(answers or {}))
+    ctx.parent, ctx.parent_model = parent, parent_model
     rules = _rules(table, 'check')
     if not rules:
         return ctx, None

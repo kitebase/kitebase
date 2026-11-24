@@ -2356,7 +2356,34 @@ suggestion. Other `$` tokens in `prefill` (`$op_date`) are resolved as in any
 form default.
 
 Whether the rows are **parts** of the parent — deleted with it — is a separate
-question, answered by `owned` on the foreign key (§ 4.5).
+question, answered by `owned` on the foreign key (§ 4.5). It also says who
+answers for the rows written here: the rows of an owned collection are parts,
+and the permission on the root covers them; each row of a collection that is
+not owned needs its own table's permission and row condition, as from its own
+form.
+
+**The rules of the rows.** Every row the tree writes goes through the rules of
+its table (`kitebase.flow`), as a single write would:
+
+- `check` runs before anything is written, after the root's rules, with
+  `ctx.parent` the parent as it will be written and `ctx.parent_model` its
+  table. A rule reads from there what the row takes from its parent: the
+  database would give the parent as it was, or nothing when it is new and its
+  key a temporary one. What the rule changes is written with the row.
+- A refusal names the row's table and carries `{collection, id}` in
+  `$flow.row`; a question of a row is a refusal with its text, since there is
+  no form to ask it in.
+- `commit` runs once the row and the rows below it are written (on a deleted
+  row, before it goes); `after` once everything is committed, its lines joining
+  the answer.
+- Rows taken away by the composition of a deleted row are not in the tree:
+  a table with rules among them refuses the tree rather than be skipped.
+
+A row rule judges its row. What involves the rows together (a total, a single
+main contact) is computed by the query, or, when it must be stored, by a rule
+of the root, which sees the tree. A column the row takes from its parent is
+filled from `ctx.parent`, and the parent's rules carry it along when it
+changes.
 
 ---
 

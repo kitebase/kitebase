@@ -467,16 +467,127 @@ def test_save_tree_asks_the_root_and_writes_nothing_without_the_answer(app):
     assert titles(app) == ['Dune', 'Emma'] and titles(app, 'Page') == ['p1']
 
 
-def test_save_tree_refuses_rows_whose_rules_it_would_skip(app):
+# ── The rows of a tree, judged each on its own row ──────────────────────────
+
+def test_a_row_rule_sees_its_parent_as_it_will_be_written(app):
+    seen = []
+
+    @flow.on_write('Page')
+    def page_rule(ctx):
+        seen.append((ctx.mode, ctx.parent_model, ctx.parent['title'], ctx.parent['id'],
+                     ctx.record['loan_id']))
+        ctx.record['text'] = f"{ctx.record['text']} of {ctx.parent['title']}"
+
+    result = tree('Dune')
+
+    assert result['status'] == 'success'
+    # The parent is new: its key is the temporary one, and so is the row's link
+    assert seen == [('insert', 'Loan', 'Dune', -1, -1)]
+    assert titles(app, 'Page') == ['p1 of Dune']
+
+
+def test_a_row_rule_sees_the_parent_changed_in_the_same_save(app):
+    loan = create_loan('Dune')['data']['id']
+    seen = []
+
+    @flow.on_write('Page')
+    def page_rule(ctx):
+        seen.append((ctx.parent['title'], ctx.parent['id'], ctx.record['loan_id']))
+
+    send('save_tree', {'page': 'loan_tree', 'root': {
+        'op': 'update', 'id': loan, 'values': {'title': 'Emma'},
+        'children': {'pages': [{'op': 'create', 'id': -2, 'values': {'text': 'p1'}}]}}})
+
+    assert seen == [('Emma', loan, loan)]
+
+
+def test_a_row_refused_names_its_table_and_writes_nothing(app):
+    @flow.on_write('Page')
+    def page_rule(ctx):
+        ctx.stay('A page needs a number', patch={'text': 'x'})
+
+    result = tree('Dune')
+
+    assert result['status'] == 'error' and result['code'] == 422
+    assert result['message'] == 'Page: A page needs a number'
+    assert result['$flow'] == {'row': {'collection': 'pages', 'id': -2}}
+    assert titles(app) == [] and titles(app, 'Page') == []
+
+
+def test_a_row_cannot_ask_its_question_is_a_refusal(app):
+    @flow.on_write('Page')
+    def page_rule(ctx):
+        if not ctx.confirm('short', 'A short page: keep it?'):
+            ctx.stay('Not kept')
+
+    result = tree('Dune')
+
+    assert result['code'] == 422
+    assert result['message'] == 'Page: A short page: keep it?'
+    assert 'ask' not in result['$flow']
+    assert titles(app) == []
+
+
+def test_the_rows_commit_and_after_rules_run_and_speak(app):
+    seen = []
+
+    @flow.on_write('Page')
+    def page_check(ctx):
+        ctx.info('checked')
+
+    @flow.on_write('Page', 'commit')
+    def page_commit(ctx):
+        seen.append((ctx.record['id'] > 0, ctx.record['loan_id'] > 0, ctx.obj.text))
+
+    @flow.on_write('Page', 'after')
+    def page_after(ctx):
+        ctx.info('after')
+
+    result = tree('Dune')
+
+    assert result['status'] == 'success'
+    assert seen == [(True, True, 'p1')]
+    assert result['$flow']['info'] == ['checked', 'after']
+
+
+def test_a_deleted_row_is_judged_and_committed_before_it_goes(app):
+    loan = create_loan('Dune')['data']['id']
+    with app.get_session() as session:
+        page = app.models['Page'](text='p1', loan_id=loan)
+        session.add(page)
+        session.commit()
+        page_id = page.id
+    seen = []
+
+    @flow.on_write('Page')
+    def page_check(ctx):
+        seen.append(('check', ctx.mode, ctx.record['text']))
+
+    @flow.on_write('Page', 'commit')
+    def page_commit(ctx):
+        seen.append(('commit', ctx.mode, ctx.obj.text))
+
+    result = send('save_tree', {'page': 'loan_tree', 'root': {
+        'op': 'update', 'id': loan, 'values': {},
+        'children': {'pages': [{'op': 'delete', 'id': page_id}]}}})
+
+    assert result['status'] == 'success'
+    assert seen == [('check', 'delete', 'p1'), ('commit', 'delete', 'p1')]
+    assert titles(app, 'Page') == []
+
+
+def test_rows_a_delete_takes_with_it_are_not_judged_and_refuse_the_tree(app):
+    loan = create_loan('Dune')['data']['id']
+
     @flow.on_write('Page')
     def page_rule(ctx):
         pass
 
-    result = tree('Dune')
+    result = send('save_tree', {'page': 'loan_tree', 'root': {'op': 'delete', 'id': loan}})
 
     assert result['status'] == 'error'
-    assert 'Rules on rows' in result['message']
-    assert titles(app) == []
+    assert 'deleted with their parent' in result['message']
+    assert titles(app) == ['Dune']
 
 
 def test_save_tree_writes_the_root_when_the_ruled_rows_are_untouched(app):
@@ -495,14 +606,14 @@ def test_save_tree_writes_the_root_when_the_ruled_rows_are_untouched(app):
 
 
 def test_save_tree_counts_the_rows_a_delete_takes_with_it(app):
-    # A deleted root takes its rows through the ORM composition, unseen by the
-    # tree: their tables count as written, and their rules refuse the delete.
-    from kitebase.endpoint_tree import _written_models, page_aggregate
+    # A deleted root takes its owned rows through the ORM composition, unseen
+    # by the tree: they are the rows no rule would judge
+    from kitebase.endpoint_tree import _cascaded_models, page_aggregate
 
     aggregate = page_aggregate(app, 'loan_tree')
-    assert _written_models(aggregate, {'op': 'update', 'id': 1, 'children': {}}) == []
-    assert _written_models(aggregate, {'op': 'delete', 'id': 1, 'children': {}}) == ['Page']
-    assert _written_models(aggregate, {'op': 'update', 'id': 1, 'children': {
+    assert _cascaded_models(app, aggregate, {'op': 'update', 'id': 1, 'children': {}}) == []
+    assert _cascaded_models(app, aggregate, {'op': 'delete', 'id': 1, 'children': {}}) == ['Page']
+    assert _cascaded_models(app, aggregate, {'op': 'update', 'id': 1, 'children': {
         'pages': [{'id': 5, 'values': {}}]}}) == []
 
 

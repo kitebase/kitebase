@@ -65,7 +65,9 @@ from kitebase.access import AccessDenied
 from kitebase.errors import Conflict, Invalid, NotFound, Refusal
 from kitebase.endpoints import endpoint
 from kitebase.endpoint_db import (pk_field, write_values, coerce_value, require_columns,
-                                  refuse_duplicate_key, refuse_key_change, refuse_referenced)
+                                  refuse_duplicate_key, refuse_key_change, refuse_referenced,
+                                  _table_label)
+from kitebase.i18n import _f
 from kitebase.pages import Aggregate, Collection, page_aggregate
 from kitebase.querybuilder import DynamicQueryBuilder
 from kitebase.registry import Registry
@@ -280,20 +282,35 @@ def _aggregate_models(aggregate: Aggregate) -> List[str]:
     return found
 
 
-def _written_models(aggregate: Aggregate, root_node: Dict[str, Any]) -> List[str]:
-    """
-    The models of the rows below the root that this tree writes.
+def _owned(app: Any, coll: Collection) -> bool:
+    """Whether the rows of `coll` are parts of their parent: `owned` on the
+    foreign key, or a link table. The parent answers for its parts; the rows
+    of a collection that is not owned have a life, and permissions, of their
+    own."""
+    table = app.tables.get(coll.model)
+    if table is None:
+        return False
+    if table.attributes.get('many_to_many'):
+        return True
+    column = next((c for c in table.effective_columns if c.name == coll.fk), None)
+    foreign_key = column.attributes.get('foreign_key') if column is not None else None
+    return isinstance(foreign_key, dict) and foreign_key.get('owned') is True
 
-    A row without `op` is a pass-through and writes nothing. A deleted row takes
-    its children with it through the ORM composition, unseen here, so every
-    model declared below it counts as written.
+
+def _cascaded_models(app: Any, aggregate: Aggregate, root_node: Dict[str, Any]) -> List[str]:
+    """
+    The models whose rows go with a deleted row through the ORM composition,
+    unseen here: every owned collection declared below a row the tree deletes.
+    Their rules would be skipped, so a table with rules among them refuses
+    the tree. A collection that is not owned loses only its reference.
     """
     found: List[str] = []
 
     def below(node_def) -> None:
         for coll in node_def.collections.values():
-            found.append(coll.model)
-            below(coll)
+            if _owned(app, coll):
+                found.append(coll.model)
+                below(coll)
 
     def walk(node_def, node: Dict[str, Any]) -> None:
         for cid, rows in (node.get('children') or {}).items():
@@ -301,10 +318,7 @@ def _written_models(aggregate: Aggregate, root_node: Dict[str, Any]) -> List[str
             if coll is None or not isinstance(rows, list):
                 continue  # refused with its own message when the rows are saved
             for row in rows:
-                op = str(row.get('op') or '').lower()
-                if op:
-                    found.append(coll.model)
-                if op == 'delete':
+                if str(row.get('op') or '').lower() == 'delete':
                     below(coll)
                 walk(coll, row)
 
@@ -455,14 +469,19 @@ def _passthrough_row(app, session, node_def, node_id: Any,
 
 def _save_node(app, session, node_def, node: Dict[str, Any],
                inherited: Dict[str, Any], defaults: Dict[str, Any],
-               id_map: Dict[int, Any], deletes: List[Tuple[int, str, Any]],
-               depth: int) -> Optional[Any]:
+               id_map: Dict[int, Any], deletes: List[Tuple[int, str, Any, Any, bool]],
+               depth: int, judged: Dict[int, Any]) -> Optional[Any]:
     """Write one node and descend into its collections. Returns the row's real id.
 
     `node_def` is an `Aggregate` or a `Collection` — both carry the model and the
     collections below it, which is why the same function serves the root and every
     child. `inherited` is what the parent supplies (the foreign key, and one day
     values like the document's currency); `defaults` are stamped on creation only.
+    `judged` holds the rules' contexts of the rows, by node: their `commit`
+    rules run once the row and the rows below it are written.
+
+    A row of a collection that is not owned is checked against its own
+    table's row conditions, as the root is (`_check_rows` for the table's).
     """
     model_class, db_table, pk = _table_of(app, node_def.model)
 
@@ -478,15 +497,16 @@ def _save_node(app, session, node_def, node: Dict[str, Any],
         # buffer and the payload keep one shape — the client prunes what it did
         # not touch, and what it keeps is what it holds.
         obj = _passthrough_row(app, session, node_def, node_id, inherited)
-        _save_children(app, session, node_def, node, obj, id_map, deletes, depth)
+        _save_children(app, session, node_def, node, obj, id_map, deletes, depth, judged)
         return node_id
 
     if op == 'delete':
         _require_saved_id(node_def.model, node_id, 'delete')
-        deletes.append((depth, node_def.model, node_id))
+        deletes.append((depth, node_def.model, node_id, judged.get(id(node)),
+                        _row_checked(app, node_def)))
         # No id to hand down, but the descent continues: a grandchild's deletion
         # is collected here and applied before this row goes.
-        _save_children(app, session, node_def, node, None, id_map, deletes, depth)
+        _save_children(app, session, node_def, node, None, id_map, deletes, depth, judged)
         return None
 
     values, sets = kitebase.refsets.split(db_table, dict(node.get('values') or {}))
@@ -527,6 +547,9 @@ def _save_node(app, session, node_def, node: Dict[str, Any],
         session.add(obj)
         session.flush()                     # the key, without closing the transaction
         real_id = getattr(obj, pk)
+        # The row as inserted, defaults included, must be one the user may create
+        if _row_checked(app, node_def):
+            access.check_row(session, model_class, real_id, 'create')
         if isinstance(node_id, int) and not isinstance(node_id, bool) and node_id < 0:
             # The map is global to the payload — that is what lets a row point at
             # a sibling created beside it — so the client allocates temporary ids
@@ -543,6 +566,11 @@ def _save_node(app, session, node_def, node: Dict[str, Any],
         obj = session.get(model_class, node_id)
         if obj is None:
             raise NotFound(f"No record {node_id} in '{node_def.model}'")
+        if _row_checked(app, node_def):
+            # On the row as stored: otherwise the change itself could satisfy it
+            if not access.row_visible(session, model_class, node_id):
+                raise NotFound(f"No record {node_id} in '{node_def.model}'")
+            access.check_row(session, model_class, node_id, 'update')
         # A typed key is refused on its field, as a form shows it; an assigned
         # one is never typed, and moving it is a malformed payload
         refuse_key_change(obj, model_class, values)
@@ -557,13 +585,24 @@ def _save_node(app, session, node_def, node: Dict[str, Any],
         real_id = node_id
 
     kitebase.refsets.write(app, session, db_table, obj, sets)
-    _save_children(app, session, node_def, node, obj, id_map, deletes, depth)
+    _save_children(app, session, node_def, node, obj, id_map, deletes, depth, judged)
+    ctx = judged.get(id(node))
+    if ctx is not None:
+        # The row as written: its key, the temporary ids resolved
+        ctx.record = {**ctx.record, **flow.row_values(obj)}
+        flow.commit(ctx, session, obj)
     return real_id
 
 
+def _row_checked(app, node_def) -> bool:
+    """Whether a node's rows answer to their own table's row conditions: the
+    rows of a collection that is not owned. The root is checked by _write."""
+    return isinstance(node_def, Collection) and not _owned(app, node_def)
+
+
 def _save_children(app, session, node_def, node: Dict[str, Any], parent: Optional[Any],
-                   id_map: Dict[int, Any], deletes: List[Tuple[int, str, Any]],
-                   depth: int) -> None:
+                   id_map: Dict[int, Any], deletes: List[Tuple[int, str, Any, Any, bool]],
+                   depth: int, judged: Dict[int, Any]) -> None:
     """Descend into the collections of a node, refusing any the page does not declare.
 
     `parent` is the parent's row, None when it is being deleted. Below a row that goes away
@@ -586,42 +625,62 @@ def _save_children(app, session, node_def, node: Dict[str, Any], parent: Optiona
             inherited = ({} if parent is None
                          else {coll.fk: getattr(parent, _link_of(app, node_def.model, coll))})
             _save_node(app, session, coll, child, inherited, coll.defaults,
-                       id_map, deletes, depth + 1)
+                       id_map, deletes, depth + 1, judged)
+
+
+_MODES = {'create': 'insert', 'update': 'update', 'delete': 'delete'}
+
+
+def _as_written(app, model: str, node: Dict[str, Any], mode: Optional[str]):
+    """A node's row as it will be written: `(record, original, changes)`.
+    The stored row with the node's values over it; on a pass-through (no
+    mode) the stored row; on an insert, the values alone."""
+    model_class, db_table, _ = _table_of(app, model)
+    values = write_values(db_table, dict(node.get('values') or {})) if mode in ('insert', 'update') else {}
+    changes = {k: coerce_value(model_class, k, v) for k, v in values.items()}
+    original = None
+    if mode != 'insert' and _is_saved_id(node.get('id')):
+        with app.get_session() as session:
+            obj = session.get(model_class, node.get('id'))
+            if obj is None:
+                raise NotFound(f"No record {node.get('id')} in '{model}'")
+            original = flow.row_values(obj)
+    return {**(original or {}), **changes}, original, changes
+
+
+def _as_parent(app, model: str, node: Dict[str, Any], record: Dict[str, Any]) -> Dict[str, Any]:
+    """What the rows below a node see of it: its record, with its key, the
+    temporary one when it is new."""
+    _, _, pk = _table_of(app, model)
+    return {**record, pk: record.get(pk, node.get('id'))}
 
 
 def _judge_root(app, aggregate: Aggregate, root_node: Dict[str, Any], answers):
     """
-    The rules of the root's table, on the root as it will be written.
+    The rules of the root's table, on the root as it will be written; then
+    the rules of every row the tree writes (_judge_rows). Returns
+    `(ctx, rows, refusal)`, `rows` the contexts of the rows judged.
 
-    The rows below are written by this same call, and a rule of theirs would be
-    skipped in silence: until a row's rules are judged here, a tree that writes
-    rows with rules is refused rather than written around them. A page that only
-    declares such a collection, untouched, saves its root.
+    The rows a delete takes with it through the composition are not in the
+    tree, and are not judged: a table with rules among them refuses the tree.
     """
-    ruled = [m for m in _written_models(aggregate, root_node) if flow.has_rules(m)]
-    if ruled:
-        raise ValueError(f"Rules on rows are not judged by save_tree yet: "
-                         f"{', '.join(sorted(set(ruled)))}")
+    cascaded = [m for m in _cascaded_models(app, aggregate, root_node) if flow.has_rules(m)]
+    if cascaded:
+        raise ValueError(f"Rows deleted with their parent are not judged by save_tree: "
+                         f"{', '.join(sorted(set(cascaded)))}")
 
-    root_class, db_table, _ = _table_of(app, aggregate.model)
     mode = {'create': 'insert', 'delete': 'delete'}.get(root_node.get('op'), 'update')
-    if not flow.has_rules(aggregate.model):
-        return flow.Context(aggregate.model, mode, {}, None, {}), None
+    ctx = flow.Context(aggregate.model, mode, {}, None, {})
+    ruled_root = flow.has_rules(aggregate.model)
+    ruled_rows = _rows_ruled(aggregate, root_node)
+    if not ruled_root and not ruled_rows:
+        return ctx, {}, None
 
-    values = write_values(db_table, dict(root_node.get('values') or {}))
-    changes = {k: coerce_value(root_class, k, v) for k, v in values.items()}
-
-    original = None
-    if mode != 'insert':
-        with app.get_session() as session:
-            obj = session.get(root_class, root_node.get('id'))
-            if obj is None:
-                raise NotFound(f"No record {root_node.get('id')} in '{aggregate.model}'")
-            original = flow.row_values(obj)
-
-    ctx, refusal = flow.judge(aggregate.model, mode, {**(original or {}), **changes},
-                              original, answers)
-    if refusal is None:
+    record, original, changes = _as_written(app, aggregate.model, root_node, mode)
+    if ruled_root:
+        ctx, refusal = flow.judge(aggregate.model, mode, record, original, answers)
+        if refusal is not None:
+            return ctx, {}, refusal
         # What a rule changed is written with the rest of the root
         for key, value in ctx.record.items():
             if key in changes and changes[key] == value:
@@ -629,7 +688,113 @@ def _judge_root(app, aggregate: Aggregate, root_node: Dict[str, Any], answers):
             if key not in changes and original is not None and original.get(key) == value:
                 continue
             root_node.setdefault('values', {})[key] = value
-    return ctx, refusal
+        record = ctx.record
+
+    rows: Dict[int, flow.Context] = {}
+    if ruled_rows:
+        refusal = _judge_rows(app, aggregate, root_node,
+                              _as_parent(app, aggregate.model, root_node, record),
+                              answers, rows)
+        if refusal is not None:
+            return ctx, rows, refusal
+    return ctx, rows, None
+
+
+def _rows_ruled(node_def, node: Dict[str, Any]) -> bool:
+    """Whether the tree writes a row whose table has rules."""
+    for cid, rows in (node.get('children') or {}).items():
+        coll = node_def.collections.get(cid)
+        if coll is None or not isinstance(rows, list):
+            continue
+        for row in rows:
+            if (row.get('op') and flow.has_rules(coll.model)) or _rows_ruled(coll, row):
+                return True
+    return False
+
+
+def _judge_rows(app, node_def, node: Dict[str, Any], parent: Dict[str, Any],
+                answers, rows: Dict[int, flow.Context]) -> Optional[Dict[str, Any]]:
+    """
+    The rules of the rows below `node`, each on its row as it will be written,
+    with `ctx.parent` the parent as it will be (its rules already judged).
+    What a rule changes is written with the row; its context is kept in
+    `rows`, by the node, for the `commit` and `after` rules.
+
+    A row is judged like a single write, with two limits. Its refusal names
+    its table, and carries `{collection, id}` in `$flow.row`; a patch of a
+    row is not sent, the client applies patches to the form it shows. A row
+    cannot ask: there is no form to put the question in, so a question is
+    a refusal with its text, and the row is written from its own form.
+    Rules about the rows together are rules of the root, which sees them.
+    """
+    for cid, children in (node.get('children') or {}).items():
+        coll = node_def.collections.get(cid)
+        if coll is None or not isinstance(children, list):
+            continue  # refused with its own message when the rows are saved
+        link = _link_of(app, node_def.model, coll)
+        for child in children:
+            mode = _MODES.get(str(child.get('op') or '').lower())
+            ruled = mode is not None and flow.has_rules(coll.model)
+            if not ruled and not child.get('children'):
+                continue
+            record, original, _ = _as_written(app, coll.model, child, mode)
+            if mode == 'insert':
+                for key, value in (coll.defaults or {}).items():
+                    record.setdefault(key, value)
+            if mode != 'delete':
+                record[coll.fk] = parent.get(link)
+            if ruled:
+                before = dict(record)
+                ctx, refusal = flow.judge(coll.model, mode, record, original, answers,
+                                          parent=parent, parent_model=node_def.model)
+                if refusal is not None:
+                    return _row_refusal(refusal, coll, cid, child)
+                if mode != 'delete':
+                    for key, value in ctx.record.items():
+                        if key not in before or before[key] != value:
+                            child.setdefault('values', {})[key] = value
+                rows[id(child)] = ctx
+                record = ctx.record
+            if child.get('children'):
+                refusal = _judge_rows(app, coll, child, _as_parent(app, coll.model, child, record),
+                                      answers, rows)
+                if refusal is not None:
+                    return refusal
+    return None
+
+
+def _row_refusal(refusal: Dict[str, Any], coll: Collection, cid: str,
+                 node: Dict[str, Any]) -> Dict[str, Any]:
+    """A row's refusal, as the tree answers it: a question becomes a refusal,
+    the message names the row's table, the row is in `$flow.row`."""
+    flow_part = dict(refusal.get('$flow') or {})
+    flow_part.pop('patch', None)
+    flow_part.pop('phase', None)
+    question = flow_part.pop('ask', None)
+    message = (question or {}).get('text') or refusal.get('message') or ''
+    flow_part['row'] = {'collection': cid, 'id': node.get('id')}
+    return {'status': 'error', 'code': 422,
+            'message': _f('{table}: {message}', table=_table_label(coll.model), message=message),
+            '$flow': flow_part}
+
+
+def _finish_rows(rows: Dict[int, flow.Context], result: Dict[str, Any]) -> Dict[str, Any]:
+    """The `after` rules of the rows, once everything is committed; what they
+    and the `check` rules of the rows said joins the answer of the root."""
+    infos: List[str] = []
+    actions: List[Dict[str, Any]] = []
+    for ctx in rows.values():
+        outcome = flow.finish(ctx, {}, ctx.record if ctx.mode != 'delete' else None).get('$flow') or {}
+        infos += outcome.get('info') or []
+        actions += outcome.get('actions') or []
+    if infos or actions:
+        merged = dict(result.get('$flow') or {})
+        if infos:
+            merged['info'] = list(merged.get('info') or []) + infos
+        if actions:
+            merged['actions'] = list(merged.get('actions') or []) + actions
+        result['$flow'] = merged
+    return result
 
 
 @endpoint('save_tree', access=access.PER_TABLE)
@@ -668,14 +833,14 @@ def save_tree(data: Dict[str, Any]) -> Dict[str, Any]:
         raise Invalid('root must be a node')
 
     app = kitebase.utils.get_app()
-    aggregate, ctx, refusal = _prepare(app, page_id, root_node, data.get('answers'))
+    aggregate, ctx, rows, refusal = _prepare(app, page_id, root_node, data.get('answers'))
     if refusal:
         return refusal
 
     id_map: Dict[int, Any] = {}
     try:
         with app.get_session() as session:
-            root_id, meta = _write(app, session, aggregate, root_node, ctx, id_map)
+            root_id, meta = _write(app, session, aggregate, root_node, ctx, rows, id_map)
             session.commit()
             # What was just written comes back under the permission that wrote it.
             root = _load_tree(app, session, aggregate, root_id,
@@ -686,10 +851,11 @@ def save_tree(data: Dict[str, Any]) -> Dict[str, Any]:
     if root is not None:
         root.update(meta)
 
-    return flow.finish(ctx, {'status': 'success',
-                             'data': {'id': root_id, 'id_map': id_map, 'root': root},
-                             'code': 200},
-                       root['values'] if root else None)
+    result = flow.finish(ctx, {'status': 'success',
+                               'data': {'id': root_id, 'id_map': id_map, 'root': root},
+                               'code': 200},
+                         root['values'] if root else None)
+    return _finish_rows(rows, result)
 
 
 def save_trees(page_id: str, roots: List[Dict[str, Any]],
@@ -709,32 +875,33 @@ def save_trees(page_id: str, roots: List[Dict[str, Any]],
     try:
         prepared = []
         for index, root_node in enumerate(roots):
-            aggregate, ctx, refusal = _prepare(app, page_id, root_node, answers)
+            aggregate, ctx, rows, refusal = _prepare(app, page_id, root_node, answers)
             if refusal:
                 refusal['data'] = {**(refusal.get('data') or {}), 'index': index}
                 return refusal
-            prepared.append((aggregate, ctx, root_node))
+            prepared.append((aggregate, ctx, rows, root_node))
 
         written = []
         with app.get_session() as session:
             metas = []
-            for index, (aggregate, ctx, root_node) in enumerate(prepared):
+            for index, (aggregate, ctx, rows, root_node) in enumerate(prepared):
                 id_map: Dict[int, Any] = {}
-                root_id, meta = _write(app, session, aggregate, root_node, ctx, id_map)
+                root_id, meta = _write(app, session, aggregate, root_node, ctx, rows, id_map)
                 written.append((root_id, id_map))
                 metas.append(meta)
             session.commit()
             loaded = [_load_tree(app, session, aggregate, root_id,
                                  covered=_aggregate_models(aggregate)) if root_id is not None else None
-                      for (aggregate, _, _), (root_id, _) in zip(prepared, written)]
+                      for (aggregate, _, _, _), (root_id, _) in zip(prepared, written)]
         for root, meta in zip(loaded, metas):
             if root is not None:
                 root.update(meta)
 
         infos: List[str] = []
         actions: List[Dict[str, Any]] = []
-        for (_, ctx, _), root in zip(prepared, loaded):
-            outcome = flow.finish(ctx, {}, root['values'] if root else None).get('$flow') or {}
+        for (_, ctx, rows, _), root in zip(prepared, loaded):
+            outcome = _finish_rows(rows, flow.finish(ctx, {}, root['values'] if root else None))
+            outcome = outcome.get('$flow') or {}
             infos += outcome.get('info') or []
             actions += outcome.get('actions') or []
         result: Dict[str, Any] = {
@@ -754,13 +921,33 @@ def save_trees(page_id: str, roots: List[Dict[str, Any]],
 
 
 def _prepare(app, page_id: str, root_node: Dict[str, Any], answers):
-    """The aggregate of the page, the permission on its root, and the rules'
-    judgement: `(aggregate, ctx, refusal)`. Nothing is written."""
+    """The aggregate of the page, the permissions, and the rules' judgement:
+    `(aggregate, ctx, rows, refusal)`. Nothing is written."""
     aggregate = page_aggregate(app, page_id)
-    # The aggregate decides for its rows: only the root is checked.
     access.check_table(aggregate.model, _root_action(root_node))
-    ctx, refusal = _judge_root(app, aggregate, root_node, answers)
-    return aggregate, ctx, refusal
+    _check_rows(app, aggregate, root_node)
+    ctx, rows, refusal = _judge_root(app, aggregate, root_node, answers)
+    return aggregate, ctx, rows, refusal
+
+
+def _check_rows(app, node_def, node: Dict[str, Any]) -> None:
+    """
+    The permissions of the rows the tree writes. The aggregate decides for
+    its parts, the rows of an owned collection: only the root is checked. A
+    collection that is not owned shows rows with a life of their own (hours
+    under a task), and each written row needs its own table's permission, as
+    from its own form; their row conditions are checked as they are written.
+    """
+    for cid, rows in (node.get('children') or {}).items():
+        coll = node_def.collections.get(cid)
+        if coll is None or not isinstance(rows, list):
+            continue
+        owned = _owned(app, coll)
+        for row in rows:
+            op = str(row.get('op') or '').lower()
+            if op in _OPS and not owned:
+                access.check_table(coll.model, op)
+            _check_rows(app, coll, row)
 
 
 def _with_fresh_tree(app, aggregate: Aggregate, root_node: Dict[str, Any],
@@ -775,11 +962,11 @@ def _with_fresh_tree(app, aggregate: Aggregate, root_node: Dict[str, Any],
 
 
 def _write(app, session, aggregate, root_node: Dict[str, Any], ctx,
-           id_map: Dict[int, Any]) -> Tuple[Any, Dict[str, Any]]:
+           rows: Dict[int, Any], id_map: Dict[int, Any]) -> Tuple[Any, Dict[str, Any]]:
     """Write one judged tree in `session`, its write hooks first and its
-    `commit` rules last; the caller commits. Returns the root's key and the
-    hooks' `$` keys."""
-    deletes: List[Tuple[int, str, Any]] = []
+    `commit` rules last, the rows' as each is written and the root's at the
+    end; the caller commits. Returns the root's key and the hooks' `$` keys."""
+    deletes: List[Tuple[int, str, Any, Any, bool]] = []
     root_class, _, _ = _table_of(app, aggregate.model)
     action = _root_action(root_node)
     # A row condition is judged on the root as stored, before the change
@@ -793,7 +980,7 @@ def _write(app, session, aggregate, root_node: Dict[str, Any], ctx,
 
     meta = _write_metadata(TreeWrite(session, aggregate.model, root_key, action,
                                      _node_metadata(root_node)))
-    root_id = _save_node(app, session, aggregate, root_node, {}, {}, id_map, deletes, 0)
+    root_id = _save_node(app, session, aggregate, root_node, {}, {}, id_map, deletes, 0, rows)
     # and a created root as inserted, before anything is committed
     if action == 'create':
         access.check_row(session, root_class, root_id, 'create')
@@ -802,14 +989,18 @@ def _write(app, session, aggregate, root_node: Dict[str, Any], ctx,
     # Every row first, so that one still needed elsewhere is said by name
     # before anything goes.
     doomed = []
-    for _depth, model_name, record_id in sorted(deletes, key=lambda d: -d[0]):
+    for _depth, model_name, record_id, row_ctx, checked in sorted(deletes, key=lambda d: -d[0]):
         model_class, _, _ = _table_of(app, model_name)
         obj = session.get(model_class, record_id)
-        if obj is None:
+        if obj is None or (checked and not access.row_visible(session, model_class, record_id)):
             raise NotFound(f"No record {record_id} to delete in '{model_name}'")
-        doomed.append(obj)
-    refuse_referenced(session, doomed)
-    for obj in doomed:
+        if checked:
+            access.check_row(session, model_class, record_id, 'delete')
+        doomed.append((obj, row_ctx))
+    refuse_referenced(session, [obj for obj, _ in doomed])
+    for obj, row_ctx in doomed:
+        if row_ctx is not None:
+            flow.commit(row_ctx, session, obj)
         session.delete(obj)
 
     root_obj = session.get(root_class, root_id) if root_id is not None else None
