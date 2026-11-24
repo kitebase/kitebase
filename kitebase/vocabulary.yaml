@@ -22,7 +22,8 @@ pages.*.content.layout[].children[].layout[].opens.view: [columns, type]
 pages.*.content.layout[].children[].layout[].opens.view.columns[]: [field, title]
 pages.*.content.layout[].children[].layout[].pass: '*'
 pages.*.content.layout[].columns[]: [fields, id]
-pages.*.content.layout[].columns[].fields[]: [choices, choices_endpoint, filler, foreign_key, help, label, lookup, name, required, transient, type, widget, width]
+pages.*.content.layout[].columns[].fields[]: [choices, choices_endpoint, filler, foreign_key, help, label, lookup, name, on_change, required, transient, type, widget, width]
+pages.*.content.layout[].columns[].fields[].on_change: [apply, endpoint, pass]
 pages.*.content.layout[].columns[].fields[].choices[]: [label, value]
 pages.*.content.layout[].columns[].fields[].foreign_key: [field, target]
 pages.*.content.layout[].columns[].fields[].lookup: [filters]
@@ -31,7 +32,7 @@ pages.*.content.layout[].fields[]: [choices, choices_endpoint, help, label, name
 pages.*.content.layout[].fields[].choices[]: [label, value]
 pages.*.content.layout[].fields[].placeholders[]: [label, name]
 pages.*.content.layout[].pages[]: [count, id, label, layout]
-pages.*.content.layout[].pages[].layout[]: [columns, component, defaults, domain, fk, form, id, label, model, prefill, sequence, type, view]
+pages.*.content.layout[].pages[].layout[]: [columns, component, defaults, domain, fk, form, id, label, model, prefill, readonly, sequence, type, view]
 pages.*.content.layout[].pages[].layout[].columns[]: [fields, id]
 pages.*.content.layout[].pages[].layout[].columns[].fields[]: [choices_endpoint, filler, help, label, name, type, widget, width]
 pages.*.content.layout[].pages[].layout[].defaults: '*'
@@ -101,7 +102,8 @@ views.*.kanban: [folded, sum, within_filters]
 views.*.kanban.within_filters: '*'
 views.*.layout[]: [border, columns, fields, id, label, pages, style, text, type]
 views.*.layout[].columns[]: [fields]
-views.*.layout[].columns[].fields[]: [choices, filler, label, name, readonly, required, type, widget, widget_props, width]
+views.*.layout[].columns[].fields[]: [choices, filler, label, name, on_change, readonly, required, type, widget, widget_props, width]
+views.*.layout[].columns[].fields[].on_change: [apply, endpoint, pass]
 views.*.layout[].columns[].fields[].choices[]: [label, value]
 views.*.layout[].columns[].fields[].widget_props: '*'
 views.*.layout[].fields[]: [choices, choices_endpoint, default, help, label, name, readonly, required, type, widget]

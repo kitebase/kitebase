@@ -12,7 +12,7 @@ from kitebase.querybuilder import DynamicQueryBuilder
 from kitebase.i18n import _, _f
 from typing import Dict, Any
 from sqlalchemy import desc, asc
-from sqlalchemy import Date, DateTime, Integer, inspect as sa_inspect
+from sqlalchemy import Date, DateTime, Integer, Time, inspect as sa_inspect
 from sqlalchemy.exc import SQLAlchemyError
 import datetime
 
@@ -259,6 +259,8 @@ def coerce_value(model_class, key: str, value: Any) -> Any:
             return datetime.datetime.fromisoformat(value)
         if isinstance(col_type, Date):
             return datetime.date.fromisoformat(value)
+        if isinstance(col_type, Time):
+            return datetime.time.fromisoformat(value)
         if isinstance(col_type, Integer):
             return int(value)
     except Exception:
