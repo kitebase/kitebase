@@ -17,6 +17,7 @@ import yaml
 from sqlalchemy import event, text
 
 import kitebase.endpoint_db
+import kitebase.errors
 import kitebase.utils
 from kitebase.app import App
 from kitebase.model_base import Base
@@ -80,6 +81,31 @@ TABLES = {
             {'name': 'id', 'type': 'Integer', 'primary_key': True, 'autoincrement': True},
             {'name': 'due_date', 'type': 'String', 'length': 20},
             {'name': 'book_id', 'type': 'Integer', 'foreign_key': {'target': 'Book.id'}},
+        ],
+    },
+    # Not owned and never empty: a review cannot outlive its book, nor lose it.
+    # A book with a review is not deleted until the review goes.
+    'Review': {
+        'name': 'reviews',
+        'label': 'Review',
+        'columns': [
+            {'name': 'id', 'type': 'Integer', 'primary_key': True, 'autoincrement': True},
+            {'name': 'text', 'type': 'String', 'length': 200},
+            {'name': 'book_id', 'type': 'Integer', 'nullable': False,
+             'foreign_key': {'target': 'Book.id'}},
+        ],
+    },
+    # A part of its book that also needs one of the book's chapters: deleting
+    # the book takes both, deleting the chapter alone would leave it nowhere.
+    'Figure': {
+        'name': 'figures',
+        'label': 'Figure',
+        'columns': [
+            {'name': 'id', 'type': 'Integer', 'primary_key': True, 'autoincrement': True},
+            {'name': 'book_id', 'type': 'Integer',
+             'foreign_key': {'target': 'Book.id', 'owned': True}},
+            {'name': 'chapter_id', 'type': 'Integer', 'nullable': False,
+             'foreign_key': {'target': 'Chapter.id'}},
         ],
     },
     # Tied by a key that is not the primary one: a visit mints its code when it
@@ -956,3 +982,61 @@ def test_a_typed_key_cannot_be_changed_by_an_update(app):
                    'root': {'op': 'update', 'id': 'A1', 'values': {'code': 'B2'}}})
     assert set(refusal.value.data['errors']) == {'code'}
     assert [r['code'] for r in rows(app, 'Shelf')] == ['A1']
+
+
+# ── A row other rows still need ──────────────────────────────────────────────
+
+def _book_with(app, review=False, figure=False):
+    """A saved book with one chapter, and what is asked of it beside."""
+    data = ok(save_tree({'page': 'book_form', 'root': {
+        'op': 'create', 'id': -1, 'values': {'title': 'Dune'},
+        'children': {'chapters': [{'op': 'create', 'id': -2, 'values': {'title': 'One'}}]}}}))
+    book, chapter = data['id'], data['id_map'][-2]
+    with app.get_session() as session:
+        if review:
+            session.add(app.find_model_class('Review')(book_id=book, text='Good'))
+        if figure:
+            session.add(app.find_model_class('Figure')(book_id=book, chapter_id=chapter))
+        session.commit()
+    return book, chapter
+
+
+def test_a_row_still_needed_is_refused_by_name_and_by_who_needs_it(app):
+    book, _ = _book_with(app, review=True)
+    with pytest.raises(kitebase.errors.Invalid) as refusal:
+        save_tree({'page': 'book_form', 'root': {'op': 'delete', 'id': book}})
+    message = str(refusal.value)
+    assert '«Dune»' in message and 'Review (1)' in message
+    assert len(rows(app, 'Book')) == 1 and len(rows(app, 'Review')) == 1
+
+
+def test_the_db_port_refuses_it_the_same_way(app):
+    book, _ = _book_with(app, review=True)
+    with pytest.raises(kitebase.errors.Invalid) as refusal:
+        kitebase.endpoint_db.db_operations({'table': 'Book', 'method': 'delete', 'id': book})
+    assert 'Review (1)' in str(refusal.value)
+    assert len(rows(app, 'Book')) == 1
+
+
+def test_a_row_nobody_needs_goes(app):
+    book, _ = _book_with(app)
+    ok(save_tree({'page': 'book_form', 'root': {'op': 'delete', 'id': book}}))
+    assert rows(app, 'Book') == [] and rows(app, 'Chapter') == []
+
+
+def test_what_goes_together_does_not_hold_itself_back(app):
+    """The figure needs the chapter, but both are parts of the book: deleting
+    the book takes all three."""
+    book, _ = _book_with(app, figure=True)
+    ok(save_tree({'page': 'book_form', 'root': {'op': 'delete', 'id': book}}))
+    assert rows(app, 'Figure') == [] and rows(app, 'Chapter') == []
+
+
+def test_a_collection_row_still_needed_is_refused_and_nothing_is_written(app):
+    book, chapter = _book_with(app, figure=True)
+    with pytest.raises(kitebase.errors.Invalid) as refusal:
+        save_tree({'page': 'book_form', 'root': {
+            'op': 'update', 'id': book, 'values': {'title': 'Dune Messiah'},
+            'children': {'chapters': [{'op': 'delete', 'id': chapter}]}}})
+    assert 'Figure (1)' in str(refusal.value)
+    assert rows(app, 'Book')[0]['title'] == 'Dune' and len(rows(app, 'Chapter')) == 1

@@ -1379,7 +1379,11 @@ parts.
 parent the children are loaded and their foreign key set to NULL. That is right
 for a relation that grows in time and belongs to nobody — a loan, a review — but
 note what it does: the row survives with its reference **erased**. Where the
-column is `nullable: false` the delete fails instead, on a driver error.
+column is `nullable: false` there is no way out, and the delete is refused
+before anything is written, by the `db` port and by `save_tree` alike, naming
+the row and who uses it: *Task stage «In review»: it cannot be deleted, it is
+used by Task (3)*. Rows that go together are counted out: a project deleted
+with its stages and its tasks, all owned, holds no reference that survives it.
 
 **Ownership is not the same question as presentation.** A **collection node** in a
 page (`type: collection`) says a set of rows is edited inside the parent's form,
@@ -2543,7 +2547,10 @@ tables:
 
 `within` names a column both tables have: the board shows one value of it at a
 time, picked above the board, and a record added from the board is born in that
-value and in the first column. Dragging a card onto another column writes the
+value and in the first column. The values offered are every row of the table
+`within` points to; the view narrows them with `kanban.within_filters`, the
+same conditions as a lookup's `filters` (`{state: [in, [planned, active]]}`,
+the open projects only). Dragging a card onto another column writes the
 state through the `db` port, so the table's write rules judge it; a refusal
 leaves the card where it was. A row whose state is none of the columns goes to
 a last column, where nothing is dropped. `check` warns about a state that names

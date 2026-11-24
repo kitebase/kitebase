@@ -65,7 +65,7 @@ from kitebase.access import AccessDenied
 from kitebase.errors import Conflict, Invalid, NotFound, Refusal
 from kitebase.endpoints import endpoint
 from kitebase.endpoint_db import (pk_field, write_values, coerce_value, require_columns,
-                                  refuse_duplicate_key, refuse_key_change)
+                                  refuse_duplicate_key, refuse_key_change, refuse_referenced)
 from kitebase.pages import Aggregate, Collection, page_aggregate
 from kitebase.querybuilder import DynamicQueryBuilder
 from kitebase.registry import Registry
@@ -799,11 +799,17 @@ def _write(app, session, aggregate, root_node: Dict[str, Any], ctx,
         access.check_row(session, root_class, root_id, 'create')
 
     # Backwards: a grandchild before its child, a child before its parent.
+    # Every row first, so that one still needed elsewhere is said by name
+    # before anything goes.
+    doomed = []
     for _depth, model_name, record_id in sorted(deletes, key=lambda d: -d[0]):
         model_class, _, _ = _table_of(app, model_name)
         obj = session.get(model_class, record_id)
         if obj is None:
             raise NotFound(f"No record {record_id} to delete in '{model_name}'")
+        doomed.append(obj)
+    refuse_referenced(session, doomed)
+    for obj in doomed:
         session.delete(obj)
 
     root_obj = session.get(root_class, root_id) if root_id is not None else None

@@ -22,6 +22,8 @@ register_translations('it', {
     'Record updated successfully':      'Record aggiornato con successo',
     'Record ID is required for deletion':'ID record obbligatorio per l\'eliminazione',
     'Record deleted successfully':      'Record eliminato con successo',
+    '{table} «{name}»: it cannot be deleted, it is used by {users}':
+        '{table} «{name}»: non si può cancellare, è usato da {users}',
     'Query not defined':                'Query non definita',
 
     # export

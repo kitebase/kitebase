@@ -12,7 +12,8 @@ pages.*.content.columns[].formatter_params: '*'
 pages.*.content.columns[].tone: [ranges, values]
 pages.*.content.columns[].tone.values: '*'
 pages.*.content.fields[]: [help, label, name, type, widget]
-pages.*.content.kanban: [folded, sum]
+pages.*.content.kanban: [folded, sum, within_filters]
+pages.*.content.kanban.within_filters: '*'
 pages.*.content.layout[]: [children, columns, fields, id, label, pages, type]
 pages.*.content.layout[].children[]: [id, layout, type]
 pages.*.content.layout[].children[].layout[]: [count, endpoint, help, icon, label, opens, pass, type]
@@ -96,7 +97,8 @@ views.*.columns[].tone: [ranges, values]
 views.*.columns[].tone.values: '*'
 views.*.fields[]: [fields, group, name, widget]
 views.*.fields[].fields[]: [name, widget]
-views.*.kanban: [folded, sum]
+views.*.kanban: [folded, sum, within_filters]
+views.*.kanban.within_filters: '*'
 views.*.layout[]: [border, columns, fields, id, label, pages, style, text, type]
 views.*.layout[].columns[]: [fields]
 views.*.layout[].columns[].fields[]: [choices, filler, label, name, readonly, required, type, widget, widget_props, width]

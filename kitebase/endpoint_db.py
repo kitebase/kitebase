@@ -345,6 +345,81 @@ def refuse_key_change(record, model_class, changes: Dict[str, Any]) -> None:
         raise kitebase.transforms.ValidationError(errors)
 
 
+def refuse_referenced(session, rows) -> None:
+    """Refuse to delete rows that other rows still need, said with their names.
+
+    A foreign key that is not `owned` and cannot be empty leaves no way out
+    when the row it points at goes: the children cannot follow it, as owned
+    ones do, nor lose the reference, as nullable ones do. The database would
+    refuse, quoting the statement; here the message names the row and who
+    uses it: "Stage «In review»: it cannot be deleted, it is used by Task (3)".
+
+    The rows that go with these (their owned children, and the children of
+    those) are counted out: a project deleted with its stages and its tasks
+    holds no reference that survives it.
+
+    Raises:
+        Invalid: naming the first row still used, and by what
+    """
+    doomed, order = set(), []
+
+    def collect(obj) -> None:
+        state = sa_inspect(obj)
+        if state.identity_key in doomed:
+            return
+        doomed.add(state.identity_key)
+        order.append(obj)
+        for rel in state.mapper.relationships:
+            if rel.direction.name == 'ONETOMANY' and rel.secondary is None \
+                    and 'delete' in rel.cascade:
+                for child in getattr(obj, rel.key) or []:
+                    collect(child)
+
+    with session.no_autoflush:
+        for obj in rows:
+            collect(obj)
+        for obj in order:
+            mapper = sa_inspect(obj).mapper
+            users = []
+            for rel in mapper.relationships:
+                if rel.direction.name != 'ONETOMANY' or rel.secondary is not None \
+                        or 'delete' in rel.cascade:
+                    continue
+                pairs = rel.local_remote_pairs
+                if not pairs or any(remote.nullable for _local, remote in pairs):
+                    continue
+                child = rel.mapper
+                query = session.query(*child.primary_key)
+                for local, remote in pairs:
+                    query = query.filter(remote == getattr(obj, mapper.get_property_by_column(local).key))
+                left = sum(1 for key in query
+                           if child.identity_key_from_primary_key(tuple(key)) not in doomed)
+                if left:
+                    users.append((child.class_.__name__, left))
+            if users:
+                raise Invalid(_f('{table} «{name}»: it cannot be deleted, it is used by {users}',
+                                 table=_table_label(mapper.class_.__name__),
+                                 name=_row_name(obj),
+                                 users=', '.join(f'{_table_label(n)} ({count})'
+                                                 for n, count in users)))
+
+
+def _table_label(model_name: str) -> str:
+    table = kitebase.utils.get_app().tables.get(model_name)
+    label = table.attributes.get('label') if table is not None else None
+    return _(label) if label else model_name
+
+
+def _row_name(obj) -> str:
+    """The row as a person names it: its display field, else its key."""
+    table = kitebase.utils.get_app().tables.get(type(obj).__name__)
+    field = table.search_info.get('display_field') if table is not None else None
+    text = getattr(obj, field, None) if field else None
+    if text in (None, ''):
+        text = ', '.join(str(v) for v in sa_inspect(obj).identity)
+    return str(text)
+
+
 def handle_create(app, model_class, params: Dict[str, Any], db_table=None) -> Dict[str, Any]:
     """Handle CREATE operations"""
     record_data = params.get('data')
@@ -464,6 +539,7 @@ def handle_delete(app, model_class, params: Dict[str, Any], db_table=None) -> Di
                                   params.get('answers'))
         if refusal:
             return refusal
+        refuse_referenced(session, [record])
 
         try:
             flow.commit(ctx, session, record)
