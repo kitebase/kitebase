@@ -647,13 +647,15 @@ class ColumnGenerator:
         # database already in place. See PLUGIN_MODEL § 4.5.
         owned = fk.get('owned') is True
 
-        # Additional ForeignKey() arguments (ondelete, onupdate, …). `constraint`
-        # and `owned` are Kitebase hints, not ForeignKey kwargs — never forward them.
+        # Additional ForeignKey() arguments (ondelete, onupdate, …), written as
+        # Python literals: `ondelete: SET NULL` is the string 'SET NULL'.
+        # `constraint` and `owned` are Kitebase hints, not ForeignKey kwargs —
+        # never forward them.
         fk_args = []
         for a in fk:
             if a not in ['target', 'table', 'id', 'constraint', 'owned',
                          'relation', 'backref']:
-                fk_args.append(f"{a}={fk[a]}")
+                fk_args.append(f"{a}={fk[a]!r}")
 
         fk_args_str = f", {', '.join(fk_args)}" if fk_args else ""
 

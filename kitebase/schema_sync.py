@@ -11,18 +11,27 @@ difference is either applied or reported.  Two consequences worth knowing:
   * nothing here transforms data.  A rename cannot be told apart from a drop
     plus an add, so renames, splits and merges stay manual.
 
-What may be applied automatically is a closed list (see `_classify`): create a
-table, add a column, add an index, widen a type, relax a NOT NULL, and shorten
-a string or an integer when every stored value already fits.  The bar is "no data is lost".
+What may be applied automatically is a closed list (see `_classify` and
+`_constraint_changes`): create a table, add a column, add an index, widen a
+type, relax a NOT NULL, shorten a string or an integer when every stored value
+already fits, add a foreign key no row breaks or a unique constraint no value
+repeats, change ON DELETE / ON UPDATE.  The bar is "no data is lost".
 Below it, two kinds of refusal:
 
-  * forceable: dropping a column or an index, shortening a string some values
-    do not fit.  Reported with what would be lost; `force=True` applies them,
-    truncating explicitly, so the outcome is the same on every dialect;
+  * forceable: dropping a column, an index or a constraint, shortening a
+    string some values do not fit.  Reported with what would be lost;
+    `force=True` applies them, truncating explicitly, so the outcome is the
+    same on every dialect;
   * not forceable: tightening a NOT NULL, an integer some values do not fit
     (a clamped number is a wrong one), decimals, changing a type family,
-    constraint and key changes.  Each needs a value or a conversion
+    orphans under a new foreign key, duplicates under a new unique
+    constraint, a changed primary key.  Each needs a value or a conversion
     that only a human can choose, and stays manual.
+
+What differs between engines is asked of `capabilities()`, never of a dialect
+name scattered through the code: whether DDL runs in a transaction, how a
+constraint is changed (in place, or by rebuilding the table as on SQLite), and
+whether several NULLs fit a unique column.
 
 Forcing is the caller's decision, never a default: `force` applies *every*
 forceable change in the diff, including the ones that only look like drops
@@ -44,8 +53,9 @@ Entry points:
 from __future__ import annotations
 
 import logging
+from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import sqlalchemy as sa
 from sqlalchemy.engine import Engine
@@ -231,6 +241,45 @@ def _quote(value: Any) -> str:
     if isinstance(value, (int, float)):
         return str(value)
     return "'" + str(value).replace("'", "''") + "'"
+
+
+# ── What the engine can do ─────────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class Capabilities:
+    """
+    The three things a sync needs to know about an engine. They are asked of
+    the engine, not of its name, so that one more engine is one more row.
+
+    ddl_transaction    'driver': the driver wraps DDL in the transaction;
+                       'explicit': the engine can, but the driver does not open
+                       one before DDL, so the sync opens it itself;
+                       'none': every DDL statement commits on its own.
+    constraints        'alter': foreign keys and unique constraints are added
+                       and dropped in place; 'rebuild': only by rebuilding the
+                       table; None: the sync does not know, and refuses.
+    unique_nulls       True when several NULLs fit in a unique column.
+    """
+    ddl_transaction: str
+    constraints: Optional[str]
+    unique_nulls: bool
+
+
+_CAPABILITIES: Dict[str, Capabilities] = {
+    'sqlite': Capabilities('explicit', 'rebuild', True),
+    'postgresql': Capabilities('driver', 'alter', True),
+    'mysql': Capabilities('none', 'alter', True),
+    'mariadb': Capabilities('none', 'alter', True),
+    'mssql': Capabilities('driver', 'alter', False),
+    'oracle': Capabilities('none', 'alter', True),
+}
+
+# An engine the sync has not met: nothing is assumed in its favour.
+_UNKNOWN = Capabilities('none', None, False)
+
+
+def capabilities(engine: Engine) -> Capabilities:
+    return _CAPABILITIES.get(engine.dialect.name, _UNKNOWN)
 
 
 # ── Classification ─────────────────────────────────────────────────────────────
@@ -453,19 +502,250 @@ def _classify(conn: Any, diff: Any) -> Optional[Change]:
             payload={'table': index.table.name, 'index': index.name},
         )
 
-    # Constraints, foreign keys, anything a future Alembic reports: refuse by
-    # default.  An unknown difference is exactly the case not to guess about.
+    # Anything a future Alembic reports: refuse by default.  An unknown
+    # difference is exactly the case not to guess about.  Foreign keys and
+    # unique constraints never get here: `_constraint_changes` takes them.
     target = ''
     for item in diff[1:]:
-        name = getattr(item, 'name', None)
+        table = getattr(item, 'table', None)
+        name = getattr(table, 'name', None) or getattr(item, 'name', None)
         if isinstance(name, str):
             target = name
             break
     return Change(
         kind=kind, verdict=REFUSED, target=target or '?',
         description=f'{kind.replace("_", " ")}',
-        reason='constraint and key changes are not applied automatically',
+        reason='not applied automatically: db-sync does not know this kind of change',
     )
+
+
+# ── Constraints: foreign keys and unique ──────────────────────────────────────
+#
+# The same bar as everything else, decided by the data: a constraint is added
+# when every row already satisfies it, so nothing has to be chosen and nothing
+# is lost.  Rows that break it (orphans, duplicates) need a person to say what
+# they become, and stay manual.  A new column is all NULL, which breaks
+# nothing, so its constraints come with it.  Dropping a constraint loses no
+# data, but it may have been added outside the schema on purpose: forceable,
+# like an index.
+
+_CONSTRAINT_KINDS = ('add_fk', 'remove_fk', 'add_constraint', 'remove_constraint')
+
+
+def _fk_spec(fk: Any) -> Dict[str, Any]:
+    """What identifies a foreign key, read the same way from metadata and from
+    a reflected table (whose referred table may not be resolvable)."""
+    targets = [element.target_fullname.split('.') for element in fk.elements]
+    return {
+        'kind': 'fk',
+        'table': fk.parent.name,
+        'name': fk.name if isinstance(fk.name, str) else None,
+        'columns': list(fk.column_keys),
+        'referred': targets[0][-2],
+        'remote': [target[-1] for target in targets],
+        'ondelete': fk.ondelete,
+        'onupdate': fk.onupdate,
+    }
+
+
+def _unique_spec(constraint: Any) -> Dict[str, Any]:
+    return {
+        'kind': 'unique',
+        'table': constraint.table.name,
+        'name': constraint.name if isinstance(constraint.name, str) else None,
+        'columns': [column.name for column in constraint.columns],
+    }
+
+
+def _actions(spec: Dict[str, Any]) -> str:
+    """The referential actions of a foreign key, as the DDL spells them."""
+    return ' '.join(f'ON {option[2:].upper()} {spec[option]}'
+                    for option in ('ondelete', 'onupdate') if spec.get(option))
+
+
+def _describe(spec: Dict[str, Any]) -> str:
+    if spec['kind'] == 'unique':
+        return f'unique ({", ".join(spec["columns"])})'
+    text = (f'foreign key ({", ".join(spec["columns"])}) -> '
+            f'{spec["referred"]}({", ".join(spec["remote"])})')
+    actions = _actions(spec)
+    return f'{text} {actions}' if actions else text
+
+
+def _spec_target(spec: Dict[str, Any]) -> str:
+    return f'{spec["table"]}.{",".join(spec["columns"])}'
+
+
+def _fk_signature(spec: Dict[str, Any]) -> Tuple[Any, ...]:
+    """A foreign key without its options: two specs with the same signature and
+    different options are the same key with a changed ON DELETE / ON UPDATE."""
+    return (spec['table'], tuple(spec['columns']), spec['referred'], tuple(spec['remote']))
+
+
+def _orphans(conn: Any, spec: Dict[str, Any], existing_tables: set) -> int:
+    """Rows whose key points at nothing — the rows a new foreign key would reject."""
+    table = sa.table(spec['table'], *[sa.column(c) for c in spec['columns']])
+    filled = sa.and_(*[table.c[c].isnot(None) for c in spec['columns']])
+    if spec['referred'] not in existing_tables:
+        # A table created by this same sync is empty: every key is an orphan.
+        return _count(conn, spec['table'], filled)
+    referred = sa.table(spec['referred'], *[sa.column(c) for c in spec['remote']])
+    match = sa.exists().where(sa.and_(*[
+        referred.c[remote] == table.c[local]
+        for local, remote in zip(spec['columns'], spec['remote'])]))
+    return conn.execute(
+        sa.select(sa.func.count()).select_from(table).where(filled, ~match)
+    ).scalar_one()
+
+
+def _duplicates(conn: Any, spec: Dict[str, Any], unique_nulls: bool) -> int:
+    """Rows sharing a value with another row — the rows a unique constraint rejects."""
+    table = sa.table(spec['table'], *[sa.column(c) for c in spec['columns']])
+    columns = [table.c[c] for c in spec['columns']]
+    grouped = sa.select(sa.func.count().label('n')).select_from(table)
+    if unique_nulls:
+        grouped = grouped.where(sa.and_(*[c.isnot(None) for c in columns]))
+    grouped = grouped.group_by(*columns).having(sa.func.count() > 1).subquery()
+    return conn.execute(sa.select(sa.func.coalesce(sa.func.sum(grouped.c.n), 0))).scalar_one()
+
+
+def _orphans_hint(spec: Dict[str, Any]) -> str:
+    local, remote = ', '.join(spec['columns']), ', '.join(spec['remote'])
+    return (f'SELECT * FROM {spec["table"]} WHERE ({local}) NOT IN '
+            f'(SELECT {remote} FROM {spec["referred"]});')
+
+
+def _duplicates_hint(spec: Dict[str, Any]) -> str:
+    columns = ', '.join(spec['columns'])
+    return (f'SELECT {columns}, COUNT(*) FROM {spec["table"]} '
+            f'GROUP BY {columns} HAVING COUNT(*) > 1;')
+
+
+def _fold_into_column(conn: Any, caps: Capabilities, change: Change,
+                      spec: Dict[str, Any], existing_tables: set) -> None:
+    """
+    A constraint on a column this sync adds travels with the column.
+
+    The column arrives NULL in every row, which no foreign key and no unique
+    constraint rejects.  Two exceptions, both decided by the rows: a backfilled
+    value repeated over several rows breaks a unique constraint, and one that
+    points at nothing breaks a foreign key; and an engine where NULLs collide
+    in a unique column refuses as soon as two rows exist.
+    """
+    change.payload.setdefault('constraints', []).append(spec)
+    change.description += f', {_describe(spec)}'
+    if change.verdict != SAFE:
+        return
+
+    reason = ''
+    if caps.constraints is None:
+        reason = f'db-sync does not know how {conn.dialect.name} adds constraints'
+    elif spec['kind'] == 'unique':
+        repeated = 'backfill' in change.payload or not caps.unique_nulls
+        if repeated and _table_row_count(conn, spec['table']) > 1:
+            reason = ('every existing row would get the same value, '
+                      'which the unique constraint rejects')
+    elif 'backfill' in change.payload:
+        value = change.payload['backfill']
+        found = 0
+        if spec['referred'] in existing_tables:
+            found = _count(conn, spec['referred'], sa.column(spec['remote'][0]) == value)
+        if not found:
+            reason = (f'existing rows would get {value!r}, which is not in '
+                      f'{spec["referred"]}.{spec["remote"][0]}')
+    if reason:
+        change.verdict = REFUSED
+        change.reason = reason
+
+
+def _constraint_changes(conn: Any, caps: Capabilities, items: List[Any],
+                        added: Dict[str, Change]) -> List[Change]:
+    """
+    Turn the constraint items of a comparison into changes.  `added` maps
+    'table.column' to the add_column change of a column this sync creates:
+    a constraint entirely on new columns is folded into it instead.
+    """
+    existing_tables = set(sa.inspect(conn).get_table_names())
+    adds: List[Dict[str, Any]] = []
+    drops: List[Dict[str, Any]] = []
+    for item in items:
+        kind, obj = item[0], item[1]
+        if kind in ('add_fk', 'remove_fk'):
+            spec = _fk_spec(obj)
+        elif isinstance(obj, sa.UniqueConstraint):
+            spec = _unique_spec(obj)
+        else:
+            continue
+        (adds if kind.startswith('add') else drops).append(spec)
+
+    changes: List[Change] = []
+
+    # A key whose only difference is ON DELETE / ON UPDATE arrives as a drop
+    # and an add: one change, which touches no data.
+    dropped_fks = {_fk_signature(s): s for s in drops if s['kind'] == 'fk'}
+    for spec in [s for s in adds if s['kind'] == 'fk']:
+        old = dropped_fks.pop(_fk_signature(spec), None)
+        if old is None:
+            continue
+        adds.remove(spec)
+        drops.remove(old)
+        change = Change(
+            kind='modify_fk', verdict=SAFE, target=_spec_target(spec),
+            description=f'{_describe(spec)}, was {_actions(old) or "no action"}',
+            payload={'table': spec['table'], 'constraints': [
+                dict(old, op='drop'), dict(spec, op='add')]})
+        if caps.constraints is None:
+            change.verdict = REFUSED
+            change.reason = f'db-sync does not know how {conn.dialect.name} changes constraints'
+        changes.append(change)
+
+    for spec in adds:
+        spec = dict(spec, op='add')
+        new = [added.get(f'{spec["table"]}.{c}') for c in spec['columns']]
+        if all(new) and len({id(c) for c in new}) == 1:
+            _fold_into_column(conn, caps, new[0], spec, existing_tables)
+            continue
+        kind = 'add_fk' if spec['kind'] == 'fk' else 'add_unique'
+        change = Change(kind=kind, verdict=SAFE, target=_spec_target(spec),
+                        description=_describe(spec),
+                        payload={'table': spec['table'], 'constraints': [spec]})
+        if caps.constraints is None:
+            change.verdict = REFUSED
+            change.reason = f'db-sync does not know how {conn.dialect.name} adds constraints'
+        elif any(new):
+            change.verdict = REFUSED
+            change.reason = 'the constraint mixes new and existing columns'
+        elif spec['kind'] == 'fk':
+            orphans = _orphans(conn, spec, existing_tables)
+            if orphans:
+                change.verdict = REFUSED
+                change.reason = (f'{orphans} row(s) point at nothing in {spec["referred"]}: '
+                                 'set them to NULL or to a valid key, or delete them')
+                change.sql_hint = _orphans_hint(spec)
+        else:
+            duplicates = _duplicates(conn, spec, caps.unique_nulls)
+            if duplicates:
+                change.verdict = REFUSED
+                change.reason = (f'{duplicates} row(s) share a value with another row: '
+                                 'decide which value each one keeps')
+                change.sql_hint = _duplicates_hint(spec)
+        changes.append(change)
+
+    for spec in drops:
+        spec = dict(spec, op='drop')
+        kind = 'remove_fk' if spec['kind'] == 'fk' else 'remove_unique'
+        forceable = caps.constraints is not None
+        changes.append(Change(
+            kind=kind, verdict=REFUSED, target=_spec_target(spec),
+            description=f'{_describe(spec)} exists in the database but not in the schema',
+            reason=('dropping it loses no data, but it may have been added on purpose '
+                    'outside the schema' if forceable else
+                    f'db-sync does not know how {conn.dialect.name} drops constraints'),
+            forceable=forceable,
+            payload={'table': spec['table'], 'constraints': [spec]},
+        ))
+
+    return changes
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
@@ -535,12 +815,18 @@ def diff_schema(engine: Engine, metadata: sa.MetaData) -> SchemaDiff:
             conn,
             opts={'compare_type': True, 'include_object': include_object},
         )
+        constraints: List[Any] = []
         for raw in compare_metadata(context, metadata):
             # Column-level differences arrive grouped in a list.
             for item in (raw if isinstance(raw, list) else [raw]):
+                if item[0] in _CONSTRAINT_KINDS:
+                    constraints.append(item)
+                    continue
                 change = _classify(conn, item)
                 if change is not None:
                     changes.append(change)
+        added = {c.target: c for c in changes if c.kind == 'add_column'}
+        changes.extend(_constraint_changes(conn, capabilities(engine), constraints, added))
 
     changes.extend(_primary_key_changes(engine, metadata))
     return SchemaDiff(changes=_ordered(changes))
@@ -550,7 +836,8 @@ def _ordered(changes: List[Change]) -> List[Change]:
     """Report them in the order a sync carries them out (see `_run`)."""
     rank = {'add_table': 0, 'add_column': 1, 'widen_type': 2, 'narrow_string': 2,
             'narrow_int': 2,
-            'relax_nullable': 2, 'add_index': 3}
+            'relax_nullable': 2, 'modify_fk': 3, 'add_fk': 3, 'add_unique': 3,
+            'add_index': 3}
     return sorted(changes, key=lambda c: rank.get(c.kind, 4))
 
 
@@ -596,8 +883,15 @@ def _batch_needed(engine: Engine) -> bool:
 
 
 def _copy_of(column: Any, *, nullable: Optional[bool] = None) -> Any:
-    """A detached copy of a metadata column, so the live metadata is not touched."""
+    """
+    A detached copy of a metadata column, so the live metadata is not touched.
+    Bare of constraints: its foreign keys and unique constraint are changes of
+    their own (`_constraint_changes`), applied in the constraint phase.
+    """
     copy = column._copy() if hasattr(column, '_copy') else column.copy()
+    copy.unique = False
+    for fk in list(copy.foreign_keys):
+        copy.foreign_keys.discard(fk)
     if nullable is not None:
         copy.nullable = nullable
     return copy
@@ -671,6 +965,7 @@ def _run(op: Any, conn: Any, engine: Engine, changes: List[Change],
     """
     shape = None if reflect else _Shape(conn)
     alterations: Dict[str, List[Dict[str, Any]]] = {}
+    constraints: Dict[str, List[Dict[str, Any]]] = {}
     indexes: List[Any] = []
 
     def alter(table: str, **kwargs: Any) -> None:
@@ -679,6 +974,8 @@ def _run(op: Any, conn: Any, engine: Engine, changes: List[Change],
     for change in changes:
         kind = change.kind
         payload = change.payload
+        for spec in payload.get('constraints', ()):
+            constraints.setdefault(spec['table'], []).append(spec)
 
         if kind == 'add_table':
             payload['table_obj'].create(op.get_bind(), checkfirst=False)
@@ -730,8 +1027,31 @@ def _run(op: Any, conn: Any, engine: Engine, changes: List[Change],
         elif kind == 'add_index':
             indexes.append(payload['index'])
 
-    for table, columns in alterations.items():
-        _alter_table(op, shape, engine, table, columns)
+    if capabilities(engine).constraints == 'rebuild':
+        # Columns and constraints of a table, all in its one rebuild.
+        for table in dict.fromkeys([*alterations, *constraints]):
+            _alter_table(op, shape, engine, table, alterations.get(table, []),
+                         constraints.get(table, []))
+    else:
+        # Drops first, so that dropping a column finds no constraint on it;
+        # adds after the alterations, on columns already in their final type.
+        for table, specs in constraints.items():
+            for spec in specs:
+                if spec['op'] == 'drop':
+                    op.drop_constraint(spec['name'], table,
+                                       type_='foreignkey' if spec['kind'] == 'fk' else 'unique')
+        for table, columns in alterations.items():
+            _alter_table(op, shape, engine, table, columns)
+        for table, specs in constraints.items():
+            for spec in specs:
+                if spec['op'] != 'add':
+                    continue
+                if spec['kind'] == 'fk':
+                    op.create_foreign_key(None, table, spec['referred'], spec['columns'],
+                                          spec['remote'], ondelete=spec['ondelete'],
+                                          onupdate=spec['onupdate'])
+                else:
+                    op.create_unique_constraint(None, table, spec['columns'])
 
     # Last: a rebuild only restores the indexes the table had when it was
     # copied, so one created earlier in the run would go down with it.
@@ -740,14 +1060,62 @@ def _run(op: Any, conn: Any, engine: Engine, changes: List[Change],
                         [c.name for c in index.columns], unique=index.unique)
 
 
+def _reshaped(source: sa.Table, specs: List[Dict[str, Any]]) -> sa.Table:
+    """
+    `source` with the constraint changes of `specs` applied: the table a
+    rebuild creates.  The tables its foreign keys point at stand in as stubs,
+    since rendering a REFERENCES clause needs only their name and columns.
+    """
+    metadata = sa.MetaData()
+    table = source.to_metadata(metadata)
+
+    for spec in specs:
+        if spec['op'] != 'drop':
+            continue
+        for constraint in list(table.constraints):
+            if spec['kind'] == 'fk' and isinstance(constraint, sa.ForeignKeyConstraint):
+                if _fk_signature(_fk_spec(constraint)) != _fk_signature(spec):
+                    continue
+                for element in constraint.elements:
+                    element.parent.foreign_keys.discard(element)
+                table.foreign_keys.discard(constraint.elements[0])
+            elif spec['kind'] == 'unique' and isinstance(constraint, sa.UniqueConstraint):
+                if {c.name for c in constraint.columns} != set(spec['columns']):
+                    continue
+            else:
+                continue
+            table.constraints.discard(constraint)
+
+    for spec in specs:
+        if spec['op'] != 'add':
+            continue
+        if spec['kind'] == 'fk':
+            table.append_constraint(sa.ForeignKeyConstraint(
+                spec['columns'], [f'{spec["referred"]}.{r}' for r in spec['remote']],
+                ondelete=spec['ondelete'], onupdate=spec['onupdate']))
+        else:
+            table.append_constraint(sa.UniqueConstraint(*spec['columns']))
+
+    for fk in table.foreign_keys:
+        referred, column = fk.target_fullname.split('.')[-2:]
+        stub = metadata.tables.get(referred)
+        if stub is None:
+            stub = sa.Table(referred, metadata)
+        if column not in stub.c:
+            stub.append_column(sa.Column(column, fk.parent.type))
+    return table
+
+
 def _alter_table(op: Any, shape: Optional['_Shape'], engine: Engine, table: str,
-                 columns: List[Dict[str, Any]]) -> None:
+                 columns: List[Dict[str, Any]],
+                 constraints: Optional[List[Dict[str, Any]]] = None) -> None:
     """
     Alter every column of one table in a single pass.
 
     Where the dialect can alter a column in place that is just a loop; on
     SQLite it is one table rebuild instead of one per column, which on a large
-    table is the difference that matters.
+    table is the difference that matters.  The constraint changes of the table
+    ride the same rebuild: SQLite has no other way to add or drop them.
     """
     if not _batch_needed(engine):
         for spec in columns:
@@ -760,7 +1128,12 @@ def _alter_table(op: Any, shape: Optional['_Shape'], engine: Engine, table: str,
     # Rebuilding copies the table as it stands, so columns the schema does not
     # know about — and the data in them — come across untouched.
     batch_kwargs: Dict[str, Any] = {}
-    if shape is not None:
+    if constraints:
+        source = (shape.of(table) if shape is not None
+                  else sa.Table(table, sa.MetaData(), autoload_with=op.get_bind()))
+        batch_kwargs['copy_from'] = _reshaped(source, constraints)
+        batch_kwargs['recreate'] = 'always'
+    elif shape is not None:
         batch_kwargs['copy_from'] = shape.of(table)
     with op.batch_alter_table(table, **batch_kwargs) as batch:
         for spec in columns:
@@ -770,6 +1143,8 @@ def _alter_table(op: Any, shape: Optional['_Shape'], engine: Engine, table: str,
                 batch.alter_column(spec['column'],
                                    **{k: v for k, v in spec.items() if k != 'column'})
     if shape is not None:
+        if constraints:
+            shape.tables[table] = batch_kwargs['copy_from']
         for spec in columns:
             if spec.get('drop'):
                 shape.column_dropped(table, spec['column'])
@@ -808,6 +1183,30 @@ def plan_sql(engine: Engine, diff: SchemaDiff, force: bool = False) -> str:
     return buffer.getvalue()
 
 
+@contextmanager
+def _ddl_transaction(engine: Engine, caps: Capabilities) -> Iterator[Any]:
+    """
+    A connection whose statements all succeed or all roll back, where the
+    engine allows it.  The SQLite driver opens a transaction only before data
+    statements, so DDL would commit one statement at a time and a failure
+    halfway would leave the table half changed: the transaction is opened by
+    hand, on a connection the driver leaves alone.
+    """
+    if caps.ddl_transaction != 'explicit':
+        with engine.begin() as conn:
+            yield conn
+        return
+    with engine.connect() as conn:
+        conn = conn.execution_options(isolation_level='AUTOCOMMIT')
+        conn.exec_driver_sql('BEGIN')
+        try:
+            yield conn
+        except BaseException:
+            conn.exec_driver_sql('ROLLBACK')
+            raise
+        conn.exec_driver_sql('COMMIT')
+
+
 def apply_diff(engine: Engine, diff: SchemaDiff,
                logger: Optional[logging.Logger] = None,
                force: bool = False) -> List[str]:
@@ -831,8 +1230,12 @@ def apply_diff(engine: Engine, diff: SchemaDiff,
     def _capture(conn, cursor, statement, parameters, context, executemany):
         executed.append(' '.join(statement.split()))
 
+    caps = capabilities(engine)
+    if caps.ddl_transaction == 'none' and logger:
+        logger.warning('schema sync: %s commits every DDL statement on its own, '
+                       'a failure leaves the earlier ones applied', engine.dialect.name)
     try:
-        with engine.begin() as conn:
+        with _ddl_transaction(engine, caps) as conn:
             context = MigrationContext.configure(conn)
             op = Operations(context)
             _run(op, conn, engine, changes, reflect=True)

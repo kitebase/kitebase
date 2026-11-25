@@ -1220,13 +1220,14 @@ hybrid carries an SQL expression. A table that declares nothing searchable
   nullable: false
   foreign_key:
     target: Author.id          # Table.column notation
-    ondelete: "CASCADE"        # SQL ON DELETE action
-    onupdate: "SET NULL"       # SQL ON UPDATE action
+    ondelete: CASCADE          # SQL ON DELETE action
+    onupdate: SET NULL         # SQL ON UPDATE action
 ```
 
-Any key other than `target`/`constraint`/`relation`/`backref` is forwarded
-verbatim to SQLAlchemy's `ForeignKey()` (so `ondelete`, `onupdate`, … work
-as-is).
+Any key other than `target`/`constraint`/`relation`/`backref`/`owned` is
+forwarded to SQLAlchemy's `ForeignKey()` as a Python literal, so
+`ondelete: SET NULL` reaches it as the string `'SET NULL'`. Changing
+`ondelete` or `onupdate` on an installed application is applied by `db-sync`.
 
 #### The two navigable attributes (`relation`, `backref`)
 
@@ -1365,8 +1366,8 @@ a shortcut:
   `ON DELETE CASCADE` on a self-referential foreign key outright, and that is a
   shape Kitebase models routinely (a partner and its contacts);
 - it needs **no migration**: adding it to an installed application is a code
-  change, whereas altering a constraint is a schema change `db-sync` cannot
-  perform — its list is closed and its comparator does not look at constraints;
+  change, whereas altering a constraint is a schema change, which `db-sync`
+  applies but every installation has to run;
 - deletions stay **observable** by SQLAlchemy events, and thus by audit and by
   query behaviors. A cascade inside the engine is invisible to the application.
 

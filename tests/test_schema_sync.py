@@ -607,3 +607,260 @@ def test_db_sync_force_confirmed_applies(engine, monkeypatch):
     assert aligned
     assert 'note' not in column_info(engine, 'book')
     assert diff_schema(engine, md).is_aligned
+
+
+# ── Constraints: foreign keys and unique ──────────────────────────────────────
+#
+# These run on SQLite and, with KITEBASE_TEST_PG set to a Postgres URL, on
+# Postgres too: SQLite changes a constraint by rebuilding the table, Postgres
+# in place, and the rule has to come out the same on both.
+
+import os
+import uuid
+
+import kitebase.schema_sync as schema_sync
+from kitebase.schema_sync import Capabilities
+
+PG_URL = os.environ.get('KITEBASE_TEST_PG')
+
+
+@pytest.fixture(params=['sqlite', 'pg'])
+def db(request, tmp_path):
+    """An empty database on each engine; on Postgres a schema of its own."""
+    if request.param == 'sqlite':
+        yield make_engine(tmp_path)
+        return
+    if not PG_URL:
+        pytest.skip('KITEBASE_TEST_PG not set')
+    schema = f'sync_{uuid.uuid4().hex[:8]}'
+    admin = sa.create_engine(PG_URL)
+    with admin.begin() as conn:
+        conn.exec_driver_sql(f'CREATE SCHEMA {schema}')
+    eng = sa.create_engine(PG_URL, connect_args={'options': f'-csearch_path={schema}'})
+    try:
+        yield eng
+    finally:
+        eng.dispose()
+        with admin.begin() as conn:
+            conn.exec_driver_sql(f'DROP SCHEMA {schema} CASCADE')
+        admin.dispose()
+
+
+def library(*, fk=True, ondelete=None, unique_title=False, extra=()):
+    """author and book, with book.author_id a foreign key or a plain column."""
+    md = sa.MetaData()
+    sa.Table('author', md,
+             sa.Column('id', sa.Integer, primary_key=True),
+             sa.Column('name', sa.String(30)))
+    key = [sa.ForeignKey('author.id', ondelete=ondelete)] if fk else []
+    sa.Table('book', md,
+             sa.Column('id', sa.Integer, primary_key=True),
+             sa.Column('title', sa.String(50), unique=unique_title),
+             sa.Column('author_id', sa.Integer, *key),
+             *[column._copy() for column in extra])
+    return md
+
+
+def fill(engine, md, books=((1, 'Marcovaldo', 1), (2, 'Palomar', 1))):
+    md.create_all(engine)
+    with engine.begin() as conn:
+        conn.execute(sa.text("INSERT INTO author (id, name) VALUES (1, 'Calvino')"))
+        for id_, title, author in books:
+            conn.execute(sa.text('INSERT INTO book (id, title, author_id) VALUES (:i, :t, :a)'),
+                         {'i': id_, 't': title, 'a': author})
+
+
+def foreign_keys(engine, table='book'):
+    return {tuple(fk['constrained_columns']): fk for fk in sa.inspect(engine).get_foreign_keys(table)}
+
+
+def uniques(engine, table='book'):
+    return {tuple(u['column_names']) for u in sa.inspect(engine).get_unique_constraints(table)}
+
+
+def book_count(engine):
+    with engine.connect() as conn:
+        return conn.execute(sa.text('SELECT COUNT(*) FROM book')).scalar()
+
+
+def test_a_new_column_brings_its_foreign_key_and_unique(db):
+    """The case that stopped halfway: the column was added, the constraint was
+    not, and every later start refused the schema."""
+    fill(db, library())
+    md = library(extra=[
+        sa.Column('editor_id', sa.Integer, sa.ForeignKey('author.id', ondelete='SET NULL')),
+        sa.Column('code', sa.String(10), unique=True)])
+
+    diff = diff_schema(db, md)
+
+    assert [(c.kind, c.verdict) for c in diff.changes] == [('add_column', SAFE)] * 2
+    assert 'foreign key (editor_id) -> author(id) ON DELETE SET NULL' in \
+        by_target(diff)['book.editor_id'].description
+    apply_diff(db, diff)
+    assert diff_schema(db, md).is_aligned
+    assert foreign_keys(db)[('editor_id',)]['options'].get('ondelete') == 'SET NULL'
+    assert ('code',) in uniques(db)
+    assert ('author_id',) in foreign_keys(db)          # the old key survived
+    assert book_count(db) == 2
+
+
+def test_a_foreign_key_on_an_existing_column_is_added_when_no_row_is_orphan(db):
+    fill(db, library(fk=False))
+    md = library()
+
+    diff = diff_schema(db, md)
+
+    assert [(c.kind, c.verdict, c.target) for c in diff.changes] == \
+        [('add_fk', SAFE, 'book.author_id')]
+    apply_diff(db, diff)
+    assert diff_schema(db, md).is_aligned
+    assert ('author_id',) in foreign_keys(db)
+
+
+def test_orphans_refuse_a_foreign_key_even_forcing(db):
+    """What an orphan becomes — NULL, another key, gone — is a person's choice."""
+    fill(db, library(fk=False), books=((1, 'Marcovaldo', 1), (2, 'Palomar', 99)))
+
+    diff = diff_schema(db, library())
+
+    change = by_target(diff)['book.author_id']
+    assert change.verdict == REFUSED and not change.forceable
+    assert change.reason.startswith('1 row(s) point at nothing in author')
+    assert 'NOT IN (SELECT id FROM author)' in change.sql_hint
+    apply_diff(db, diff, force=True)
+    assert foreign_keys(db) == {}
+
+
+def test_a_unique_constraint_is_added_when_no_value_repeats(db):
+    fill(db, library())
+    md = library(unique_title=True)
+
+    diff = diff_schema(db, md)
+
+    assert [(c.kind, c.verdict) for c in diff.changes] == [('add_unique', SAFE)]
+    apply_diff(db, diff)
+    assert diff_schema(db, md).is_aligned
+    assert ('title',) in uniques(db)
+
+
+def test_repeated_values_refuse_a_unique_constraint(db):
+    fill(db, library(), books=((1, 'Palomar', 1), (2, 'Palomar', 1), (3, 'Marcovaldo', 1)))
+
+    change = diff_schema(db, library(unique_title=True)).changes[0]
+
+    assert change.verdict == REFUSED and not change.forceable
+    assert change.reason.startswith('2 row(s) share a value')
+    assert 'HAVING COUNT(*) > 1' in change.sql_hint
+
+
+def test_a_changed_on_delete_is_one_change_and_is_applied(db):
+    fill(db, library())
+    md = library(ondelete='CASCADE')
+
+    diff = diff_schema(db, md)
+
+    assert [(c.kind, c.verdict) for c in diff.changes] == [('modify_fk', SAFE)]
+    assert diff.changes[0].description == \
+        'foreign key (author_id) -> author(id) ON DELETE CASCADE, was no action'
+    apply_diff(db, diff)
+    assert diff_schema(db, md).is_aligned
+    assert foreign_keys(db)[('author_id',)]['options'].get('ondelete') == 'CASCADE'
+    assert book_count(db) == 2
+
+
+def test_a_dropped_foreign_key_waits_for_force(db):
+    fill(db, library())
+    md = library(fk=False)
+
+    diff = diff_schema(db, md)
+
+    change = diff.changes[0]
+    assert (change.kind, change.verdict, change.forceable) == ('remove_fk', REFUSED, True)
+    apply_diff(db, diff)
+    assert ('author_id',) in foreign_keys(db)
+    apply_diff(db, diff, force=True)
+    assert foreign_keys(db) == {}
+    assert diff_schema(db, md).is_aligned
+
+
+def test_a_backfilled_unique_column_is_refused_on_several_rows(db):
+    fill(db, library())
+    md = library(extra=[sa.Column('code', sa.String(10), nullable=False,
+                                  default='X', unique=True)])
+
+    change = by_target(diff_schema(db, md))['book.code']
+
+    assert change.verdict == REFUSED
+    assert 'same value' in change.reason
+
+
+def test_a_backfilled_key_must_exist(db):
+    fill(db, library())
+    md = library(extra=[sa.Column('editor_id', sa.Integer, sa.ForeignKey('author.id'),
+                                  nullable=False, default=7)])
+
+    change = by_target(diff_schema(db, md))['book.editor_id']
+
+    assert change.verdict == REFUSED
+    assert "existing rows would get 7, which is not in author.id" == change.reason
+
+
+def test_constraints_and_alterations_share_one_rebuild(tmp_path):
+    eng = make_engine(tmp_path)
+    fill(eng, library())
+    md = library(ondelete='CASCADE', extra=[
+        sa.Column('code', sa.String(10), unique=True)])
+    md.tables['book'].c.title.type = sa.String(200)
+
+    diff = diff_schema(eng, md)
+    sql = plan_sql(eng, diff)
+
+    assert sql.count('CREATE TABLE _alembic_tmp_book') == 1
+    assert 'ON DELETE CASCADE' in sql and 'UNIQUE (code)' in sql
+    assert 'code' not in column_info(eng, 'book')      # the plan ran nothing
+    apply_diff(eng, diff)
+    assert diff_schema(eng, md).is_aligned
+
+
+def test_a_failure_halfway_leaves_nothing_on_sqlite(tmp_path, monkeypatch):
+    """The driver commits SQLite DDL one statement at a time unless the sync
+    opens the transaction itself."""
+    eng = make_engine(tmp_path)
+    fill(eng, library())
+    md = library(extra=[sa.Column('code', sa.String(10), unique=True)])
+    diff = diff_schema(eng, md)
+
+    def broken(*args, **kwargs):
+        raise RuntimeError('rebuild failed')
+    monkeypatch.setattr(schema_sync, '_alter_table', broken)
+
+    with pytest.raises(RuntimeError):
+        apply_diff(eng, diff)
+    assert 'code' not in column_info(eng, 'book')
+
+
+def test_where_nulls_collide_a_new_unique_column_waits_for_one_row(tmp_path, monkeypatch):
+    """SQL Server lets one NULL into a unique column: a new column, NULL in
+    every row, already breaks it on the second row."""
+    eng = make_engine(tmp_path)
+    fill(eng, library())
+    monkeypatch.setattr(schema_sync, 'capabilities',
+                        lambda engine: Capabilities('driver', 'alter', False))
+
+    change = diff_schema(eng, library(extra=[
+        sa.Column('code', sa.String(10), unique=True)])).changes[0]
+
+    assert change.verdict == REFUSED
+
+
+def test_an_engine_the_sync_does_not_know_gets_no_constraint(tmp_path, monkeypatch):
+    eng = make_engine(tmp_path)
+    fill(eng, library(fk=False))
+    monkeypatch.setattr(schema_sync, 'capabilities', lambda engine: schema_sync._UNKNOWN)
+
+    diff = diff_schema(eng, library(ondelete='CASCADE', extra=[
+        sa.Column('editor_id', sa.Integer, sa.ForeignKey('author.id'))]))
+
+    assert {c.target: c.verdict for c in diff.changes} == \
+        {'book.author_id': REFUSED, 'book.editor_id': REFUSED}
+    assert all('does not know' in c.reason for c in diff.changes)

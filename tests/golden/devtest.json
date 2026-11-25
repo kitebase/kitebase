@@ -625,7 +625,7 @@
      "nullable": true,
      "foreign_key": {
       "target": "User.id",
-      "onupdate": "'SET NULL'"
+      "ondelete": "SET NULL"
      },
      "$plugin": "users"
     },

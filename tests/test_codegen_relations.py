@@ -252,6 +252,21 @@ def test_soft_self_reference_spells_out_the_join(tmp_path, monkeypatch):
     load(tmp_path, source)
 
 
+def test_referential_actions_are_written_as_strings(tmp_path, monkeypatch):
+    """`ondelete: SET NULL` in the YAML is the SQL action, not Python source."""
+    source = generate(tmp_path, monkeypatch, {
+        'Partner': table(name='partners'),
+        'Note': table({'name': 'partner_id', 'nullable': True,
+                       'foreign_key': {'target': 'Partner.id', 'ondelete': 'SET NULL',
+                                       'onupdate': 'CASCADE'}},
+                      name='notes'),
+    })
+
+    assert ("ForeignKey('partners.id', ondelete='SET NULL', onupdate='CASCADE')"
+            in line(source, 'partner_id'))
+    load(tmp_path, source)
+
+
 # ── several paths between the same two tables ─────────────────────────────────
 
 def test_two_foreign_keys_to_the_same_target(tmp_path, monkeypatch):

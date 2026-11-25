@@ -80,7 +80,7 @@ tables.*: [code_field, columns, display_field, doc, help, indexes, label, many_t
 tables.*.columns[]: [accept, autoincrement, base, case, choices, choices_endpoint, column_group, columns, default, deferred, description, doc, duplicate, editable, foreign_key, granularity, help, help_how, hidden, index, label, length, max_size, media, name, nullable, on_write, onupdate, plugin, precision, prefix, primary_key, query_rank, resize, root, scale, searchable, secret, type, unique, validate, virtual, widget]
 tables.*.columns[].choices[]: [label, value]
 tables.*.columns[].columns[]: [base, length, name, nullable, type]
-tables.*.columns[].foreign_key: [backref, constraint, id, onupdate, owned, relation, table, target]
+tables.*.columns[].foreign_key: [backref, constraint, id, ondelete, onupdate, owned, relation, table, target]
 tables.*.indexes[]: [columns, description, name, unique]
 tables.*.many_to_many: [target1, target2]
 tables.*.many_to_many.target1: [collection, column, db_type, field, id, table]
