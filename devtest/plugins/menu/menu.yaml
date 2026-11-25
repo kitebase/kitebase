@@ -32,3 +32,5 @@ menu_items:
   tables:   { label: Tables,        icon: table,     parent: masters, order: 95, action: stack_push, panel: tables_browser }
   # One's own password: every user, whatever the roles, since the page reads no table.
   password: { label: Change password, icon: lock,  parent: account, order: 10, action: stack_push, panel: password_change }
+  # A link out of the application, in a new tab: `action: url` (PLUGIN_MODEL § 9.4).
+  website:  { label: kitebase.org,  icon: external-link, parent: account, order: 90, action: url, url: "https://kitebase.org", target: _blank }

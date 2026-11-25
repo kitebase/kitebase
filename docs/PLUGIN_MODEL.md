@@ -2469,6 +2469,7 @@ so diagnostics validate menu targets with the same generic checks.
 |----------|--------------|--------|
 | `stack_push` | `panel`, `props` | open a page in the active tab's stack |
 | `endpoint` | `op`, `params` | invoke a backend command |
+| `url` | `url`, `target` | go to an address: another page of the same site or another site; `target: _blank` opens a new tab |
 
 ### 9.5 Default Placement — Config Cascade
 

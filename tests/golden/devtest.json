@@ -1821,6 +1821,16 @@
    "panel": "password_change",
    "$plugin": "menu"
   },
+  "website": {
+   "label": "kitebase.org",
+   "icon": "external-link",
+   "parent": "account",
+   "order": 90,
+   "action": "url",
+   "url": "https://kitebase.org",
+   "target": "_blank",
+   "$plugin": "menu"
+  },
   "$plugin": "menu",
   "demo_hello": {
    "label": "Hello demo",

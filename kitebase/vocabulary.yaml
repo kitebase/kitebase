@@ -1,7 +1,7 @@
 # The keys the merged YAML may use, path by path (kitebase/vocabulary.py).
 # Generated, then reviewed: KITEBASE_VOCABULARY_UPDATE=1 kitebase check
 # adds, never removes. '*' is an open map: its keys are data.
-menu_items.*: [action, confirm, doc, icon, label, op, order, panel, parent]
+menu_items.*: [action, confirm, doc, icon, label, op, order, panel, parent, target, url]
 menus.*: [doc, home_page, label]
 pages.*: [access, breadcrumb, confirm_on_leave, content, doc, help, help_compose, panels, title]
 pages.*.content: [actions, allow_views, card, columns, component, fields, kanban, layout, navigator, on_saved, phases, policy, props, rules, source, type]

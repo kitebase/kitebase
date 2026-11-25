@@ -153,6 +153,11 @@ def _walk(app: Any, obj: Any, path: str, plugin: Optional[str],
         if obj.get('action') == 'stack_push':
             _check_push_target(app, obj, path, plugin, issues)
 
+        if obj.get('action') == 'url' and not (isinstance(obj.get('url'), str) and obj['url']):
+            issues.append(make_issue(
+                'warning', 'url-missing', f'{path}.url',
+                "action 'url' without an address: the item does nothing", plugin))
+
         if obj.get('type') == 'collection':
             _check_collection(app, obj, path, plugin, issues)
 

@@ -200,6 +200,22 @@ def test_generic_descriptor_sections_are_checked():
                for i in by_code(issues, 'ref-unresolved'))
 
 
+def test_a_url_item_without_an_address_is_reported():
+    pm = PluginsManager()
+    pm.merge_dicts({
+        'menus': {'main': {'label': 'Main'}},
+        'menu_items': {
+            'site': {'label': 'Site', 'action': 'url', 'url': 'https://example.org',
+                     'target': '_blank'},
+            'dashboard': {'label': 'Dashboard', 'action': 'url', 'url': '/'},
+            'empty': {'label': 'Empty', 'action': 'url'},
+        },
+    }, 'menuplugin')
+    issues = run_checks(FakeApp(pm, {}))
+    assert {i['path'] for i in by_code(issues, 'url-missing')} == {'menu_items.empty.url'}
+    assert not by_code(issues, 'key-unknown')
+
+
 def test_db_sections_not_walked_as_descriptors():
     """tables/types/schemas are DB/type sections, not descriptor trees."""
     from kitebase.diagnostics import _descriptor_sections
